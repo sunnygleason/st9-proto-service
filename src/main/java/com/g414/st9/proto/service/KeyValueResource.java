@@ -26,6 +26,7 @@ public class KeyValueResource {
 	@POST
 	@Path("{type}")
 	@Consumes(MediaType.APPLICATION_JSON)
+	@Produces(MediaType.APPLICATION_JSON)
 	// TODO using String for the input value is busted/whack - pending better
 	// automagical jackson configuration
 	public Response createEntity(@PathParam("type") String type, String value)
