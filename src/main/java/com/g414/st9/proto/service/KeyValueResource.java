@@ -11,6 +11,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
+import com.g414.st9.proto.service.store.KeyValueStorage;
 import com.google.inject.Inject;
 
 /**
@@ -21,7 +22,7 @@ import com.google.inject.Inject;
 @Path("/1.0/e")
 public class KeyValueResource {
 	@Inject
-	private InMemoryKeyValueStorage store;
+	private KeyValueStorage store;
 
 	@POST
 	@Path("{type}")

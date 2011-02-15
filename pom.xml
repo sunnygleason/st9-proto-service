@@ -32,6 +32,11 @@
       <url>http://download.java.net/maven/2</url>
       <layout>default</layout>
     </repository>
+    <repository>
+      <id>g414 Repository</id>
+      <url>http://mvn.g414.com/</url>
+      <layout>default</layout>
+    </repository>
   </repositories>
 
   <dependencies>
@@ -79,6 +84,56 @@
       <groupId>org.codehaus.jackson</groupId>
       <artifactId>jackson-smile</artifactId>
       <version>1.7.1</version>
+    </dependency>
+    <dependency>
+      <groupId>com.g414.codec</groupId>
+      <artifactId>g414-codec</artifactId>
+      <version>0.1.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.g414.hash</groupId>
+      <artifactId>g414-hash</artifactId>
+      <version>0.7.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.jdbi</groupId>
+      <artifactId>jdbi</artifactId>
+      <version>2.10.2</version>
+    </dependency>
+    <dependency>
+      <groupId>org.antlr</groupId>
+      <artifactId>stringtemplate</artifactId>
+      <version>3.0</version>
+    </dependency>
+    <dependency>
+      <groupId>joda-time</groupId>
+      <artifactId>joda-time</artifactId>
+      <version>1.6.2</version>
+    </dependency>
+    <dependency>
+      <groupId>com.jolbox</groupId>
+      <artifactId>bonecp</artifactId>
+      <version>0.7.1-rc3</version>
+    </dependency>
+    <dependency>
+      <groupId>mysql</groupId>
+      <artifactId>mysql-connector-java</artifactId>
+      <version>5.1.15</version>
+    </dependency>
+    <dependency>
+      <groupId>org.xerial</groupId>
+      <artifactId>sqlite-jdbc</artifactId>
+      <version>3.6.20</version>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <version>1.5.11</version>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-simple</artifactId>
+      <version>1.5.11</version>
     </dependency>
     <dependency>
       <groupId>org.testng</groupId>

@@ -1,0 +1,104 @@
+group sql;
+
+sqlite_init_key_types() ::=<<
+  create table if not exists `_key_types` (`_key_type` INTEGER PRIMARY KEY, `_type_name` UNIQUE)
+>>
+
+sqlite_init_sequences() ::=<<
+  create table if not exists `_sequences` (`_key_type` INTEGER PRIMARY KEY, `_next_id` INTEGER)
+>>
+
+sqlite_init_key_values() ::=<<
+  create table if not exists `_key_values` (`_key_type` INTEGER, `_key_id` INTEGER,
+    `_created_dt` INTEGER, `_updated_dt` INTEGER,
+    `_format`, `_compression`, `_value`,
+    PRIMARY KEY(`_key_type`, `_key_id`))
+>>
+
+sqlite_init_key_values_index() ::=<<
+  create index if not exists `_kv_updated` on `_key_values` (`_updated_dt`)
+>>
+
+sqlite_populate_key_types() ::=<< 
+  insert or ignore
+    into `_key_types` (`_key_type`, `_type_name`)
+  values (0, '$KEY$')
+>>
+
+sqlite_get_type_id() ::=<< 
+  select `_key_type`
+    from `_key_types`
+   where `_type_name` = :type_name;
+>>
+
+sqlite_populate_sequences() ::=<< 
+  insert or ignore
+    into `_sequences` (`_key_type`, `_next_id`)
+  values (0, 1)
+>>
+
+sqlite_create() ::=<< 
+  insert into `_key_values` (`_key_type`, `_key_id`, `_created_dt`, `_updated_dt`, `_format`, `_compression`, `_value`)
+  values (:key_type, :key_id, :created_dt, :created_dt, 'S', 'F', :value)
+>>
+
+sqlite_retrieve() ::=<< 
+  select `_key_type`, `_key_id`, `_created_dt`, `_updated_dt`, `_format`, `_compression`, `_value`
+    from `_key_values`
+   where `_key_type` = :key_type
+     and `_key_id` = :key_id
+>>
+
+sqlite_update() ::=<< 
+  update `_key_values`
+    set `_key_type`   = :key_type,
+        `_key_id`     = :key_id,
+        `_updated_dt` = :updated_dt,
+        `_value`      = :value
+   where `_key_type` = :key_type
+     and `_key_id` = :key_id
+>>
+
+sqlite_delete() ::=<< 
+  delete
+    from `_key_values`
+   where `_key_type` = :key_type
+     and `_key_id` = :key_id
+>>
+
+sqlite_get_next_id() ::=<< 
+  select `_next_id`
+    from `_sequences`
+   where `_key_type` = :key_type
+>>
+
+sqlite_populate_id() ::=<< 
+  insert or ignore
+    into `_sequences` (`_key_type`, `_next_id`)
+  values (:key_type, :next_id);
+>>
+
+sqlite_populate_key_type() ::=<< 
+  insert or ignore
+    into `_key_types` (`_key_type`, `_type_name`)
+  values (:key_type, :type_name);
+>>
+
+sqlite_increment_next_id() ::=<< 
+  update `_sequences`
+    set `_next_id` = `_next_id` + 1
+   where `_key_type` = :key_type
+>>
+
+sqlite_truncate_key_types() ::=<< 
+  delete from `_key_types`
+>>
+
+sqlite_truncate_sequences() ::=<< 
+  delete from `_sequences`
+>>
+
+sqlite_truncate_key_values() ::=<< 
+  delete from `_key_values`
+>>
+

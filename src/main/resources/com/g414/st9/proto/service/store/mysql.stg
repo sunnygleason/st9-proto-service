@@ -1,0 +1,120 @@
+group sql;
+
+mysql_init_key_types() ::=<<
+  create table if not exists `_key_types` (
+    `_key_type`     smallint unsigned not null,
+    `_type_name`    varchar(100) not null,
+    PRIMARY KEY(`_key_type`),
+    UNIQUE KEY(`_type_name`)
+  ) ENGINE=InnoDB ROW_FORMAT=DYNAMIC CHARACTER SET utf8
+>>
+
+mysql_init_sequences() ::=<<
+  create table if not exists `_sequences` (
+    `_key_type`     smallint unsigned not null,
+    `_next_id`      bigint unsigned not null,
+    PRIMARY KEY(`_key_type`)
+  ) ENGINE=InnoDB ROW_FORMAT=DYNAMIC CHARACTER SET utf8
+>>
+
+mysql_init_key_values() ::=<<
+  create table if not exists `_key_values` (
+    `_key_type`     smallint unsigned not null,
+    `_key_id`       bigint unsigned not null,
+    `_created_dt`   int unsigned not null,
+    `_updated_dt`   int unsigned not null,
+    `_format`       char(1) not null default 'S',
+    `_compression`  char(1) not null default 'F',
+    `_value`        blob not null,
+    PRIMARY KEY(`_key_type`, `_key_id`),
+    INDEX(`_updated_dt`)
+  ) ENGINE=InnoDB ROW_FORMAT=DYNAMIC CHARACTER SET utf8
+>>
+
+mysql_init_key_values_index() ::=<<
+  select 1
+>>
+
+mysql_populate_key_types() ::=<< 
+  insert ignore
+    into `_key_types` (`_key_type`, `_type_name`)
+  values (0, '$KEY_TYPE$');
+>>
+
+mysql_get_type_id() ::=<< 
+  select `_key_type`
+    from `_key_types`
+   where `_type_name` = :type_name;
+>>
+
+mysql_populate_sequences() ::=<< 
+  insert ignore
+    into `_sequences` (`_key_type`, `_next_id`)
+  values (0, 1);
+>>
+
+mysql_create() ::=<< 
+  insert into `_key_values` (`_key_type`, `_key_id`, `_created_dt`, `_updated_dt`, `_format`, `_compression`, `_value`)
+  values (:key_type, :key_id, :created_dt, :created_dt, 'S', 'F', :value)
+>>
+
+mysql_retrieve() ::=<< 
+  select `_key_type`, `_key_id`, `_created_dt`, `_updated_dt`, `_format`, `_compression`, `_value`
+    from `_key_values`
+   where `_key_type` = :key_type
+     and `_key_id` = :key_id
+>>
+
+mysql_update() ::=<< 
+  update `_key_values`
+    set `_key_type`   = :key_type,
+        `_key_id`     = :key_id,
+        `_updated_dt` = :updated_dt,
+        `_value`      = :value
+   where `_key_type` = :key_type
+     and `_key_id` = :key_id
+>>
+
+mysql_delete() ::=<< 
+  delete
+    from `_key_values`
+   where `_key_type` = :key_type
+     and `_key_id` = :key_id
+>>
+
+mysql_populate_id() ::=<< 
+  insert ignore
+    into `_sequences` (`_key_type`, `_next_id`)
+  values (:key_type, :next_id);
+>>
+
+mysql_populate_key_type() ::=<< 
+  insert ignore
+    into `_key_types` (`_key_type`, `_type_name`)
+  values (:key_type, :type_name);
+>>
+
+mysql_get_next_id() ::=<< 
+  select `_next_id`
+    from `_sequences`
+   where `_key_type` = :key_type
+>>
+
+mysql_increment_next_id() ::=<< 
+  update `_sequences`
+    set `_next_id` = `_next_id` + 1
+   where `_key_type` = :key_type
+>>
+
+mysql_truncate_key_types() ::=<< 
+  truncate table `_key_types`
+>>
+
+mysql_truncate_sequences() ::=<< 
+  truncate table `_sequences`
+>>
+
+mysql_truncate_key_values() ::=<< 
+  truncate table `_key_values`
+>>
+

@@ -5,24 +5,35 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
 import org.testng.Assert;
+import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import com.g414.st9.proto.service.KeyValueResource;
-import com.g414.st9.proto.service.ServiceConfig;
+import com.g414.st9.proto.service.ServiceConfig.ServiceConfigModule;
+import com.google.inject.Guice;
 import com.google.inject.Injector;
+import com.google.inject.Module;
 
 @Test
-public class KeyValueResourceTest {
+public abstract class KeyValueResourceTestBase {
 	private KeyValueResource kvResource;
 
-	public KeyValueResourceTest() {
-		Injector injector = (new ServiceConfig()).getInjector();
+	public abstract Module getKeyValueStorageModule();
+
+	public KeyValueResourceTestBase() {
+		Injector injector = Guice.createInjector(getKeyValueStorageModule(),
+				new ServiceConfigModule());
+
 		this.kvResource = injector.getInstance(KeyValueResource.class);
 	}
 
 	@BeforeMethod(alwaysRun = true)
 	public void setUp() {
+		this.kvResource.clear();
+	}
+
+	@AfterMethod(alwaysRun = true)
+	public void tearDown() {
 		this.kvResource.clear();
 	}
 
@@ -34,11 +45,23 @@ public class KeyValueResourceTest {
 				kvResource.createEntity("foo", "{\"isAwesome\":true}"),
 				Status.OK, "{\"id\":\"foo:2\",\"isAwesome\":true}");
 
+		assertResponseMatches(kvResource.createEntity("bar", "{}"), Status.OK,
+				"{\"id\":\"bar:1\"}");
+
+		assertResponseMatches(kvResource.createEntity("bar", "{}"), Status.OK,
+				"{\"id\":\"bar:2\"}");
+
 		assertResponseMatches(kvResource.retrieveEntity("foo:1"), Status.OK,
 				"{\"id\":\"foo:1\"}");
 
 		assertResponseMatches(kvResource.retrieveEntity("foo:2"), Status.OK,
 				"{\"id\":\"foo:2\",\"isAwesome\":true}");
+
+		assertResponseMatches(kvResource.retrieveEntity("bar:1"), Status.OK,
+				"{\"id\":\"bar:1\"}");
+
+		assertResponseMatches(kvResource.retrieveEntity("bar:2"), Status.OK,
+				"{\"id\":\"bar:2\"}");
 	}
 
 	public void testRetrieveHappy() throws Exception {
@@ -111,32 +134,29 @@ public class KeyValueResourceTest {
 
 	}
 
-	@Test(expectedExceptions = WebApplicationException.class)
 	public void testCreateFailureBadKeyWithId() throws Exception {
 		assertResponseMatches(kvResource.createEntity("foo:1", "{}"),
-				Status.BAD_REQUEST, "");
+				Status.BAD_REQUEST, "Invalid entity 'type'");
 	}
 
-	@Test(expectedExceptions = WebApplicationException.class)
 	public void testCreateFailureBadKeyNull() throws Exception {
 		assertResponseMatches(kvResource.createEntity(null, "{}"),
-				Status.BAD_REQUEST, "");
+				Status.BAD_REQUEST, "Invalid entity 'type'");
 	}
 
-	@Test(expectedExceptions = WebApplicationException.class)
 	public void testCreateFailureBadKeyEmpty() throws Exception {
 		assertResponseMatches(kvResource.createEntity("", "{}"),
-				Status.BAD_REQUEST, "");
+				Status.BAD_REQUEST, "Invalid entity 'type'");
 	}
 
-	@Test(expectedExceptions = WebApplicationException.class)
 	public void testCreateFailureBadValueNull() throws Exception {
-		kvResource.createEntity("foo", null);
+		assertResponseMatches(kvResource.createEntity("foo", null),
+				Status.BAD_REQUEST, "Invalid entity 'value'");
 	}
 
-	@Test(expectedExceptions = WebApplicationException.class)
 	public void testCreateFailureBadValueEmpty() throws Exception {
-		kvResource.createEntity("foo", "");
+		assertResponseMatches(kvResource.createEntity("foo", ""),
+				Status.BAD_REQUEST, "Invalid entity 'value'");
 	}
 
 	@Test(expectedExceptions = WebApplicationException.class)
@@ -147,10 +167,9 @@ public class KeyValueResourceTest {
 		kvResource.updateEntity("foo", "{bad value}");
 	}
 
-	@Test(expectedExceptions = WebApplicationException.class)
 	public void testRetrieveFailureBadKey() throws Exception {
 		assertResponseMatches(kvResource.retrieveEntity("foo"),
-				Status.BAD_REQUEST, "");
+				Status.BAD_REQUEST, "Invalid entity 'id'");
 	}
 
 	@Test(expectedExceptions = WebApplicationException.class)

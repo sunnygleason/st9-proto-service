@@ -2,6 +2,7 @@ package com.g414.st9.proto.service;
 
 import com.google.inject.Guice;
 import com.google.inject.Injector;
+import com.google.inject.Module;
 import com.google.inject.servlet.GuiceServletContextListener;
 import com.google.inject.servlet.ServletModule;
 import com.sun.jersey.guice.spi.container.servlet.GuiceContainer;
@@ -12,16 +13,23 @@ import com.sun.jersey.guice.spi.container.servlet.GuiceContainer;
  * modules could be welcome as well.
  */
 public class ServiceConfig extends GuiceServletContextListener {
+	private final Module storageModule;
+
+	public ServiceConfig(Module storageModule) {
+		this.storageModule = storageModule;
+	}
+
 	@Override
 	protected Injector getInjector() {
-		return Guice.createInjector(new ServletModule() {
-			@Override
-			protected void configureServlets() {
-				bind(InMemoryKeyValueStorage.class).asEagerSingleton();
-				bind(KeyValueResource.class).asEagerSingleton();
+		return Guice.createInjector(this.storageModule,
+				new ServiceConfigModule());
+	}
 
-				serve("*").with(GuiceContainer.class);
-			}
-		});
+	public static class ServiceConfigModule extends ServletModule {
+		protected void configureServlets() {
+			bind(KeyValueResource.class).asEagerSingleton();
+
+			serve("*").with(GuiceContainer.class);
+		}
 	}
 }
