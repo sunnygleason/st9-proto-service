@@ -1,4 +1,4 @@
-package com.g414.st9.proto.service;
+package com.g414.st9.proto.service.store;
 
 import org.testng.annotations.Test;
 

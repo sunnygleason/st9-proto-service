@@ -12,10 +12,6 @@ import com.mysql.jdbc.Driver;
  * MySQL implementation of key-value storage using JDBI.
  */
 public class MySQLKeyValueStorage extends JDBIKeyValueStorage {
-	public MySQLKeyValueStorage(IDBI database) {
-		super(database);
-	}
-
 	protected String getPrefix() {
 		return "mysql:mysql_";
 	}
@@ -34,10 +30,8 @@ public class MySQLKeyValueStorage extends JDBIKeyValueStorage {
 			DBI dbi = JDBIHelper.getDBI(datasource);
 			binder.bind(IDBI.class).toInstance(dbi);
 
-			JDBIKeyValueStorage storage = new MySQLKeyValueStorage(dbi);
-			binder.bind(KeyValueStorage.class).toInstance(storage);
-
-			storage.initialize();
+			binder.bind(KeyValueStorage.class).to(MySQLKeyValueStorage.class)
+					.asEagerSingleton();
 		}
 	}
 }

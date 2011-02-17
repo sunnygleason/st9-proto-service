@@ -1,8 +1,6 @@
 package com.g414.st9.proto.service;
 
-import com.google.inject.Guice;
 import com.google.inject.Injector;
-import com.google.inject.Module;
 import com.google.inject.servlet.GuiceServletContextListener;
 import com.google.inject.servlet.ServletModule;
 import com.sun.jersey.guice.spi.container.servlet.GuiceContainer;
@@ -13,16 +11,15 @@ import com.sun.jersey.guice.spi.container.servlet.GuiceContainer;
  * modules could be welcome as well.
  */
 public class ServiceConfig extends GuiceServletContextListener {
-	private final Module storageModule;
+	private final Injector parentInjector;
 
-	public ServiceConfig(Module storageModule) {
-		this.storageModule = storageModule;
+	public ServiceConfig(Injector parentInjector) {
+		this.parentInjector = parentInjector;
 	}
 
 	@Override
 	protected Injector getInjector() {
-		return Guice.createInjector(this.storageModule,
-				new ServiceConfigModule());
+		return parentInjector.createChildInjector(new ServiceConfigModule());
 	}
 
 	public static class ServiceConfigModule extends ServletModule {

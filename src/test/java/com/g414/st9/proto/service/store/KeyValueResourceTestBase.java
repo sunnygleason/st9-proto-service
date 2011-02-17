@@ -1,4 +1,4 @@
-package com.g414.st9.proto.service;
+package com.g414.st9.proto.service.store;
 
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
@@ -9,7 +9,11 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+import com.g414.guice.lifecycle.Lifecycle;
+import com.g414.guice.lifecycle.LifecycleModule;
+import com.g414.st9.proto.service.KeyValueResource;
 import com.g414.st9.proto.service.ServiceConfig.ServiceConfigModule;
+import com.g414.st9.proto.service.cache.EmptyKeyValueCache.EmptyKeyValueCacheModule;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Module;
@@ -21,10 +25,13 @@ public abstract class KeyValueResourceTestBase {
 	public abstract Module getKeyValueStorageModule();
 
 	public KeyValueResourceTestBase() {
-		Injector injector = Guice.createInjector(getKeyValueStorageModule(),
+		Injector injector = Guice.createInjector(new LifecycleModule(),
+				getKeyValueStorageModule(), new EmptyKeyValueCacheModule(),
 				new ServiceConfigModule());
 
 		this.kvResource = injector.getInstance(KeyValueResource.class);
+
+		injector.getInstance(Lifecycle.class).start();
 	}
 
 	@BeforeMethod(alwaysRun = true)

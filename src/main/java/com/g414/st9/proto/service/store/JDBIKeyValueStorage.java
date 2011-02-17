@@ -18,264 +18,296 @@ import org.skife.jdbi.v2.TransactionCallback;
 import org.skife.jdbi.v2.TransactionStatus;
 import org.skife.jdbi.v2.Update;
 
+import com.g414.guice.lifecycle.Lifecycle;
+import com.g414.guice.lifecycle.LifecycleRegistration;
+import com.g414.guice.lifecycle.LifecycleSupportBase;
+import com.g414.st9.proto.service.cache.KeyValueCache;
 import com.google.inject.Inject;
 
 /**
  * Abstract implementation of key-value storage based on JDBI.
  */
-public abstract class JDBIKeyValueStorage implements KeyValueStorage {
-	protected final IDBI database;
+public abstract class JDBIKeyValueStorage implements KeyValueStorage,
+        LifecycleRegistration {
+    @Inject
+    protected IDBI database;
 
-	protected final Map<String, Integer> typeCodes = new ConcurrentHashMap<String, Integer>();
+    @Inject
+    protected KeyValueCache cache;
 
-	protected abstract String getPrefix();
+    protected final Map<String, Integer> typeCodes = new ConcurrentHashMap<String, Integer>();
 
-	@Inject
-	public JDBIKeyValueStorage(IDBI database) {
-		this.database = database;
-	}
+    protected abstract String getPrefix();
 
-	public void initialize() {
-		database.inTransaction(new TransactionCallback<Void>() {
-			@Override
-			public Void inTransaction(Handle handle, TransactionStatus status)
-					throws Exception {
-				performInitialization(handle);
+    @Inject
+    public void register(Lifecycle lifecycle) {
+        lifecycle.register(new LifecycleSupportBase() {
+            @Override
+            public void init() {
+                JDBIKeyValueStorage.this.init();
+            }
+        });
+    }
 
-				return null;
-			}
-		});
-	}
+    public void init() {
+        database.inTransaction(new TransactionCallback<Void>() {
+            @Override
+            public Void inTransaction(Handle handle, TransactionStatus status)
+                    throws Exception {
+                performInitialization(handle);
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see
-	 * com.g414.st9.proto.service.store.KeyValueStorage#create(java.lang.String,
-	 * java.lang.String)
-	 */
-	@Override
-	public Response create(final String type, String inValue) throws Exception {
-		try {
-			final Map<String, Object> readValue = EncodingHelper
-					.parseJsonString(inValue);
-			readValue.remove("id");
+                return null;
+            }
+        });
+    }
 
-			return database.inTransaction(new TransactionCallback<Response>() {
-				@Override
-				public Response inTransaction(Handle handle,
-						TransactionStatus status) throws Exception {
-					try {
-						final int typeId = SequenceHelper.validateType(
-								typeCodes, getPrefix(), handle, type, true);
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.g414.st9.proto.service.store.KeyValueStorage#create(java.lang.String,
+     * java.lang.String)
+     */
+    @Override
+    public Response create(final String type, String inValue) throws Exception {
+        try {
+            final Map<String, Object> readValue = EncodingHelper
+                    .parseJsonString(inValue);
+            readValue.remove("id");
 
-						final long nextId = SequenceHelper.getNextId(
-								getPrefix(), handle, typeId, true);
+            return database.inTransaction(new TransactionCallback<Response>() {
+                @Override
+                public Response inTransaction(Handle handle,
+                        TransactionStatus status) throws Exception {
+                    try {
+                        final int typeId = SequenceHelper.validateType(
+                                typeCodes, getPrefix(), handle, type, true);
 
-						String key = type + ":" + nextId;
+                        final long nextId = SequenceHelper.getNextId(
+                                getPrefix(), handle, typeId, true);
 
-						Map<String, Object> value = new LinkedHashMap<String, Object>();
-						value.put("id", key);
-						value.putAll(readValue);
+                        String key = type + ":" + nextId;
 
-						String valueJson = EncodingHelper.convertToJson(value);
+                        Map<String, Object> value = new LinkedHashMap<String, Object>();
+                        value.put("id", key);
+                        value.putAll(readValue);
 
-						value.remove("id");
+                        String valueJson = EncodingHelper.convertToJson(value);
 
-						byte[] valueBytes = EncodingHelper
-								.convertToSmileLzf(value);
+                        value.remove("id");
 
-						int epochSeconds = (int) (new DateTime().withZone(
-								DateTimeZone.UTC).getMillis() / 1000);
+                        byte[] valueBytes = EncodingHelper
+                                .convertToSmileLzf(value);
 
-						Update update = handle.createStatement(getPrefix()
-								+ "create");
-						update.bind("key_type", typeId);
-						update.bind("key_id", nextId);
-						update.bind("created_dt", epochSeconds);
-						update.bind("value", valueBytes);
-						int inserted = update.execute();
+                        int epochSeconds = (int) (new DateTime().withZone(
+                                DateTimeZone.UTC).getMillis() / 1000);
 
-						return (inserted == 1) ? Response.status(Status.OK)
-								.entity(valueJson).build() : Response
-								.status(Status.INTERNAL_SERVER_ERROR)
-								.entity("Entity not inserted").build();
-					} catch (WebApplicationException e) {
-						return e.getResponse();
-					}
-				}
-			});
-		} catch (WebApplicationException e) {
-			return e.getResponse();
-		}
-	}
+                        Update update = handle.createStatement(getPrefix()
+                                + "create");
+                        update.bind("key_type", typeId);
+                        update.bind("key_id", nextId);
+                        update.bind("created_dt", epochSeconds);
+                        update.bind("value", valueBytes);
+                        int inserted = update.execute();
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see
-	 * com.g414.st9.proto.service.store.KeyValueStorage#retrieve(java.lang.String
-	 * )
-	 */
-	@Override
-	public Response retrieve(final String key) throws Exception {
-		try {
-			final Object[] keyParts = KeyHelper.validateKey(key);
+                        if (inserted > 0) {
+                            cache.put(key.getBytes(), valueBytes);
+                        }
 
-			return database.inTransaction(new TransactionCallback<Response>() {
-				@Override
-				public Response inTransaction(Handle handle,
-						TransactionStatus status) throws Exception {
-					final int typeId = SequenceHelper.validateType(typeCodes,
-							getPrefix(), handle, (String) keyParts[0], false);
-					final long keyId = (Long) keyParts[1];
+                        return (inserted == 1) ? Response.status(Status.OK)
+                                .entity(valueJson).build() : Response
+                                .status(Status.INTERNAL_SERVER_ERROR)
+                                .entity("Entity not inserted").build();
+                    } catch (WebApplicationException e) {
+                        return e.getResponse();
+                    }
+                }
+            });
+        } catch (WebApplicationException e) {
+            return e.getResponse();
+        }
+    }
 
-					Query<Map<String, Object>> select = handle
-							.createQuery(getPrefix() + "retrieve");
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.g414.st9.proto.service.store.KeyValueStorage#retrieve(java.lang.String
+     * )
+     */
+    @Override
+    public Response retrieve(final String key) throws Exception {
+        try {
+            final Object[] keyParts = KeyHelper.validateKey(key);
 
-					select.bind("key_type", typeId);
-					select.bind("key_id", keyId);
+            return database.inTransaction(new TransactionCallback<Response>() {
+                @Override
+                public Response inTransaction(Handle handle,
+                        TransactionStatus status) throws Exception {
+                    byte[] valueBytesLzf = cache.get(key.getBytes());
 
-					List<Map<String, Object>> results = select.list();
+                    if (valueBytesLzf == null) {
+                        final int typeId = SequenceHelper.validateType(
+                                typeCodes, getPrefix(), handle,
+                                (String) keyParts[0], false);
+                        final long keyId = (Long) keyParts[1];
 
-					if (results == null || results.isEmpty()) {
-						return Response.status(Status.NOT_FOUND).entity("")
-								.build();
-					}
+                        Query<Map<String, Object>> select = handle
+                                .createQuery(getPrefix() + "retrieve");
 
-					byte[] valueBytesLzf = (byte[]) results.iterator().next()
-							.get("_value");
+                        select.bind("key_type", typeId);
+                        select.bind("key_id", keyId);
 
-					LinkedHashMap<String, Object> found = (LinkedHashMap<String, Object>) EncodingHelper
-							.parseSmileLzf(valueBytesLzf);
-					LinkedHashMap<String, Object> value = new LinkedHashMap<String, Object>();
-					value.put("id", key);
-					value.putAll(found);
+                        List<Map<String, Object>> results = select.list();
 
-					String valueJson = EncodingHelper.convertToJson(value);
+                        if (results == null || results.isEmpty()) {
+                            return Response.status(Status.NOT_FOUND).entity("")
+                                    .build();
+                        }
 
-					return Response.status(Status.OK).entity(valueJson).build();
-				}
-			});
-		} catch (WebApplicationException e) {
-			return e.getResponse();
-		}
-	}
+                        valueBytesLzf = (byte[]) results.iterator().next()
+                                .get("_value");
+                    }
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see
-	 * com.g414.st9.proto.service.store.KeyValueStorage#update(java.lang.String,
-	 * java.lang.String)
-	 */
-	@Override
-	public Response update(final String key, String inValue) throws Exception {
-		final Object[] keyParts = KeyHelper.validateKey(key);
+                    LinkedHashMap<String, Object> found = (LinkedHashMap<String, Object>) EncodingHelper
+                            .parseSmileLzf(valueBytesLzf);
+                    LinkedHashMap<String, Object> value = new LinkedHashMap<String, Object>();
+                    value.put("id", key);
+                    value.putAll(found);
 
-		final Map<String, Object> readValue = EncodingHelper
-				.parseJsonString(inValue);
+                    String valueJson = EncodingHelper.convertToJson(value);
 
-		return database.inTransaction(new TransactionCallback<Response>() {
-			@Override
-			public Response inTransaction(Handle handle,
-					TransactionStatus status) throws Exception {
-				final int typeId = SequenceHelper.validateType(typeCodes,
-						getPrefix(), handle, (String) keyParts[0], false);
-				final long keyId = (Long) keyParts[1];
+                    return Response.status(Status.OK).entity(valueJson).build();
+                }
+            });
+        } catch (WebApplicationException e) {
+            return e.getResponse();
+        }
+    }
 
-				Map<String, Object> value = new LinkedHashMap<String, Object>();
-				value.put("id", key);
-				value.putAll(readValue);
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.g414.st9.proto.service.store.KeyValueStorage#update(java.lang.String,
+     * java.lang.String)
+     */
+    @Override
+    public Response update(final String key, String inValue) throws Exception {
+        final Object[] keyParts = KeyHelper.validateKey(key);
 
-				String valueJson = EncodingHelper.convertToJson(value);
+        final Map<String, Object> readValue = EncodingHelper
+                .parseJsonString(inValue);
 
-				value.remove("id");
+        return database.inTransaction(new TransactionCallback<Response>() {
+            @Override
+            public Response inTransaction(Handle handle,
+                    TransactionStatus status) throws Exception {
+                final int typeId = SequenceHelper.validateType(typeCodes,
+                        getPrefix(), handle, (String) keyParts[0], false);
+                final long keyId = (Long) keyParts[1];
 
-				byte[] valueBytes = EncodingHelper.convertToSmileLzf(value);
+                Map<String, Object> value = new LinkedHashMap<String, Object>();
+                value.put("id", key);
+                value.putAll(readValue);
 
-				int epochSeconds = (int) (new DateTime().withZone(
-						DateTimeZone.UTC).getMillis() / 1000);
+                String valueJson = EncodingHelper.convertToJson(value);
 
-				Update update = handle.createStatement(getPrefix() + "update");
-				update.bind("key_type", typeId);
-				update.bind("key_id", keyId);
-				update.bind("updated_dt", epochSeconds);
-				update.bind("value", valueBytes);
-				int updated = update.execute();
+                value.remove("id");
 
-				return (updated == 0) ? Response.status(Status.NOT_FOUND)
-						.entity("").build() : Response.status(Status.OK)
-						.entity(valueJson).build();
-			}
-		});
-	}
+                byte[] valueBytes = EncodingHelper.convertToSmileLzf(value);
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see
-	 * com.g414.st9.proto.service.store.KeyValueStorage#delete(java.lang.String)
-	 */
-	@Override
-	public Response delete(String key) throws Exception {
-		final Object[] keyParts = KeyHelper.validateKey(key);
+                int epochSeconds = (int) (new DateTime().withZone(
+                        DateTimeZone.UTC).getMillis() / 1000);
 
-		return database.inTransaction(new TransactionCallback<Response>() {
-			@Override
-			public Response inTransaction(Handle handle,
-					TransactionStatus status) throws Exception {
-				final int typeId = SequenceHelper.validateType(typeCodes,
-						getPrefix(), handle, (String) keyParts[0], false);
-				final long keyId = (Long) keyParts[1];
+                Update update = handle.createStatement(getPrefix() + "update");
+                update.bind("key_type", typeId);
+                update.bind("key_id", keyId);
+                update.bind("updated_dt", epochSeconds);
+                update.bind("value", valueBytes);
+                int updated = update.execute();
 
-				Update delete = handle.createStatement(getPrefix() + "delete");
-				delete.bind("key_type", typeId);
-				delete.bind("key_id", keyId);
+                if (updated > 0) {
+                    cache.put(key.getBytes(), valueBytes);
+                }
 
-				int deleted = delete.execute();
+                return (updated == 0) ? Response.status(Status.NOT_FOUND)
+                        .entity("").build() : Response.status(Status.OK)
+                        .entity(valueJson).build();
+            }
+        });
+    }
 
-				return (deleted == 0) ? Response.status(Status.NOT_FOUND)
-						.entity("").build() : Response
-						.status(Status.NO_CONTENT).entity("").build();
-			}
-		});
-	}
+    /*
+     * (non-Javadoc)
+     * 
+     * @see
+     * com.g414.st9.proto.service.store.KeyValueStorage#delete(java.lang.String)
+     */
+    @Override
+    public Response delete(final String key) throws Exception {
+        final Object[] keyParts = KeyHelper.validateKey(key);
 
-	/*
-	 * (non-Javadoc)
-	 * 
-	 * @see com.g414.st9.proto.service.store.KeyValueStorage#clear()
-	 */
-	@Override
-	public void clear() {
-		typeCodes.clear();
+        return database.inTransaction(new TransactionCallback<Response>() {
+            @Override
+            public Response inTransaction(Handle handle,
+                    TransactionStatus status) throws Exception {
+                final int typeId = SequenceHelper.validateType(typeCodes,
+                        getPrefix(), handle, (String) keyParts[0], false);
+                final long keyId = (Long) keyParts[1];
 
-		database.inTransaction(new TransactionCallback<Void>() {
-			@Override
-			public Void inTransaction(Handle handle, TransactionStatus status)
-					throws Exception {
-				handle.createStatement(getPrefix() + "truncate_key_types")
-						.execute();
-				handle.createStatement(getPrefix() + "truncate_sequences")
-						.execute();
-				handle.createStatement(getPrefix() + "truncate_key_values")
-						.execute();
+                Update delete = handle.createStatement(getPrefix() + "delete");
+                delete.bind("key_type", typeId);
+                delete.bind("key_id", keyId);
 
-				performInitialization(handle);
+                int deleted = delete.execute();
 
-				return null;
-			}
-		});
-	}
+                if (deleted > 0) {
+                    cache.delete(key.getBytes());
+                }
 
-	private void performInitialization(Handle handle) {
-		handle.createStatement(getPrefix() + "init_key_types").execute();
-		handle.createStatement(getPrefix() + "init_sequences").execute();
-		handle.createStatement(getPrefix() + "init_key_values").execute();
-		handle.createStatement(getPrefix() + "init_key_values_index").execute();
+                return (deleted == 0) ? Response.status(Status.NOT_FOUND)
+                        .entity("").build() : Response
+                        .status(Status.NO_CONTENT).entity("").build();
+            }
+        });
+    }
 
-		handle.createStatement(getPrefix() + "populate_key_types").execute();
-		handle.createStatement(getPrefix() + "populate_sequences").execute();
-	}
+    /*
+     * (non-Javadoc)
+     * 
+     * @see com.g414.st9.proto.service.store.KeyValueStorage#clear()
+     */
+    @Override
+    public void clear() {
+        typeCodes.clear();
+        cache.clear();
+
+        database.inTransaction(new TransactionCallback<Void>() {
+            @Override
+            public Void inTransaction(Handle handle, TransactionStatus status)
+                    throws Exception {
+                handle.createStatement(getPrefix() + "truncate_key_types")
+                        .execute();
+                handle.createStatement(getPrefix() + "truncate_sequences")
+                        .execute();
+                handle.createStatement(getPrefix() + "truncate_key_values")
+                        .execute();
+
+                performInitialization(handle);
+
+                return null;
+            }
+        });
+    }
+
+    private void performInitialization(Handle handle) {
+        handle.createStatement(getPrefix() + "init_key_types").execute();
+        handle.createStatement(getPrefix() + "init_sequences").execute();
+        handle.createStatement(getPrefix() + "init_key_values").execute();
+        handle.createStatement(getPrefix() + "init_key_values_index").execute();
+
+        handle.createStatement(getPrefix() + "populate_key_types").execute();
+        handle.createStatement(getPrefix() + "populate_sequences").execute();
+    }
 }

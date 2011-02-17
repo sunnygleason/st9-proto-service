@@ -11,7 +11,6 @@ import org.sqlite.JDBC;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Binder;
-import com.google.inject.Inject;
 import com.jolbox.bonecp.BoneCPDataSource;
 import com.jolbox.bonecp.ConnectionHandle;
 import com.jolbox.bonecp.hooks.AbstractConnectionHook;
@@ -22,11 +21,6 @@ import com.jolbox.bonecp.hooks.AbstractConnectionHook;
 public class SqliteKeyValueStorage extends JDBIKeyValueStorage {
 	private static final Logger log = LoggerFactory
 			.getLogger(SqliteKeyValueStorage.class);
-
-	@Inject
-	public SqliteKeyValueStorage(IDBI database) {
-		super(database);
-	}
 
 	protected String getPrefix() {
 		return "sqlite:sqlite_";
@@ -76,10 +70,8 @@ public class SqliteKeyValueStorage extends JDBIKeyValueStorage {
 			DBI dbi = JDBIHelper.getDBI(datasource);
 			binder.bind(IDBI.class).toInstance(dbi);
 
-			JDBIKeyValueStorage storage = new SqliteKeyValueStorage(dbi);
-			binder.bind(KeyValueStorage.class).toInstance(storage);
-
-			storage.initialize();
+			binder.bind(KeyValueStorage.class).to(SqliteKeyValueStorage.class)
+					.asEagerSingleton();
 		}
 	}
 }
