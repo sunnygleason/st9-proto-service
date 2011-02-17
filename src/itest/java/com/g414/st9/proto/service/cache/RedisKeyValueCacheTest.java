@@ -6,7 +6,7 @@ import redis.clients.jedis.JedisPool;
 
 @Test
 public class RedisKeyValueCacheTest extends KeyValueCacheTestBase {
-	public RedisKeyValueCacheTest() throws Exception {
-		super(new RedisKeyValueCache(new JedisPool("localhost", 6379)));
-	}
+    public RedisKeyValueCacheTest() throws Exception {
+        super(new RedisKeyValueCache(new JedisPool("localhost", 6379)));
+    }
 }

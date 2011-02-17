@@ -7,7 +7,7 @@ import com.google.inject.Module;
 
 @Test
 public class MySQLKeyValueResourceTest extends KeyValueResourceTestBase {
-	public Module getKeyValueStorageModule() {
-		return new MySQLKeyValueStorageModule();
-	}
+    public Module getKeyValueStorageModule() {
+        return new MySQLKeyValueStorageModule();
+    }
 }

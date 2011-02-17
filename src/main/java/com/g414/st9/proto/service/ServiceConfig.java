@@ -11,22 +11,22 @@ import com.sun.jersey.guice.spi.container.servlet.GuiceContainer;
  * modules could be welcome as well.
  */
 public class ServiceConfig extends GuiceServletContextListener {
-	private final Injector parentInjector;
+    private final Injector parentInjector;
 
-	public ServiceConfig(Injector parentInjector) {
-		this.parentInjector = parentInjector;
-	}
+    public ServiceConfig(Injector parentInjector) {
+        this.parentInjector = parentInjector;
+    }
 
-	@Override
-	protected Injector getInjector() {
-		return parentInjector.createChildInjector(new ServiceConfigModule());
-	}
+    @Override
+    protected Injector getInjector() {
+        return parentInjector.createChildInjector(new ServiceConfigModule());
+    }
 
-	public static class ServiceConfigModule extends ServletModule {
-		protected void configureServlets() {
-			bind(KeyValueResource.class).asEagerSingleton();
+    public static class ServiceConfigModule extends ServletModule {
+        protected void configureServlets() {
+            bind(KeyValueResource.class).asEagerSingleton();
 
-			serve("*").with(GuiceContainer.class);
-		}
-	}
+            serve("*").with(GuiceContainer.class);
+        }
+    }
 }

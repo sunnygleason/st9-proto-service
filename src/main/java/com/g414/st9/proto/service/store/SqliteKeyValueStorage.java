@@ -19,59 +19,59 @@ import com.jolbox.bonecp.hooks.AbstractConnectionHook;
  * MySQL implementation of key-value storage using JDBI.
  */
 public class SqliteKeyValueStorage extends JDBIKeyValueStorage {
-	private static final Logger log = LoggerFactory
-			.getLogger(SqliteKeyValueStorage.class);
+    private static final Logger log = LoggerFactory
+            .getLogger(SqliteKeyValueStorage.class);
 
-	protected String getPrefix() {
-		return "sqlite:sqlite_";
-	}
+    protected String getPrefix() {
+        return "sqlite:sqlite_";
+    }
 
-	public static class SqliteKeyValueStorageModule extends AbstractModule {
-		@Override
-		public void configure() {
-			Binder binder = binder();
+    public static class SqliteKeyValueStorageModule extends AbstractModule {
+        @Override
+        public void configure() {
+            Binder binder = binder();
 
-			BoneCPDataSource datasource = new BoneCPDataSource();
-			datasource.setDriverClass(JDBC.class.getName());
-			datasource.setJdbcUrl("jdbc:sqlite:thedb.db");
-			datasource.setUsername("root");
-			datasource.setPassword("notreallyused");
+            BoneCPDataSource datasource = new BoneCPDataSource();
+            datasource.setDriverClass(JDBC.class.getName());
+            datasource.setJdbcUrl("jdbc:sqlite:thedb.db");
+            datasource.setUsername("root");
+            datasource.setPassword("notreallyused");
 
-			datasource.setConnectionHook(new AbstractConnectionHook() {
-				@Override
-				public void onCheckOut(ConnectionHandle arg0) {
-					PreparedStatement stmt = null;
-					try {
-						stmt = arg0
-								.prepareStatement("pragma synchronous = off");
-						stmt.execute();
-					} catch (SQLException e) {
-						log.warn(
-								"Error while setting pragma " + e.getMessage(),
-								e);
+            datasource.setConnectionHook(new AbstractConnectionHook() {
+                @Override
+                public void onCheckOut(ConnectionHandle arg0) {
+                    PreparedStatement stmt = null;
+                    try {
+                        stmt = arg0
+                                .prepareStatement("pragma synchronous = off");
+                        stmt.execute();
+                    } catch (SQLException e) {
+                        log.warn(
+                                "Error while setting pragma " + e.getMessage(),
+                                e);
 
-						throw new RuntimeException(e);
-					} finally {
-						if (stmt != null) {
-							try {
-								stmt.close();
-							} catch (SQLException e) {
-								log.warn(
-										"Error while setting pragma "
-												+ e.getMessage(), e);
+                        throw new RuntimeException(e);
+                    } finally {
+                        if (stmt != null) {
+                            try {
+                                stmt.close();
+                            } catch (SQLException e) {
+                                log.warn(
+                                        "Error while setting pragma "
+                                                + e.getMessage(), e);
 
-								throw new RuntimeException(e);
-							}
-						}
-					}
-				}
-			});
+                                throw new RuntimeException(e);
+                            }
+                        }
+                    }
+                }
+            });
 
-			DBI dbi = JDBIHelper.getDBI(datasource);
-			binder.bind(IDBI.class).toInstance(dbi);
+            DBI dbi = JDBIHelper.getDBI(datasource);
+            binder.bind(IDBI.class).toInstance(dbi);
 
-			binder.bind(KeyValueStorage.class).to(SqliteKeyValueStorage.class)
-					.asEagerSingleton();
-		}
-	}
+            binder.bind(KeyValueStorage.class).to(SqliteKeyValueStorage.class)
+                    .asEagerSingleton();
+        }
+    }
 }

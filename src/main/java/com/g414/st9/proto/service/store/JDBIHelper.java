@@ -8,15 +8,15 @@ import org.skife.jdbi.v2.unstable.stringtemplate.ClasspathGroupLoader;
 import org.skife.jdbi.v2.unstable.stringtemplate.StringTemplateStatementLocator;
 
 public class JDBIHelper {
-	public static DBI getDBI(DataSource datasource) {
-		DBI dbi = new DBI(datasource);
+    public static DBI getDBI(DataSource datasource) {
+        DBI dbi = new DBI(datasource);
 
-		final ClasspathGroupLoader loader = new ClasspathGroupLoader(
-				AngleBracketTemplateLexer.class, JDBIHelper.class.getPackage()
-						.getName().replaceAll("\\.", "/"));
+        final ClasspathGroupLoader loader = new ClasspathGroupLoader(
+                AngleBracketTemplateLexer.class, JDBIHelper.class.getPackage()
+                        .getName().replaceAll("\\.", "/"));
 
-		dbi.setStatementLocator(new StringTemplateStatementLocator(loader));
+        dbi.setStatementLocator(new StringTemplateStatementLocator(loader));
 
-		return dbi;
-	}
+        return dbi;
+    }
 }

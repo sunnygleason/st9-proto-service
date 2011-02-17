@@ -7,7 +7,7 @@ import com.google.inject.Module;
 
 @Test
 public class InMemoryKeyValueResourceTest extends KeyValueResourceTestBase {
-	public Module getKeyValueStorageModule() {
-		return new InMemoryKeyValueStorageModule();
-	}
+    public Module getKeyValueStorageModule() {
+        return new InMemoryKeyValueStorageModule();
+    }
 }

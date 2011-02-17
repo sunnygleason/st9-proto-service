@@ -7,7 +7,7 @@ import com.google.inject.Module;
 
 @Test
 public class SqliteKeyValueResourceTest extends KeyValueResourceTestBase {
-	public Module getKeyValueStorageModule() {
-		return new SqliteKeyValueStorageModule();
-	}
+    public Module getKeyValueStorageModule() {
+        return new SqliteKeyValueStorageModule();
+    }
 }

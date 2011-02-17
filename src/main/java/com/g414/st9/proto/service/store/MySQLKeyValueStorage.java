@@ -12,26 +12,26 @@ import com.mysql.jdbc.Driver;
  * MySQL implementation of key-value storage using JDBI.
  */
 public class MySQLKeyValueStorage extends JDBIKeyValueStorage {
-	protected String getPrefix() {
-		return "mysql:mysql_";
-	}
+    protected String getPrefix() {
+        return "mysql:mysql_";
+    }
 
-	public static class MySQLKeyValueStorageModule extends AbstractModule {
-		@Override
-		public void configure() {
-			Binder binder = binder();
+    public static class MySQLKeyValueStorageModule extends AbstractModule {
+        @Override
+        public void configure() {
+            Binder binder = binder();
 
-			BoneCPDataSource datasource = new BoneCPDataSource();
-			datasource.setDriverClass(Driver.class.getName());
-			datasource.setJdbcUrl("jdbc:mysql://127.0.0.1:3306/thedb");
-			datasource.setUsername("root");
-			datasource.setPassword("");
+            BoneCPDataSource datasource = new BoneCPDataSource();
+            datasource.setDriverClass(Driver.class.getName());
+            datasource.setJdbcUrl("jdbc:mysql://127.0.0.1:3306/thedb");
+            datasource.setUsername("root");
+            datasource.setPassword("");
 
-			DBI dbi = JDBIHelper.getDBI(datasource);
-			binder.bind(IDBI.class).toInstance(dbi);
+            DBI dbi = JDBIHelper.getDBI(datasource);
+            binder.bind(IDBI.class).toInstance(dbi);
 
-			binder.bind(KeyValueStorage.class).to(MySQLKeyValueStorage.class)
-					.asEagerSingleton();
-		}
-	}
+            binder.bind(KeyValueStorage.class).to(MySQLKeyValueStorage.class)
+                    .asEagerSingleton();
+        }
+    }
 }

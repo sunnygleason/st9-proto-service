@@ -7,8 +7,8 @@ import org.testng.annotations.Test;
 
 @Test
 public class MemcachedKeyValueCacheTest extends KeyValueCacheTestBase {
-	public MemcachedKeyValueCacheTest() throws Exception {
-		super(new MemcachedKeyValueCache(new MemcachedClient(
-				AddrUtil.getAddresses("localhost:11211")), "test:"));
-	}
+    public MemcachedKeyValueCacheTest() throws Exception {
+        super(new MemcachedKeyValueCache(new MemcachedClient(
+                AddrUtil.getAddresses("localhost:11211")), "test:"));
+    }
 }

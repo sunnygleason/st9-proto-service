@@ -21,46 +21,46 @@ import com.google.inject.Inject;
  */
 @Path("/1.0/e")
 public class KeyValueResource {
-	@Inject
-	private KeyValueStorage store;
+    @Inject
+    private KeyValueStorage store;
 
-	@POST
-	@Path("{type}")
-	@Consumes(MediaType.APPLICATION_JSON)
-	@Produces(MediaType.APPLICATION_JSON)
-	// TODO using String for the input value is busted/whack - pending better
-	// automagical jackson configuration
-	public Response createEntity(@PathParam("type") String type, String value)
-			throws Exception {
-		return store.create(type, value);
-	}
+    @POST
+    @Path("{type}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    // TODO using String for the input value is busted/whack - pending better
+    // automagical jackson configuration
+    public Response createEntity(@PathParam("type") String type, String value)
+            throws Exception {
+        return store.create(type, value);
+    }
 
-	@GET
-	@Path("{key}")
-	@Produces(MediaType.APPLICATION_JSON)
-	public Response retrieveEntity(@PathParam("key") String key)
-			throws Exception {
-		return store.retrieve(key);
-	}
+    @GET
+    @Path("{key}")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response retrieveEntity(@PathParam("key") String key)
+            throws Exception {
+        return store.retrieve(key);
+    }
 
-	@PUT
-	@Path("{key}")
-	@Consumes(MediaType.APPLICATION_JSON)
-	// TODO using String for the input value is busted/whack - pending better
-	// automagical jackson configuration
-	public Response updateEntity(@PathParam("key") String key, String value)
-			throws Exception {
-		return store.update(key, value);
-	}
+    @PUT
+    @Path("{key}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    // TODO using String for the input value is busted/whack - pending better
+    // automagical jackson configuration
+    public Response updateEntity(@PathParam("key") String key, String value)
+            throws Exception {
+        return store.update(key, value);
+    }
 
-	@DELETE
-	@Path("{key}")
-	public Response deleteEntity(@PathParam("key") String key) throws Exception {
-		return store.delete(key);
-	}
+    @DELETE
+    @Path("{key}")
+    public Response deleteEntity(@PathParam("key") String key) throws Exception {
+        return store.delete(key);
+    }
 
-	/** Just for testing of course... */
-	public void clear() {
-		store.clear();
-	}
+    /** Just for testing of course... */
+    public void clear() {
+        store.clear();
+    }
 }
