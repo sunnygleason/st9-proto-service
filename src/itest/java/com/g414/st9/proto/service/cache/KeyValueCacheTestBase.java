@@ -4,6 +4,7 @@ import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertNull;
 
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -32,31 +33,50 @@ public abstract class KeyValueCacheTestBase {
     }
 
     public void testGetSet() throws Exception {
-        byte[] key = "foo:1".getBytes();
+        String key1 = "kv:foo:1";
+        String key2 = "kv:bar:2";
 
-        Map<String, Object> value = new LinkedHashMap<String, Object>();
-        value.put("isAwesome", Boolean.TRUE);
-        value.put("theAnswer", Integer.valueOf(42));
+        Map<String, Object> value1 = new LinkedHashMap<String, Object>();
+        value1.put("isAwesome", Boolean.TRUE);
+        value1.put("theAnswer", Integer.valueOf(42));
 
-        byte[] valueBytes = EncodingHelper.convertToSmileLzf(value);
+        byte[] value1Bytes = EncodingHelper.convertToSmileLzf(value1);
 
-        assertNull(keyValueCache.get(key));
+        assertNull(keyValueCache.get(key1));
 
-        keyValueCache.put(key, valueBytes);
+        keyValueCache.put(key1, value1Bytes);
 
-        assertEquals(EncodingHelper.parseSmileLzf(keyValueCache.get(key)),
-                value);
+        assertEquals(EncodingHelper.parseSmileLzf(keyValueCache.get(key1)),
+                value1);
 
-        keyValueCache.delete(key);
+        keyValueCache.delete(key1);
 
-        assertNull(keyValueCache.get(key));
+        assertNull(keyValueCache.get(key1));
 
-        keyValueCache.put(key, valueBytes);
+        keyValueCache.put(key1, value1Bytes);
 
-        assertNotNull(keyValueCache.get(key));
+        assertNotNull(keyValueCache.get(key1));
 
         keyValueCache.clear();
 
-        assertNull(keyValueCache.get(key));
+        assertNull(keyValueCache.get(key1));
+
+        Map<String, Object> value2 = new LinkedHashMap<String, Object>();
+        value2.put("isAwesome", Boolean.FALSE);
+        value2.put("theAnswer", Integer.valueOf(42));
+
+        byte[] value2Bytes = EncodingHelper.convertToSmileLzf(value2);
+
+        assertNull(keyValueCache.get(key2));
+
+        keyValueCache.put(key1, value1Bytes);
+        keyValueCache.put(key2, value2Bytes);
+
+        Map<String, byte[]> multiResult = keyValueCache.multiget(Arrays.asList(
+                key1, key2));
+        assertEquals(EncodingHelper.parseSmileLzf(multiResult.get(key1)),
+                value1);
+        assertEquals(EncodingHelper.parseSmileLzf(multiResult.get(key2)),
+                value2);
     }
 }

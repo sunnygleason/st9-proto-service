@@ -111,7 +111,8 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                         int inserted = update.execute();
 
                         if (inserted > 0) {
-                            cache.put(key.getBytes(), valueBytes);
+                            cache.put(EncodingHelper.toKVCacheKey(key),
+                                    valueBytes);
                         }
 
                         return (inserted == 1) ? Response.status(Status.OK)
@@ -149,7 +150,8 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
             public Response inTransaction(Handle handle,
                     TransactionStatus status) throws Exception {
                 try {
-                    byte[] valueBytesLzf = cache.get(key.getBytes());
+                    byte[] valueBytesLzf = cache.get(EncodingHelper
+                            .toKVCacheKey(key));
 
                     if (valueBytesLzf == null) {
                         final int typeId = SequenceHelper.validateType(
@@ -234,7 +236,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                 int updated = update.execute();
 
                 if (updated > 0) {
-                    cache.put(key.getBytes(), valueBytes);
+                    cache.put(EncodingHelper.toKVCacheKey(key), valueBytes);
                 }
 
                 return (updated == 0) ? Response.status(Status.NOT_FOUND)
@@ -269,7 +271,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                 int deleted = delete.execute();
 
                 if (deleted > 0) {
-                    cache.delete(key.getBytes());
+                    cache.delete(EncodingHelper.toKVCacheKey(key));
                 }
 
                 return (deleted == 0) ? Response.status(Status.NOT_FOUND)

@@ -2,6 +2,7 @@ package com.g414.st9.proto.service.store;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.net.URLEncoder;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -9,6 +10,7 @@ import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import org.apache.commons.codec.net.URLCodec;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.smile.SmileFactory;
 import org.codehaus.jackson.smile.SmileGenerator;
@@ -19,7 +21,9 @@ import com.g414.codec.lzf.LZFCodec;
 public class EncodingHelper {
     private static final SmileFactory smileFactory = new SmileFactory();
     private static final ObjectMapper mapper = new ObjectMapper();
-    private static final LZFCodec codec = new LZFCodec();
+    private static final LZFCodec compressCodec = new LZFCodec();
+    private static final URLCodec cacheKeyCodec = new URLCodec();
+    private static final String KV_CACHE_PREFIX = "kv:";
 
     public static String convertToJson(Map<String, Object> value)
             throws Exception {
@@ -50,7 +54,7 @@ public class EncodingHelper {
             mapper.writeValue(smile, value);
 
             byte[] smileBytes = out.toByteArray();
-            byte[] lzfBytes = codec.encode(smileBytes);
+            byte[] lzfBytes = compressCodec.encode(smileBytes);
 
             return lzfBytes;
         } catch (Exception e) {
@@ -60,7 +64,7 @@ public class EncodingHelper {
 
     public static Object parseSmileLzf(byte[] valueBytesLzf) {
         try {
-            byte[] valueBytes = codec.decode(valueBytesLzf);
+            byte[] valueBytes = compressCodec.decode(valueBytesLzf);
             ByteArrayInputStream in = new ByteArrayInputStream(valueBytes);
             SmileParser smile = smileFactory.createJsonParser(in);
 
@@ -68,5 +72,14 @@ public class EncodingHelper {
         } catch (Exception e) {
             throw new WebApplicationException(e, Status.INTERNAL_SERVER_ERROR);
         }
+    }
+
+    public static String toKVCacheKey(String key) throws Exception {
+        return KV_CACHE_PREFIX + cacheKeyCodec.encode(key);
+    }
+
+    public static String fromKVCacheKey(String cachekey) throws Exception {
+        return new String(cacheKeyCodec.decode(cachekey
+                .substring(KV_CACHE_PREFIX.length())));
     }
 }
