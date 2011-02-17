@@ -4,6 +4,7 @@ import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 
 import com.g414.guice.lifecycle.Lifecycle;
+import com.g414.guice.lifecycle.LifecycleModule;
 import com.g414.st9.proto.service.cache.EmptyKeyValueCache.EmptyKeyValueCacheModule;
 import com.g414.st9.proto.service.store.SqliteKeyValueStorage.SqliteKeyValueStorageModule;
 import com.google.inject.Guice;
@@ -25,15 +26,16 @@ public class Main {
         Module storageModule = getStorageModule();
         Module cacheModule = getCacheModule();
 
-        Injector parentInjector = Guice.createInjector(storageModule,
-                cacheModule);
+        Injector parentInjector = Guice.createInjector(new LifecycleModule(),
+                storageModule, cacheModule, new ServiceModule());
 
-        root.addEventListener(new ServiceConfig(parentInjector));
         root.addFilter(GuiceFilter.class, "/*", 0);
         root.addServlet(EmptyServlet.class, "/*");
 
-        parentInjector.getInstance(Lifecycle.class).init();
-        parentInjector.getInstance(Lifecycle.class).start();
+        Lifecycle lifecycle = parentInjector.getInstance(Lifecycle.class);
+        lifecycle.init();
+        lifecycle.start();
+
         server.start();
     }
 

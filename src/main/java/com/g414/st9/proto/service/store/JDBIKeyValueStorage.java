@@ -44,12 +44,12 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
         lifecycle.register(new LifecycleSupportBase() {
             @Override
             public void init() {
-                JDBIKeyValueStorage.this.init();
+                JDBIKeyValueStorage.this.initialize();
             }
         });
     }
 
-    public void init() {
+    public void initialize() {
         database.inTransaction(new TransactionCallback<Void>() {
             @Override
             public Void inTransaction(Handle handle, TransactionStatus status)
@@ -137,13 +137,18 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
      */
     @Override
     public Response retrieve(final String key) throws Exception {
+        final Object[] keyParts;
         try {
-            final Object[] keyParts = KeyHelper.validateKey(key);
+            keyParts = KeyHelper.validateKey(key);
+        } catch (WebApplicationException e) {
+            return e.getResponse();
+        }
 
-            return database.inTransaction(new TransactionCallback<Response>() {
-                @Override
-                public Response inTransaction(Handle handle,
-                        TransactionStatus status) throws Exception {
+        return database.inTransaction(new TransactionCallback<Response>() {
+            @Override
+            public Response inTransaction(Handle handle,
+                    TransactionStatus status) throws Exception {
+                try {
                     byte[] valueBytesLzf = cache.get(key.getBytes());
 
                     if (valueBytesLzf == null) {
@@ -178,11 +183,12 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                     String valueJson = EncodingHelper.convertToJson(value);
 
                     return Response.status(Status.OK).entity(valueJson).build();
+                } catch (WebApplicationException e) {
+                    return e.getResponse();
                 }
-            });
-        } catch (WebApplicationException e) {
-            return e.getResponse();
-        }
+            }
+        });
+
     }
 
     /*
