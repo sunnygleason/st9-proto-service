@@ -1,5 +1,8 @@
 package com.g414.st9.proto.service.store;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -61,12 +64,9 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
         });
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.g414.st9.proto.service.store.KeyValueStorage#create(java.lang.String,
-     * java.lang.String)
+    /**
+     * @see com.g414.st9.proto.service.store.KeyValueStorage#create(java.lang.String,
+     *      java.lang.String)
      */
     @Override
     public Response create(final String type, String inValue) throws Exception {
@@ -129,12 +129,8 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
         }
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.g414.st9.proto.service.store.KeyValueStorage#retrieve(java.lang.String
-     * )
+    /**
+     * @see com.g414.st9.proto.service.store.KeyValueStorage#retrieve(java.lang.String)
      */
     @Override
     public Response retrieve(final String key) throws Exception {
@@ -143,6 +139,12 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
             keyParts = KeyHelper.validateKey(key);
         } catch (WebApplicationException e) {
             return e.getResponse();
+        }
+
+        byte[] valueBytesLzf = cache.get(EncodingHelper.toKVCacheKey(key));
+
+        if (valueBytesLzf != null) {
+            return makeRetrieveResponse(key, valueBytesLzf);
         }
 
         return database.inTransaction(new TransactionCallback<Response>() {
@@ -176,29 +178,107 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                                 .get("_value");
                     }
 
-                    LinkedHashMap<String, Object> found = (LinkedHashMap<String, Object>) EncodingHelper
-                            .parseSmileLzf(valueBytesLzf);
-                    LinkedHashMap<String, Object> value = new LinkedHashMap<String, Object>();
-                    value.put("id", key);
-                    value.putAll(found);
-
-                    String valueJson = EncodingHelper.convertToJson(value);
-
-                    return Response.status(Status.OK).entity(valueJson).build();
+                    return makeRetrieveResponse(key, valueBytesLzf);
                 } catch (WebApplicationException e) {
                     return e.getResponse();
                 }
             }
         });
-
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.g414.st9.proto.service.store.KeyValueStorage#update(java.lang.String,
-     * java.lang.String)
+    /**
+     * @see com.g414.st9.proto.service.store.KeyValueStorage#multiRetrieve(List)
+     */
+    @Override
+    public Response multiRetrieve(final List<String> keys) throws Exception {
+        if (keys == null || keys.isEmpty()) {
+            Response.status(Status.OK)
+                    .entity(EncodingHelper.convertToJson(Collections
+                            .<String, Object> emptyMap())).build();
+        }
+
+        final List<String> cacheKeys = new ArrayList<String>();
+        try {
+            for (String key : keys) {
+                cacheKeys.add(EncodingHelper.toKVCacheKey(key));
+                KeyHelper.validateKey(key);
+            }
+        } catch (WebApplicationException e) {
+            return e.getResponse();
+        }
+
+        final Map<String, byte[]> maybeFound = cache.multiget(cacheKeys);
+        final Map<String, byte[]> cacheFound = new HashMap<String, byte[]>();
+        final List<String> notFound = new ArrayList<String>();
+
+        for (int i = 0; i < cacheKeys.size(); i++) {
+            String cacheKey = cacheKeys.get(i);
+            String origKey = keys.get(i);
+
+            byte[] value = maybeFound.get(cacheKey);
+            if (value == null) {
+                notFound.add(origKey);
+            } else {
+                cacheFound.put(origKey, value);
+            }
+        }
+
+        if (notFound.isEmpty()) {
+            return makeMultiRetrieveResponse(keys, cacheFound,
+                    Collections.<String, Object> emptyMap());
+        }
+
+        return database.inTransaction(new TransactionCallback<Response>() {
+            @Override
+            public Response inTransaction(Handle handle,
+                    TransactionStatus status) throws Exception {
+                try {
+                    Map<String, Object> dbFound = new HashMap<String, Object>();
+
+                    for (String key : notFound) {
+                        Object[] keyParts = KeyHelper.validateKey(key);
+
+                        final int typeId = SequenceHelper.validateType(
+                                typeCodes, getPrefix(), handle,
+                                (String) keyParts[0], false);
+                        final long keyId = (Long) keyParts[1];
+
+                        Query<Map<String, Object>> select = handle
+                                .createQuery(getPrefix() + "retrieve");
+
+                        select.bind("key_type", typeId);
+                        select.bind("key_id", keyId);
+
+                        List<Map<String, Object>> results = select.list();
+
+                        if (results == null || results.isEmpty()) {
+                            dbFound.put(key, null);
+
+                            continue;
+                        }
+
+                        byte[] valueBytesLzf = (byte[]) results.iterator()
+                                .next().get("_value");
+                        LinkedHashMap<String, Object> found = (LinkedHashMap<String, Object>) EncodingHelper
+                                .parseSmileLzf(valueBytesLzf);
+                        LinkedHashMap<String, Object> value = new LinkedHashMap<String, Object>();
+                        value.put("id", key);
+                        value.putAll(found);
+
+                        dbFound.put(key, value);
+                    }
+
+                    return makeMultiRetrieveResponse(keys, cacheFound, dbFound);
+                } catch (WebApplicationException e) {
+                    return e.getResponse();
+                }
+            }
+        });
+    }
+
+    /**
+     * @see com.g414.st9.proto.service.store.KeyValueStorage#update(java.lang.String,
+     *      java.lang.String)
      */
     @Override
     public Response update(final String key, String inValue) throws Exception {
@@ -246,11 +326,8 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
         });
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.g414.st9.proto.service.store.KeyValueStorage#delete(java.lang.String)
+    /**
+     * @see com.g414.st9.proto.service.store.KeyValueStorage#delete(java.lang.String)
      */
     @Override
     public Response delete(final String key) throws Exception {
@@ -281,9 +358,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
         });
     }
 
-    /*
-     * (non-Javadoc)
-     * 
+    /**
      * @see com.g414.st9.proto.service.store.KeyValueStorage#clear()
      */
     @Override
@@ -317,5 +392,42 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
         handle.createStatement(getPrefix() + "populate_key_types").execute();
         handle.createStatement(getPrefix() + "populate_sequences").execute();
+    }
+
+    private Response makeRetrieveResponse(final String key, byte[] valueBytesLzf)
+            throws Exception {
+        LinkedHashMap<String, Object> found = (LinkedHashMap<String, Object>) EncodingHelper
+                .parseSmileLzf(valueBytesLzf);
+        LinkedHashMap<String, Object> value = new LinkedHashMap<String, Object>();
+        value.put("id", key);
+        value.putAll(found);
+
+        String valueJson = EncodingHelper.convertToJson(value);
+        Response createResponse = Response.status(Status.OK).entity(valueJson)
+                .build();
+        return createResponse;
+    }
+
+    private Response makeMultiRetrieveResponse(final List<String> keys,
+            final Map<String, byte[]> cacheFound, Map<String, Object> dbFound)
+            throws Exception {
+        Map<String, Object> result = new LinkedHashMap<String, Object>();
+
+        for (String key : keys) {
+            if (cacheFound.containsKey(key)) {
+                result.put(key,
+                        EncodingHelper.parseSmileLzf(cacheFound.get(key)));
+            } else if (dbFound.containsKey(key)) {
+                result.put(key, dbFound.get(key));
+            } else {
+                result.put(key, null);
+            }
+        }
+
+        String valueJson = EncodingHelper.convertToJson(result);
+
+        Response multiResponse = Response.status(Status.OK).entity(valueJson)
+                .build();
+        return multiResponse;
     }
 }

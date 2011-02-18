@@ -1,5 +1,7 @@
 package com.g414.st9.proto.service.store;
 
+import java.util.List;
+
 import javax.ws.rs.core.Response;
 
 public interface KeyValueStorage {
@@ -8,6 +10,8 @@ public interface KeyValueStorage {
             throws Exception;
 
     public abstract Response retrieve(String key) throws Exception;
+    
+    public abstract Response multiRetrieve(List<String> keys) throws Exception;
 
     public abstract Response update(String key, String inValue)
             throws Exception;

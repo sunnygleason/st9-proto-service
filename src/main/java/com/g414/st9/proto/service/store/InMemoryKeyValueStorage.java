@@ -1,6 +1,8 @@
 package com.g414.st9.proto.service.store;
 
+import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -19,12 +21,9 @@ public class InMemoryKeyValueStorage implements KeyValueStorage {
     private final ConcurrentHashMap<String, byte[]> storage = new ConcurrentHashMap<String, byte[]>();
     private final ConcurrentHashMap<String, AtomicLong> sequences = new ConcurrentHashMap<String, AtomicLong>();
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.g414.st9.proto.service.store.KeyValueStorage#create(java.lang.String,
-     * java.lang.String)
+    /**
+     * @see com.g414.st9.proto.service.store.KeyValueStorage#create(java.lang.String,
+     *      java.lang.String)
      */
     @Override
     public Response create(String type, String inValue) throws Exception {
@@ -53,12 +52,8 @@ public class InMemoryKeyValueStorage implements KeyValueStorage {
         }
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.g414.st9.proto.service.store.KeyValueStorage#retrieve(java.lang.String
-     * )
+    /**
+     * @see com.g414.st9.proto.service.store.KeyValueStorage#retrieve(java.lang.String)
      */
     @Override
     public Response retrieve(String key) throws Exception {
@@ -87,12 +82,55 @@ public class InMemoryKeyValueStorage implements KeyValueStorage {
         }
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.g414.st9.proto.service.store.KeyValueStorage#update(java.lang.String,
-     * java.lang.String)
+    /**
+     * @see com.g414.st9.proto.service.store.KeyValueStorage#multiRetrieve(java.lang.String)
+     */
+    @Override
+    public Response multiRetrieve(List<String> keys) throws Exception {
+        try {
+            if (keys == null || keys.isEmpty()) {
+                Response.status(Status.OK)
+                        .entity(EncodingHelper.convertToJson(Collections
+                                .<String, Object> emptyMap())).build();
+            }
+
+            for (String key : keys) {
+                validateKey(key);
+            }
+
+            LinkedHashMap<String, Object> result = new LinkedHashMap<String, Object>();
+
+            for (String key : keys) {
+                byte[] valueBytesLzf = storage.get(key);
+
+                if (valueBytesLzf == null) {
+                    result.put(key, null);
+
+                    continue;
+                }
+
+                LinkedHashMap<String, Object> readValue = (LinkedHashMap<String, Object>) EncodingHelper
+                        .parseSmileLzf(valueBytesLzf);
+                readValue.remove("id");
+
+                Map<String, Object> value = new LinkedHashMap<String, Object>();
+                value.put("id", key);
+                value.putAll(readValue);
+
+                result.put(key, value);
+            }
+
+            String jsonValue = EncodingHelper.convertToJson(result);
+
+            return Response.status(Status.OK).entity(jsonValue).build();
+        } catch (WebApplicationException e) {
+            return e.getResponse();
+        }
+    }
+
+    /**
+     * @see com.g414.st9.proto.service.store.KeyValueStorage#update(java.lang.String,
+     *      java.lang.String)
      */
     @Override
     public Response update(String key, String inValue) throws Exception {
@@ -119,11 +157,8 @@ public class InMemoryKeyValueStorage implements KeyValueStorage {
         return Response.status(Status.OK).entity(valueJson).build();
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * com.g414.st9.proto.service.store.KeyValueStorage#delete(java.lang.String)
+    /**
+     * @see com.g414.st9.proto.service.store.KeyValueStorage#delete(java.lang.String)
      */
     @Override
     public Response delete(String key) throws Exception {
@@ -138,9 +173,7 @@ public class InMemoryKeyValueStorage implements KeyValueStorage {
         return Response.status(Status.NO_CONTENT).entity("").build();
     }
 
-    /*
-     * (non-Javadoc)
-     * 
+    /**
      * @see com.g414.st9.proto.service.store.KeyValueStorage#clear()
      */
     @Override
