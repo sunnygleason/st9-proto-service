@@ -74,6 +74,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
             final Map<String, Object> readValue = EncodingHelper
                     .parseJsonString(inValue);
             readValue.remove("id");
+            readValue.remove("kind");
 
             return database.inTransaction(new TransactionCallback<Response>() {
                 @Override
@@ -90,11 +91,13 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
                         Map<String, Object> value = new LinkedHashMap<String, Object>();
                         value.put("id", key);
+                        value.put("kind", type);
                         value.putAll(readValue);
 
                         String valueJson = EncodingHelper.convertToJson(value);
 
                         value.remove("id");
+                        value.remove("kind");
 
                         byte[] valueBytes = EncodingHelper
                                 .convertToSmileLzf(value);
@@ -144,7 +147,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
         byte[] valueBytesLzf = cache.get(EncodingHelper.toKVCacheKey(key));
 
         if (valueBytesLzf != null) {
-            return makeRetrieveResponse(key, valueBytesLzf);
+            return makeRetrieveResponse((String) keyParts[0], key, valueBytesLzf);
         }
 
         return database.inTransaction(new TransactionCallback<Response>() {
@@ -178,7 +181,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                                 .get("_value");
                     }
 
-                    return makeRetrieveResponse(key, valueBytesLzf);
+                    return makeRetrieveResponse((String) keyParts[0], key, valueBytesLzf);
                 } catch (WebApplicationException e) {
                     return e.getResponse();
                 }
@@ -261,8 +264,12 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                                 .next().get("_value");
                         LinkedHashMap<String, Object> found = (LinkedHashMap<String, Object>) EncodingHelper
                                 .parseSmileLzf(valueBytesLzf);
+                        found.remove("id");
+                        found.remove("kind");
+                        
                         LinkedHashMap<String, Object> value = new LinkedHashMap<String, Object>();
                         value.put("id", key);
+                        value.put("kind", keyParts[0]);
                         value.putAll(found);
 
                         dbFound.put(key, value);
@@ -297,11 +304,13 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
                 Map<String, Object> value = new LinkedHashMap<String, Object>();
                 value.put("id", key);
+                value.put("kind", keyParts[0]);
                 value.putAll(readValue);
 
                 String valueJson = EncodingHelper.convertToJson(value);
 
                 value.remove("id");
+                value.remove("kind");
 
                 byte[] valueBytes = EncodingHelper.convertToSmileLzf(value);
 
@@ -394,12 +403,16 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
         handle.createStatement(getPrefix() + "populate_sequences").execute();
     }
 
-    private Response makeRetrieveResponse(final String key, byte[] valueBytesLzf)
+    private Response makeRetrieveResponse(final String type, final String key, byte[] valueBytesLzf)
             throws Exception {
         LinkedHashMap<String, Object> found = (LinkedHashMap<String, Object>) EncodingHelper
                 .parseSmileLzf(valueBytesLzf);
+        found.remove("id");
+        found.remove("kind");
+        
         LinkedHashMap<String, Object> value = new LinkedHashMap<String, Object>();
         value.put("id", key);
+        value.put("kind", type);
         value.putAll(found);
 
         String valueJson = EncodingHelper.convertToJson(value);
@@ -414,9 +427,19 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
         Map<String, Object> result = new LinkedHashMap<String, Object>();
 
         for (String key : keys) {
+            Object[] keyParts = KeyHelper.validateKey(key);
+            
             if (cacheFound.containsKey(key)) {
-                result.put(key,
-                        EncodingHelper.parseSmileLzf(cacheFound.get(key)));
+                Map<String, Object> cached = (Map<String, Object>) EncodingHelper.parseSmileLzf(cacheFound.get(key));
+                cached.remove("id");
+                cached.remove("kind");
+                
+                Map<String, Object> newResult = new LinkedHashMap<String, Object>();
+                newResult.put("id", key);
+                newResult.put("kind", keyParts[0]);
+                newResult.putAll(cached);
+                
+                result.put(key, cached);
             } else if (dbFound.containsKey(key)) {
                 result.put(key, dbFound.get(key));
             } else {
