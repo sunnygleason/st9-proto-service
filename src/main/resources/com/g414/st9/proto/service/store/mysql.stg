@@ -50,7 +50,7 @@ mysql_get_type_id() ::=<<
 mysql_populate_sequences() ::=<< 
   insert ignore
     into `_sequences` (`_key_type`, `_next_id`)
-  values (0, 1);
+  values (0, 0);
 >>
 
 mysql_create() ::=<< 
@@ -82,7 +82,7 @@ mysql_delete() ::=<<
      and `_key_id` = :key_id
 >>
 
-mysql_populate_id() ::=<< 
+mysql_insert_ignore_seq() ::=<< 
   insert ignore
     into `_sequences` (`_key_type`, `_next_id`)
   values (:key_type, :next_id);

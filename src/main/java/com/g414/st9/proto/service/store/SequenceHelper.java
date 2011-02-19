@@ -41,11 +41,12 @@ public class SequenceHelper {
                         .entity("Invalid entity 'type'").build());
             }
 
-            typeId = getNextId(prefix, handle, 0, doCreate).intValue();
+            typeId = getNextId(prefix, handle, 0).intValue();
 
-            Update newType = handle.createStatement(prefix + "populate_id");
+            Update newType = handle.createStatement(prefix
+                    + "insert_ignore_seq");
             newType.bind("key_type", typeId);
-            newType.bind("next_id", 1);
+            newType.bind("next_id", 0);
             newType.execute();
 
             Update newTypeName = handle.createStatement(prefix
@@ -63,35 +64,15 @@ public class SequenceHelper {
         return typeId;
     }
 
-    public static Long getNextId(String prefix, Handle handle, Integer typeId,
-            boolean doCreate) {
+    public static Long getNextId(String prefix, Handle handle, Integer typeId) {
+        Update incrSeq = handle.createStatement(prefix + "increment_next_id");
+        incrSeq.bind("key_type", typeId);
+        incrSeq.execute();
+
         Query<Map<String, Object>> query = handle.createQuery(prefix
                 + "get_next_id");
         query.bind("key_type", typeId);
-        List<Map<String, Object>> result = query.list();
 
-        if (result == null || result.isEmpty()) {
-            if (!doCreate) {
-                throw new WebApplicationException(Response
-                        .status(Status.BAD_REQUEST)
-                        .entity("Sequence not found for 'type'").build());
-            }
-
-            Update newType = handle.createStatement(prefix + "populate_id");
-            newType.bind("key_type", typeId);
-            newType.bind("next_id", 2);
-            newType.execute();
-
-            return 1L;
-        }
-
-        Long nextId = ((Number) result.iterator().next().get("_next_id"))
-                .longValue();
-
-        Update newType = handle.createStatement(prefix + "increment_next_id");
-        newType.bind("key_type", typeId);
-        newType.execute();
-
-        return nextId;
+        return ((Number) query.first().get("_next_id")).longValue();
     }
 }

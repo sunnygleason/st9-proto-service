@@ -85,7 +85,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                                 typeCodes, getPrefix(), handle, type, true);
 
                         final long nextId = SequenceHelper.getNextId(
-                                getPrefix(), handle, typeId, true);
+                                getPrefix(), handle, typeId);
 
                         String key = type + ":" + nextId;
 

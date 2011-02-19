@@ -165,6 +165,18 @@
       <version>1.4</version>
     </dependency>
     <dependency>
+      <groupId>com.g414.xfaban</groupId>
+      <artifactId>xfaban</artifactId>
+      <version>1.0.0</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.g414.dgen</groupId>
+      <artifactId>g414-dgen</artifactId>
+      <version>0.1.0</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
       <groupId>org.testng</groupId>
       <artifactId>testng</artifactId>
       <version>5.11</version>

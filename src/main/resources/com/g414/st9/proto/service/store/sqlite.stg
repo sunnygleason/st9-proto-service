@@ -34,7 +34,7 @@ sqlite_get_type_id() ::=<<
 sqlite_populate_sequences() ::=<< 
   insert or ignore
     into `_sequences` (`_key_type`, `_next_id`)
-  values (0, 1)
+  values (0, 0)
 >>
 
 sqlite_create() ::=<< 
@@ -72,7 +72,7 @@ sqlite_get_next_id() ::=<<
    where `_key_type` = :key_type
 >>
 
-sqlite_populate_id() ::=<< 
+sqlite_insert_ignore_seq() ::=<< 
   insert or ignore
     into `_sequences` (`_key_type`, `_next_id`)
   values (:key_type, :next_id);

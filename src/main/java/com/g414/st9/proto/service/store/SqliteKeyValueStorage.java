@@ -2,6 +2,9 @@ package com.g414.st9.proto.service.store;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.List;
+
+import javax.ws.rs.core.Response;
 
 import org.skife.jdbi.v2.DBI;
 import org.skife.jdbi.v2.IDBI;
@@ -73,5 +76,38 @@ public class SqliteKeyValueStorage extends JDBIKeyValueStorage {
             binder.bind(KeyValueStorage.class).to(SqliteKeyValueStorage.class)
                     .asEagerSingleton();
         }
+    }
+
+    @Override
+    public synchronized Response create(String type, String inValue)
+            throws Exception {
+        return super.create(type, inValue);
+    }
+
+    @Override
+    public synchronized Response retrieve(String key) throws Exception {
+        return super.retrieve(key);
+    }
+
+    @Override
+    public synchronized Response multiRetrieve(List<String> keys)
+            throws Exception {
+        return super.multiRetrieve(keys);
+    }
+
+    @Override
+    public synchronized Response update(String key, String inValue)
+            throws Exception {
+        return super.update(key, inValue);
+    }
+
+    @Override
+    public synchronized Response delete(String key) throws Exception {
+        return super.delete(key);
+    }
+
+    @Override
+    public synchronized void clear() {
+        super.clear();
     }
 }
