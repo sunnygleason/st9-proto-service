@@ -66,6 +66,12 @@ sqlite_delete() ::=<<
      and `_key_id` = :key_id
 >>
 
+sqlite_key_ids_of_type() ::=<< 
+  select `_key_id`
+    from `_key_values`
+   where `_key_type` = :key_type
+>>
+
 sqlite_get_next_id() ::=<< 
   select `_next_id`
     from `_sequences`

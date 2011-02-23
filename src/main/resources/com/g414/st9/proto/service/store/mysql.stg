@@ -82,6 +82,12 @@ mysql_delete() ::=<<
      and `_key_id` = :key_id
 >>
 
+mysql_key_ids_of_type() ::=<< 
+  select `_key_id`
+    from `_key_values`
+   where `_key_type` = :key_type
+>>
+
 mysql_insert_ignore_seq() ::=<< 
   insert ignore
     into `_sequences` (`_key_type`, `_next_id`)

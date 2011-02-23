@@ -1,6 +1,8 @@
 package com.g414.st9.proto.service;
 
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
@@ -73,5 +75,10 @@ public class KeyValueResource {
     /** Just for testing of course... */
     public void clear() {
         store.clear();
+    }
+
+    /** Just for testing of course... */
+    public Iterator<Map<String, Object>> iterator(String type) throws Exception {
+        return store.iterator(type);
     }
 }

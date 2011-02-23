@@ -3,6 +3,7 @@ package com.g414.st9.proto.service.store;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +21,7 @@ import org.skife.jdbi.v2.Query;
 import org.skife.jdbi.v2.TransactionCallback;
 import org.skife.jdbi.v2.TransactionStatus;
 import org.skife.jdbi.v2.Update;
+import org.skife.jdbi.v2.tweak.HandleCallback;
 
 import com.g414.guice.lifecycle.Lifecycle;
 import com.g414.guice.lifecycle.LifecycleRegistration;
@@ -137,56 +139,18 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
      */
     @Override
     public Response retrieve(final String key) throws Exception {
-        final Object[] keyParts;
         try {
-            keyParts = KeyHelper.validateKey(key);
+            final Object[] keyParts = KeyHelper.validateKey(key);
+
+            byte[] objectBytes = getObjectBytes(key, keyParts);
+            if (objectBytes == null) {
+                return Response.status(Status.NOT_FOUND).entity("").build();
+            }
+
+            return makeRetrieveResponse((String) keyParts[0], key, objectBytes);
         } catch (WebApplicationException e) {
             return e.getResponse();
         }
-
-        byte[] valueBytesLzf = cache.get(EncodingHelper.toKVCacheKey(key));
-
-        if (valueBytesLzf != null) {
-            return makeRetrieveResponse((String) keyParts[0], key, valueBytesLzf);
-        }
-
-        return database.inTransaction(new TransactionCallback<Response>() {
-            @Override
-            public Response inTransaction(Handle handle,
-                    TransactionStatus status) throws Exception {
-                try {
-                    byte[] valueBytesLzf = cache.get(EncodingHelper
-                            .toKVCacheKey(key));
-
-                    if (valueBytesLzf == null) {
-                        final int typeId = SequenceHelper.validateType(
-                                typeCodes, getPrefix(), handle,
-                                (String) keyParts[0], false);
-                        final long keyId = (Long) keyParts[1];
-
-                        Query<Map<String, Object>> select = handle
-                                .createQuery(getPrefix() + "retrieve");
-
-                        select.bind("key_type", typeId);
-                        select.bind("key_id", keyId);
-
-                        List<Map<String, Object>> results = select.list();
-
-                        if (results == null || results.isEmpty()) {
-                            return Response.status(Status.NOT_FOUND).entity("")
-                                    .build();
-                        }
-
-                        valueBytesLzf = (byte[]) results.iterator().next()
-                                .get("_value");
-                    }
-
-                    return makeRetrieveResponse((String) keyParts[0], key, valueBytesLzf);
-                } catch (WebApplicationException e) {
-                    return e.getResponse();
-                }
-            }
-        });
     }
 
     /**
@@ -266,7 +230,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                                 .parseSmileLzf(valueBytesLzf);
                         found.remove("id");
                         found.remove("kind");
-                        
+
                         LinkedHashMap<String, Object> value = new LinkedHashMap<String, Object>();
                         value.put("id", key);
                         value.put("kind", keyParts[0]);
@@ -393,6 +357,146 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
         });
     }
 
+    @Override
+    public Iterator<Map<String, Object>> iterator(final String type)
+            throws Exception {
+        return new Iterator<Map<String, Object>>() {
+            private final Iterator<String> inner = createKeyIterator(type);
+            private String nextKey = advance();
+
+            public String advance() {
+                String key = null;
+
+                while (key == null && inner.hasNext()) {
+                    String newKey = inner.next();
+                    Object[] keyParts = KeyHelper.validateKey(newKey);
+                    if (type.equals(keyParts[0])) {
+                        key = newKey;
+                        break;
+                    }
+                }
+
+                return key;
+            }
+
+            @Override
+            public boolean hasNext() {
+                return nextKey != null;
+            }
+
+            @Override
+            public Map<String, Object> next() {
+                try {
+                    Object[] keyParts = null;
+                    byte[] objectBytes = null;
+                    while (objectBytes == null && nextKey != null) {
+                        keyParts = KeyHelper.validateKey(nextKey);
+                        objectBytes = getObjectBytes(nextKey, keyParts);
+
+                        if (objectBytes == null) {
+                            nextKey = advance();
+                        }
+                    }
+
+                    if (objectBytes == null) {
+                        return null;
+                    }
+
+                    Map<String, Object> object = (Map<String, Object>) EncodingHelper
+                            .parseSmileLzf(objectBytes);
+                    object.remove("id");
+                    object.remove("key");
+
+                    Map<String, Object> result = new LinkedHashMap<String, Object>();
+                    result.put("id", nextKey);
+                    result.put("kind", keyParts[0]);
+                    result.putAll(object);
+
+                    nextKey = advance();
+
+                    return result;
+                } catch (Exception e) {
+                    if (!(e instanceof RuntimeException)) {
+                        throw new RuntimeException(e);
+                    } else {
+                        throw (RuntimeException) e;
+                    }
+                }
+            }
+
+            @Override
+            public void remove() {
+                throw new UnsupportedOperationException();
+            }
+        };
+    }
+
+    private byte[] getObjectBytes(final String key, final Object[] keyParts)
+            throws Exception {
+
+        byte[] valueBytesLzf = cache.get(EncodingHelper.toKVCacheKey(key));
+
+        if (valueBytesLzf != null) {
+            return valueBytesLzf;
+        }
+
+        return database.inTransaction(new TransactionCallback<byte[]>() {
+            @Override
+            public byte[] inTransaction(Handle handle, TransactionStatus status)
+                    throws Exception {
+                byte[] valueBytesLzf = cache.get(EncodingHelper
+                        .toKVCacheKey(key));
+
+                if (valueBytesLzf == null) {
+                    final int typeId = SequenceHelper.validateType(typeCodes,
+                            getPrefix(), handle, (String) keyParts[0], false);
+                    final long keyId = (Long) keyParts[1];
+
+                    Query<Map<String, Object>> select = handle
+                            .createQuery(getPrefix() + "retrieve");
+
+                    select.bind("key_type", typeId);
+                    select.bind("key_id", keyId);
+
+                    List<Map<String, Object>> results = select.list();
+
+                    if (results == null || results.isEmpty()) {
+                        return null;
+                    }
+
+                    valueBytesLzf = (byte[]) results.iterator().next()
+                            .get("_value");
+                }
+
+                return valueBytesLzf;
+            }
+        });
+    }
+
+    private Iterator<String> createKeyIterator(final String type) {
+        return database.withHandle(new HandleCallback<Iterator<String>>() {
+            @Override
+            public Iterator<String> withHandle(Handle handle) throws Exception {
+                final int typeId = SequenceHelper.validateType(typeCodes,
+                        getPrefix(), handle, type, false);
+
+                Query<Map<String, Object>> select = handle
+                        .createQuery(getPrefix() + "key_ids_of_type");
+                select.bind("key_type", typeId);
+
+                List<String> inefficentButExpedient = new ArrayList<String>();
+
+                Iterator<Map<String, Object>> iter = select.iterator();
+                while (iter.hasNext()) {
+                    Map<String, Object> next = iter.next();
+                    inefficentButExpedient.add(type + ":" + next.get("_key_id"));
+                }
+
+                return inefficentButExpedient.iterator();
+            }
+        });
+    }
+
     private void performInitialization(Handle handle) {
         handle.createStatement(getPrefix() + "init_key_types").execute();
         handle.createStatement(getPrefix() + "init_sequences").execute();
@@ -403,13 +507,13 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
         handle.createStatement(getPrefix() + "populate_sequences").execute();
     }
 
-    private Response makeRetrieveResponse(final String type, final String key, byte[] valueBytesLzf)
-            throws Exception {
+    private Response makeRetrieveResponse(final String type, final String key,
+            byte[] valueBytesLzf) throws Exception {
         LinkedHashMap<String, Object> found = (LinkedHashMap<String, Object>) EncodingHelper
                 .parseSmileLzf(valueBytesLzf);
         found.remove("id");
         found.remove("kind");
-        
+
         LinkedHashMap<String, Object> value = new LinkedHashMap<String, Object>();
         value.put("id", key);
         value.put("kind", type);
@@ -428,17 +532,18 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
         for (String key : keys) {
             Object[] keyParts = KeyHelper.validateKey(key);
-            
+
             if (cacheFound.containsKey(key)) {
-                Map<String, Object> cached = (Map<String, Object>) EncodingHelper.parseSmileLzf(cacheFound.get(key));
+                Map<String, Object> cached = (Map<String, Object>) EncodingHelper
+                        .parseSmileLzf(cacheFound.get(key));
                 cached.remove("id");
                 cached.remove("kind");
-                
+
                 Map<String, Object> newResult = new LinkedHashMap<String, Object>();
                 newResult.put("id", key);
                 newResult.put("kind", keyParts[0]);
                 newResult.putAll(cached);
-                
+
                 result.put(key, cached);
             } else if (dbFound.containsKey(key)) {
                 result.put(key, dbFound.get(key));

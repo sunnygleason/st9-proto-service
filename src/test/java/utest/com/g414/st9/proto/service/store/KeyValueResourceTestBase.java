@@ -1,5 +1,12 @@
 package utest.com.g414.st9.proto.service.store;
 
+import static org.testng.Assert.assertEquals;
+import static org.testng.Assert.assertFalse;
+import static org.testng.Assert.assertTrue;
+
+import java.util.Iterator;
+import java.util.Map;
+
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
@@ -51,7 +58,8 @@ public abstract class KeyValueResourceTestBase {
 
         assertResponseMatches(
                 kvResource.createEntity("foo", "{\"isAwesome\":true}"),
-                Status.OK, "{\"id\":\"foo:2\",\"kind\":\"foo\",\"isAwesome\":true}");
+                Status.OK,
+                "{\"id\":\"foo:2\",\"kind\":\"foo\",\"isAwesome\":true}");
 
         assertResponseMatches(kvResource.createEntity("bar", "{}"), Status.OK,
                 "{\"id\":\"bar:1\",\"kind\":\"bar\"}");
@@ -78,7 +86,8 @@ public abstract class KeyValueResourceTestBase {
 
         assertResponseMatches(
                 kvResource.createEntity("foo", "{\"isAwesome\":true}"),
-                Status.OK, "{\"id\":\"foo:2\",\"kind\":\"foo\",\"isAwesome\":true}");
+                Status.OK,
+                "{\"id\":\"foo:2\",\"kind\":\"foo\",\"isAwesome\":true}");
 
         assertResponseMatches(kvResource.retrieveEntity("foo:1"), Status.OK,
                 "{\"id\":\"foo:1\",\"kind\":\"foo\"}");
@@ -96,15 +105,18 @@ public abstract class KeyValueResourceTestBase {
 
         assertResponseMatches(
                 kvResource.createEntity("foo", "{\"isAwesome\":true}"),
-                Status.OK, "{\"id\":\"foo:2\",\"kind\":\"foo\",\"isAwesome\":true}");
+                Status.OK,
+                "{\"id\":\"foo:2\",\"kind\":\"foo\",\"isAwesome\":true}");
 
         assertResponseMatches(
                 kvResource.updateEntity("foo:1", "{\"isAwesome\":true}"),
-                Status.OK, "{\"id\":\"foo:1\",\"kind\":\"foo\",\"isAwesome\":true}");
+                Status.OK,
+                "{\"id\":\"foo:1\",\"kind\":\"foo\",\"isAwesome\":true}");
 
         assertResponseMatches(
                 kvResource.updateEntity("foo:2", "{\"isAwesome\":false}"),
-                Status.OK, "{\"id\":\"foo:2\",\"kind\":\"foo\",\"isAwesome\":false}");
+                Status.OK,
+                "{\"id\":\"foo:2\",\"kind\":\"foo\",\"isAwesome\":false}");
 
         assertResponseMatches(
                 kvResource.updateEntity("foo:3", "{\"isAwesome\":false}"),
@@ -117,7 +129,8 @@ public abstract class KeyValueResourceTestBase {
 
         assertResponseMatches(
                 kvResource.createEntity("foo", "{\"isAwesome\":true}"),
-                Status.OK, "{\"id\":\"foo:2\",\"kind\":\"foo\",\"isAwesome\":true}");
+                Status.OK,
+                "{\"id\":\"foo:2\",\"kind\":\"foo\",\"isAwesome\":true}");
 
         assertResponseMatches(kvResource.retrieveEntity("foo:1"), Status.OK,
                 "{\"id\":\"foo:1\",\"kind\":\"foo\"}");
@@ -140,6 +153,34 @@ public abstract class KeyValueResourceTestBase {
         assertResponseMatches(kvResource.retrieveEntity("foo:2"),
                 Status.NOT_FOUND, "");
 
+    }
+
+    public void testIteratorHappy() throws Exception {
+        assertResponseMatches(kvResource.createEntity("foo", "{}"), Status.OK,
+                "{\"id\":\"foo:1\",\"kind\":\"foo\"}");
+
+        assertTrue(kvResource.iterator("foo").hasNext());
+
+        assertResponseMatches(
+                kvResource.createEntity("foo", "{\"isAwesome\":true}"),
+                Status.OK,
+                "{\"id\":\"foo:2\",\"kind\":\"foo\",\"isAwesome\":true}");
+
+        assertResponseMatches(kvResource.createEntity("bar", "{}"), Status.OK,
+                "{\"id\":\"bar:1\",\"kind\":\"bar\"}");
+
+        assertResponseMatches(kvResource.createEntity("bar", "{}"), Status.OK,
+                "{\"id\":\"bar:2\",\"kind\":\"bar\"}");
+
+        Iterator<Map<String, Object>> fooIter = kvResource.iterator("foo");
+        assertEquals("foo", fooIter.next().get("kind"));
+        assertEquals("foo", fooIter.next().get("kind"));
+        assertFalse(fooIter.hasNext());
+
+        Iterator<Map<String, Object>> barIter = kvResource.iterator("bar");
+        assertEquals("bar", barIter.next().get("kind"));
+        assertEquals("bar", barIter.next().get("kind"));
+        assertFalse(barIter.hasNext());
     }
 
     public void testCreateFailureBadKeyWithId() throws Exception {

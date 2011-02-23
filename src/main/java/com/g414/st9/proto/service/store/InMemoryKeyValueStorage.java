@@ -1,6 +1,7 @@
 package com.g414.st9.proto.service.store;
 
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -103,7 +104,7 @@ public class InMemoryKeyValueStorage implements KeyValueStorage {
 
             for (String key : keys) {
                 Object[] keyParts = KeyHelper.validateKey(key);
-                
+
                 byte[] valueBytesLzf = storage.get(key);
 
                 if (valueBytesLzf == null) {
@@ -140,11 +141,11 @@ public class InMemoryKeyValueStorage implements KeyValueStorage {
     @Override
     public Response update(String key, String inValue) throws Exception {
         Object[] keyParts = KeyHelper.validateKey(key);
-        
+
         Map<String, Object> readValue = EncodingHelper.parseJsonString(inValue);
         readValue.remove("id");
         readValue.remove("kind");
-        
+
         Map<String, Object> value = new LinkedHashMap<String, Object>();
         value.put("id", key);
         value.put("kind", keyParts[0]);
@@ -189,6 +190,71 @@ public class InMemoryKeyValueStorage implements KeyValueStorage {
     public void clear() {
         this.sequences.clear();
         this.storage.clear();
+    }
+
+    @Override
+    public Iterator<Map<String, Object>> iterator(final String type)
+            throws Exception {
+        return new Iterator<Map<String, Object>>() {
+            private final Iterator<String> inner = storage.keySet().iterator();
+            private String nextKey = advance();
+
+            public String advance() {
+                String key = null;
+
+                while (key == null && inner.hasNext()) {
+                    String newKey = inner.next();
+                    Object[] keyParts = KeyHelper.validateKey(newKey);
+                    if (type.equals(keyParts[0])) {
+                        key = newKey;
+                        break;
+                    }
+                }
+
+                return key;
+            }
+
+            @Override
+            public boolean hasNext() {
+                return nextKey != null;
+            }
+
+            @Override
+            public Map<String, Object> next() {
+                byte[] objectBytes = null;
+                while (objectBytes == null && nextKey != null) {
+                    objectBytes = storage.get(nextKey);
+                    if (objectBytes == null) {
+                        nextKey = advance();
+                    }
+                }
+
+                if (objectBytes == null) {
+                    return null;
+                }
+
+                Map<String, Object> object = (Map<String, Object>) EncodingHelper
+                        .parseSmileLzf(objectBytes);
+                object.remove("id");
+                object.remove("kind");
+
+                Object[] keyParts = KeyHelper.validateKey(nextKey);
+
+                Map<String, Object> result = new LinkedHashMap<String, Object>();
+                result.put("id", nextKey);
+                result.put("kind", keyParts[0]);
+                result.putAll(object);
+
+                nextKey = advance();
+
+                return result;
+            }
+
+            @Override
+            public void remove() {
+                throw new UnsupportedOperationException();
+            }
+        };
     }
 
     private Long nextId(String type) {
