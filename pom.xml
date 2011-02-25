@@ -116,6 +116,11 @@
     </dependency>
     <dependency>
       <groupId>org.antlr</groupId>
+      <artifactId>antlr-runtime</artifactId>
+      <version>3.0.1</version>
+    </dependency>
+    <dependency>
+      <groupId>org.antlr</groupId>
       <artifactId>stringtemplate</artifactId>
       <version>3.0</version>
     </dependency>
@@ -187,6 +192,18 @@
 
   <build>
     <plugins>
+      <plugin>
+        <groupId>org.codehaus.mojo</groupId>
+        <artifactId>antlr3-maven-plugin</artifactId>
+        <version>1.0</version>
+        <executions>
+          <execution>
+            <goals>
+              <goal>antlr</goal>
+            </goals>
+          </execution>
+        </executions>
+      </plugin>
       <plugin>
         <artifactId>maven-compiler-plugin</artifactId>
         <configuration>
