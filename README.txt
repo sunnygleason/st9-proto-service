@@ -27,4 +27,11 @@ $ curl -v -v -X GET "http://localhost:8080/1.0/e/foo:1"
 $ curl -v -v -X DELETE "http://localhost:8080/1.0/e/foo:1"
 $ curl -v -v -X GET "http://localhost:8080/1.0/e/foo:1"
 
+A cook's tour of the query api:
+
+$ curl -v -v -X GET "http://localhost:8080/1.0/i/foo.index1?q=isAwesome+eq+true"
+$ curl -v -v -X GET "http://localhost:8080/1.0/i/foo.index1?q=isAwesome+eq+false"
+$ curl -v -v -X GET "http://localhost:8080/1.0/i/foo.index2?q=id+lt+\"foo:2\"+and+isAwesome+eq+true"
+
+
 That's all for now.
