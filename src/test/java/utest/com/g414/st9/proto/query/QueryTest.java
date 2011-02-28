@@ -20,7 +20,7 @@ import com.g414.st9.proto.service.query.QueryTerm;
 @Test
 public class QueryTest {
     public void testSimpleQuery() throws Exception {
-        String query = "foo eq -1 and x ne \"wha\" and bar gt 9.91";
+        String query = "foo eq -1 and _x ne \"wha\" and _bar_val gt 9.91";
 
         parseQuery(query);
     }
