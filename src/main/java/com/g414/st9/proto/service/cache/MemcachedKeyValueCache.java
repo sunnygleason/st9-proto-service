@@ -7,9 +7,12 @@ import net.spy.memcached.MemcachedClient;
 
 import com.google.inject.Inject;
 
+/**
+ * Memcached implementation of Ye Trusty Key Value Cache.
+ */
 public class MemcachedKeyValueCache implements KeyValueCache {
     private final MemcachedClient memcachedClient;
-    private final int timeout = 15 * 60;
+    private final int timeoutSecs = 15 * 60;
 
     @Inject
     public MemcachedKeyValueCache(MemcachedClient memcachedClient,
@@ -22,16 +25,17 @@ public class MemcachedKeyValueCache implements KeyValueCache {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public Map<String, byte[]> multiget(final Collection<String> keys)
             throws Exception {
-        Map result = memcachedClient.getBulk(keys);
+        Map<String, ?> result = memcachedClient.getBulk(keys);
 
         return (Map<String, byte[]>) result;
     }
 
     @Override
     public void put(final String key, final byte[] value) throws Exception {
-        memcachedClient.set(key, timeout, value);
+        memcachedClient.set(key, timeoutSecs, value);
     }
 
     @Override

@@ -3,6 +3,12 @@ package com.g414.st9.proto.service.query;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 
+/**
+ * A modestly intelligent holder class for the value in the query; Object just
+ * isn't rich enough, so we use this class to hold a "type" enum telling us how
+ * to use the value provided by the holder. If you told me to rename this class
+ * to ValueHolder, I might agree with you.
+ */
 public class QueryValue {
     private final ValueType valueType;
     private final String literal;

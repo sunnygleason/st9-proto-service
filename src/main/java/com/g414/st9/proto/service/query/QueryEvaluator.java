@@ -5,6 +5,12 @@ import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * QueryEvaluator class to serve as a mock implementation of secondary indexes.
+ * For database-backed indexes, this will be implemented by the SQL engine. In
+ * the long run this implementation will probably be most useful as a sanity
+ * check.
+ */
 public class QueryEvaluator {
     public boolean matches(Map<String, Object> instance, List<QueryTerm> query) {
         boolean matches = true;

@@ -7,6 +7,9 @@ import java.util.Map;
 import com.google.inject.AbstractModule;
 import com.google.inject.Binder;
 
+/**
+ * This is the Tiniest Cache Ever(TM).
+ */
 public class EmptyKeyValueCache implements KeyValueCache {
     @Override
     public byte[] get(final String key) throws Exception {

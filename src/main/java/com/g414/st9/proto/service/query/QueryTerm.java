@@ -1,5 +1,9 @@
 package com.g414.st9.proto.service.query;
 
+/**
+ * A query term, representing one boolean clause in a conjunction of possibly
+ * several clauses.
+ */
 public class QueryTerm {
     private final QueryOperator operator;
     private final String field;

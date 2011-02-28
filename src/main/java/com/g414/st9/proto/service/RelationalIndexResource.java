@@ -47,6 +47,16 @@ public class RelationalIndexResource {
         return doSearch(type, index, query);
     }
 
+    /**
+     * Perform a search against the specified object type, using the specified
+     * index name and query string.
+     * 
+     * @param type
+     * @param index
+     * @param query
+     * @return
+     * @throws Exception
+     */
     private Response doSearch(String type, String index, String query)
             throws Exception {
         List<QueryTerm> queryTerms = null;
@@ -81,15 +91,22 @@ public class RelationalIndexResource {
         return Response.status(Status.OK).entity(valueJson).build();
     }
 
-    private List<QueryTerm> parseQuery(String query) throws Exception {
-        QueryLexer lex = new QueryLexer(new ANTLRStringStream(query));
+    /**
+     * Parses the query string using our trusty ANTLR-generated parser.
+     * 
+     * @param queryString
+     * @return a list of QueryTerm instances
+     * @throws Exception
+     *             if the query is not parseable
+     */
+    private List<QueryTerm> parseQuery(String queryString) throws Exception {
+        QueryLexer lex = new QueryLexer(new ANTLRStringStream(queryString));
         CommonTokenStream tokens = new CommonTokenStream(lex);
-
         QueryParser parser = new QueryParser(tokens);
 
-        List<QueryTerm> foo = new ArrayList<QueryTerm>();
-        parser.term_list(foo);
+        List<QueryTerm> query = new ArrayList<QueryTerm>();
+        parser.term_list(query);
 
-        return foo;
+        return query;
     }
 }

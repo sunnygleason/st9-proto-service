@@ -10,9 +10,12 @@ import redis.clients.jedis.JedisPool;
 
 import com.google.inject.Inject;
 
+/**
+ * Redis implementation of Ye Trusty Key Value Cache.
+ */
 public class RedisKeyValueCache implements KeyValueCache {
     private final JedisPool jedisPool;
-    private final int timeout = 15 * 60;
+    private final int timeoutSecs = 15 * 60;
 
     @Inject
     public RedisKeyValueCache(JedisPool jedisPool) {
@@ -59,7 +62,7 @@ public class RedisKeyValueCache implements KeyValueCache {
         withJedisCallback(new JedisCallback<Void>() {
             @Override
             public Void withJedis(Jedis jedis) {
-                jedis.setex(key.getBytes(), timeout, value);
+                jedis.setex(key.getBytes(), timeoutSecs, value);
 
                 return null;
             }
