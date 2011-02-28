@@ -54,8 +54,8 @@ op returns [QueryOperator value] :
 
 value returns [QueryValue value] :
         s=STRING_LITERAL                   { $value = new QueryValue(ValueType.STRING, s.getText()); }
-        | i=INTEGER                        { $value = new QueryValue(ValueType.INTEGER, s.getText()); }
-        | d=DECIMAL                        { $value = new QueryValue(ValueType.DECIMAL, s.getText()); }
+        | i=INTEGER                        { $value = new QueryValue(ValueType.INTEGER, i.getText()); }
+        | d=DECIMAL                        { $value = new QueryValue(ValueType.DECIMAL, d.getText()); }
         | TRUE                             { $value = new QueryValue(ValueType.BOOLEAN, "true"); }
         | FALSE                            { $value = new QueryValue(ValueType.BOOLEAN, "false"); }
         | NULL                             { $value = new QueryValue(ValueType.NULL, "null"); }
