@@ -37,7 +37,7 @@ public class KeyValueResource {
     // automagical jackson configuration
     public Response createEntity(@PathParam("type") String type, String value)
             throws Exception {
-        return store.create(type, value);
+        return store.create(type, value, null);
     }
 
     @GET

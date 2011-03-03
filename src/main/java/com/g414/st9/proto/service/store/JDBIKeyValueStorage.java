@@ -13,6 +13,7 @@ import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import org.codehaus.jackson.map.ObjectMapper;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
 import org.skife.jdbi.v2.Handle;
@@ -27,6 +28,9 @@ import com.g414.guice.lifecycle.Lifecycle;
 import com.g414.guice.lifecycle.LifecycleRegistration;
 import com.g414.guice.lifecycle.LifecycleSupportBase;
 import com.g414.st9.proto.service.cache.KeyValueCache;
+import com.g414.st9.proto.service.schema.SchemaDefinition;
+import com.g414.st9.proto.service.schema.SchemaValidatorTransformer;
+import com.g414.st9.proto.service.validator.ValidationException;
 import com.google.inject.Inject;
 
 /**
@@ -43,6 +47,8 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
     protected final Map<String, Integer> typeCodes = new ConcurrentHashMap<String, Integer>();
 
     protected abstract String getPrefix();
+
+    protected final ObjectMapper mapper = new ObjectMapper();
 
     @Inject
     public void register(Lifecycle lifecycle) {
@@ -66,12 +72,25 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
         });
     }
 
+    @Override
+    public Integer getTypeId(final String type) throws Exception {
+        return database.inTransaction(new TransactionCallback<Integer>() {
+            @Override
+            public Integer inTransaction(Handle handle, TransactionStatus status)
+                    throws Exception {
+                return SequenceHelper.validateType(typeCodes, getPrefix(),
+                        handle, type, true);
+            }
+        });
+    }
+
     /**
      * @see com.g414.st9.proto.service.store.KeyValueStorage#create(java.lang.String,
      *      java.lang.String)
      */
     @Override
-    public Response create(final String type, String inValue) throws Exception {
+    public Response create(final String type, String inValue, final Long id)
+            throws Exception {
         try {
             final Map<String, Object> readValue = EncodingHelper
                     .parseJsonString(inValue);
@@ -86,8 +105,32 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                         final int typeId = SequenceHelper.validateType(
                                 typeCodes, getPrefix(), handle, type, true);
 
-                        final long nextId = SequenceHelper.getNextId(
-                                getPrefix(), handle, typeId);
+                        Response schemaResponse = JDBIKeyValueStorage.this
+                                .retrieve("$schema:" + typeId);
+
+                        Map<String, Object> toInsert = readValue;
+
+                        if (schemaResponse.getStatus() == 200) {
+                            try {
+                                SchemaDefinition definition = mapper.readValue(
+                                        schemaResponse.getEntity().toString(),
+                                        SchemaDefinition.class);
+                                SchemaValidatorTransformer transformer = new SchemaValidatorTransformer(
+                                        definition);
+
+                                toInsert = transformer
+                                        .validateTransform(readValue);
+                            } catch (ValidationException e) {
+                                return Response.status(Status.BAD_REQUEST)
+                                        .entity(e.getMessage()).build();
+                            } catch (Exception other) {
+                                // do not apply schema
+                            }
+                        }
+
+                        final long nextId = (id != null) ? id.longValue()
+                                : SequenceHelper.getNextId(getPrefix(), handle,
+                                        typeId);
 
                         String key = type + ":" + nextId;
 
@@ -98,11 +141,11 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
                         String valueJson = EncodingHelper.convertToJson(value);
 
-                        value.remove("id");
-                        value.remove("kind");
+                        toInsert.remove("id");
+                        toInsert.remove("kind");
 
                         byte[] valueBytes = EncodingHelper
-                                .convertToSmileLzf(value);
+                                .convertToSmileLzf(toInsert);
 
                         int epochSeconds = (int) (new DateTime().withZone(
                                 DateTimeZone.UTC).getMillis() / 1000);
@@ -266,6 +309,30 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                         getPrefix(), handle, (String) keyParts[0], false);
                 final long keyId = (Long) keyParts[1];
 
+                Response schemaResponse = JDBIKeyValueStorage.this
+                        .retrieve("$schema:" + typeId);
+
+                Map<String, Object> toUpdate = readValue;
+
+                System.out.println(schemaResponse.getEntity().toString());
+
+                if (schemaResponse.getStatus() == 200) {
+                    SchemaDefinition definition = mapper.readValue(
+                            schemaResponse.getEntity().toString(),
+                            SchemaDefinition.class);
+                    SchemaValidatorTransformer transformer = new SchemaValidatorTransformer(
+                            definition);
+
+                    try {
+                        toUpdate = transformer.validateTransform(readValue);
+                    } catch (ValidationException e) {
+                        return Response.status(Status.BAD_REQUEST)
+                                .entity(e.getMessage()).build();
+                    } catch (Exception other) {
+                        // do not apply schema
+                    }
+                }
+
                 Map<String, Object> value = new LinkedHashMap<String, Object>();
                 value.put("id", key);
                 value.put("kind", keyParts[0]);
@@ -273,10 +340,10 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
                 String valueJson = EncodingHelper.convertToJson(value);
 
-                value.remove("id");
-                value.remove("kind");
+                toUpdate.remove("id");
+                toUpdate.remove("kind");
 
-                byte[] valueBytes = EncodingHelper.convertToSmileLzf(value);
+                byte[] valueBytes = EncodingHelper.convertToSmileLzf(toUpdate);
 
                 int epochSeconds = (int) (new DateTime().withZone(
                         DateTimeZone.UTC).getMillis() / 1000);

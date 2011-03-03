@@ -22,7 +22,8 @@ sqlite_init_key_values_index() ::=<<
 sqlite_populate_key_types() ::=<< 
   insert or ignore
     into `_key_types` (`_key_type`, `_type_name`)
-  values (0, '$KEY$')
+    select 0 as `_key_type`, '$key' as `_type_name`
+    union select 1 as `_key_type`, '$schema' as `_type_name`;
 >>
 
 sqlite_get_type_id() ::=<< 
@@ -34,7 +35,8 @@ sqlite_get_type_id() ::=<<
 sqlite_populate_sequences() ::=<< 
   insert or ignore
     into `_sequences` (`_key_type`, `_next_id`)
-  values (0, 0)
+    select 0 as `_key_type`, 1 as `_next_id`
+    union select 1 as `_key_type`, 0 as `_next_id`;
 >>
 
 sqlite_create() ::=<< 

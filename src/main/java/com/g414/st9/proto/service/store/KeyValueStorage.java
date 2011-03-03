@@ -7,8 +7,9 @@ import java.util.Map;
 import javax.ws.rs.core.Response;
 
 public interface KeyValueStorage {
+    public abstract Integer getTypeId(String type) throws Exception;
 
-    public abstract Response create(String type, String inValue)
+    public abstract Response create(String type, String inValue, Long id)
             throws Exception;
 
     public abstract Response retrieve(String key) throws Exception;

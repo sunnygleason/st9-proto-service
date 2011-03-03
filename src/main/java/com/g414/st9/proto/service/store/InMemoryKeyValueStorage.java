@@ -6,6 +6,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import javax.ws.rs.WebApplicationException;
@@ -20,14 +21,28 @@ import com.google.inject.Binder;
  */
 public class InMemoryKeyValueStorage implements KeyValueStorage {
     private final ConcurrentHashMap<String, byte[]> storage = new ConcurrentHashMap<String, byte[]>();
-    private final ConcurrentHashMap<String, AtomicLong> sequences = new ConcurrentHashMap<String, AtomicLong>();
+    private final ConcurrentHashMap<String, Integer> types = new ConcurrentHashMap<String, Integer>();
+    private final ConcurrentHashMap<Integer, AtomicLong> sequences = new ConcurrentHashMap<Integer, AtomicLong>();
+    private final AtomicInteger typeSeq = new AtomicInteger(0);
+
+    @Override
+    public synchronized Integer getTypeId(String type) {
+        Integer typeId = types.get(type);
+        if (typeId == null) {
+            typeId = typeSeq.getAndIncrement();
+            types.put(type, typeId);
+        }
+
+        return typeId;
+    }
 
     /**
      * @see com.g414.st9.proto.service.store.KeyValueStorage#create(java.lang.String,
      *      java.lang.String)
      */
     @Override
-    public Response create(String type, String inValue) throws Exception {
+    public Response create(String type, String inValue, Long id)
+            throws Exception {
         try {
             validateType(type);
             Map<String, Object> readValue = EncodingHelper
@@ -35,7 +50,9 @@ public class InMemoryKeyValueStorage implements KeyValueStorage {
             readValue.remove("id");
             readValue.remove("kind");
 
-            String key = type + ":" + this.nextId(type);
+            Long theId = (id != null) ? id : this.nextId(type);
+
+            String key = type + ":" + theId;
             Map<String, Object> value = new LinkedHashMap<String, Object>();
             value.put("id", key);
             value.put("kind", type);
@@ -260,8 +277,10 @@ public class InMemoryKeyValueStorage implements KeyValueStorage {
     private Long nextId(String type) {
         validateType(type);
 
+        Integer typeId = getTypeId(type);
+
         AtomicLong aNewSeq = new AtomicLong(0);
-        AtomicLong existing = sequences.putIfAbsent(type, aNewSeq);
+        AtomicLong existing = sequences.putIfAbsent(typeId, aNewSeq);
 
         if (existing == null) {
             existing = aNewSeq;

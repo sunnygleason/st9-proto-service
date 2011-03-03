@@ -38,7 +38,9 @@ mysql_init_key_values_index() ::=<<
 mysql_populate_key_types() ::=<< 
   insert ignore
     into `_key_types` (`_key_type`, `_type_name`)
-  values (0, '$KEY_TYPE$');
+  values
+    (0, '$key'),
+    (1, '$schema');
 >>
 
 mysql_get_type_id() ::=<< 
@@ -50,7 +52,9 @@ mysql_get_type_id() ::=<<
 mysql_populate_sequences() ::=<< 
   insert ignore
     into `_sequences` (`_key_type`, `_next_id`)
-  values (0, 0);
+  values
+    (0, 1),
+    (1, 0);
 >>
 
 mysql_create() ::=<< 
