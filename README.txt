@@ -18,6 +18,15 @@ NOTE: to use the MySQL storage engine, there must be a database called 'thedb' o
 (This will soon be a configurable option). Likewise, SQLite writes to "thedb.db".
 
 
+A cook's tour of the Schema api:
+
+$ curl -v -v -X POST --data "{\"attributes\":[{\"name\":\"x\",\"type\":\"I32\"},{\"name\":\"y\",\"type\":\"I32\"}],\"indexes\":[]}" -H "Content-Type: application/json" -H "Accept: application/json" "http://localhost:8080/1.0/s/point"
+$ curl -v -v -X GET "http://localhost:8080/1.0/s/point"
+$ curl -v -v -X POST --data "{\"x\":1,\"y\":-1}" -H "Content-Type: application/json" -H "Accept: application/json" "http://localhost:8080/1.0/e/point"
+$ curl -v -v -X POST --data "{\"x\":1,\"y\":true}" -H "Content-Type: application/json" -H "Accept: application/json" "http://localhost:8080/1.0/e/point"
+$ curl -v -v -X DELETE "http://localhost:8080/1.0/s/point"
+$ curl -v -v -X POST --data "{\"x\":1,\"y\":true}" -H "Content-Type: application/json" -H "Accept: application/json" "http://localhost:8080/1.0/e/point"
+
 A cook's tour of the KV api:
 
 $ curl -v -v -X POST --data '{"isAwesome":false}' -H "Content-Type: application/json" -H "Accept: application/json" "http://localhost:8080/1.0/e/foo" 
