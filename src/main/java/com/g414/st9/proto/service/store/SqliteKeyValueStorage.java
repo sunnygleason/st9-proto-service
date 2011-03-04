@@ -12,6 +12,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.sqlite.JDBC;
 
+import com.g414.st9.proto.service.RealRelationalIndexResource;
+import com.g414.st9.proto.service.SchemaResource;
+import com.g414.st9.proto.service.index.JDBISecondaryIndex;
+import com.g414.st9.proto.service.index.SqliteSecondaryIndex;
 import com.google.inject.AbstractModule;
 import com.google.inject.Binder;
 import com.jolbox.bonecp.BoneCPDataSource;
@@ -27,6 +31,39 @@ public class SqliteKeyValueStorage extends JDBIKeyValueStorage {
 
     protected String getPrefix() {
         return "sqlite:sqlite_";
+    }
+
+    @Override
+    public synchronized Response create(String type, String inValue, Long id)
+            throws Exception {
+        return super.create(type, inValue, id);
+    }
+
+    @Override
+    public synchronized Response retrieve(String key) throws Exception {
+        return super.retrieve(key);
+    }
+
+    @Override
+    public synchronized Response multiRetrieve(List<String> keys)
+            throws Exception {
+        return super.multiRetrieve(keys);
+    }
+
+    @Override
+    public synchronized Response update(String key, String inValue)
+            throws Exception {
+        return super.update(key, inValue);
+    }
+
+    @Override
+    public synchronized Response delete(String key) throws Exception {
+        return super.delete(key);
+    }
+
+    @Override
+    public synchronized void clear() {
+        super.clear();
     }
 
     public static class SqliteKeyValueStorageModule extends AbstractModule {
@@ -75,39 +112,12 @@ public class SqliteKeyValueStorage extends JDBIKeyValueStorage {
 
             binder.bind(KeyValueStorage.class).to(SqliteKeyValueStorage.class)
                     .asEagerSingleton();
+            binder.bind(JDBISecondaryIndex.class)
+                    .to(SqliteSecondaryIndex.class).asEagerSingleton();
+
+            bind(SchemaResource.class).asEagerSingleton();
+            bind(RealRelationalIndexResource.class).asEagerSingleton();
         }
     }
 
-    @Override
-    public synchronized Response create(String type, String inValue, Long id)
-            throws Exception {
-        return super.create(type, inValue, id);
-    }
-
-    @Override
-    public synchronized Response retrieve(String key) throws Exception {
-        return super.retrieve(key);
-    }
-
-    @Override
-    public synchronized Response multiRetrieve(List<String> keys)
-            throws Exception {
-        return super.multiRetrieve(keys);
-    }
-
-    @Override
-    public synchronized Response update(String key, String inValue)
-            throws Exception {
-        return super.update(key, inValue);
-    }
-
-    @Override
-    public synchronized Response delete(String key) throws Exception {
-        return super.delete(key);
-    }
-
-    @Override
-    public synchronized void clear() {
-        super.clear();
-    }
 }

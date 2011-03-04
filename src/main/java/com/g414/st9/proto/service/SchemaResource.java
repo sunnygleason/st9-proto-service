@@ -12,12 +12,19 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import org.codehaus.jackson.map.ObjectMapper;
+import org.skife.jdbi.v2.IDBI;
+
+import com.g414.st9.proto.service.index.JDBISecondaryIndex;
+import com.g414.st9.proto.service.schema.IndexDefinition;
+import com.g414.st9.proto.service.schema.SchemaDefinition;
+import com.g414.st9.proto.service.schema.SchemaDefinitionValidator;
 import com.g414.st9.proto.service.store.KeyValueStorage;
 import com.google.inject.Inject;
 
 /**
  * A silly and simple jersey resource that does CRUD operations for schema
- * definitions.
+ * definitions. TODO: perform better online management of database index tables.
  */
 @Path("/1.0/s")
 public class SchemaResource {
@@ -25,6 +32,14 @@ public class SchemaResource {
 
     @Inject
     private KeyValueStorage store;
+
+    @Inject
+    private JDBISecondaryIndex index;
+
+    @Inject
+    private IDBI database;
+
+    private ObjectMapper mapper = new ObjectMapper();
 
     @POST
     @Path("{type}")
@@ -39,6 +54,19 @@ public class SchemaResource {
         if (typeId == null) {
             return Response.status(Status.NOT_FOUND).entity("type not found")
                     .build();
+        }
+
+        SchemaDefinition schemaDefinition = mapper.readValue(value,
+                SchemaDefinition.class);
+
+        SchemaDefinitionValidator validator = new SchemaDefinitionValidator();
+        validator.validate(schemaDefinition);
+
+        for (IndexDefinition indexDefinition : schemaDefinition.getIndexes()) {
+            index.createTable(database, type, indexDefinition.getName(),
+                    schemaDefinition);
+            index.createIndex(database, type, indexDefinition.getName(),
+                    schemaDefinition);
         }
 
         return store.create(SCHEMA_PREFIX, value, typeId.longValue());
@@ -73,6 +101,19 @@ public class SchemaResource {
                     .build();
         }
 
+        SchemaDefinition schemaDefinition = mapper.readValue(value,
+                SchemaDefinition.class);
+
+        SchemaDefinitionValidator validator = new SchemaDefinitionValidator();
+        validator.validate(schemaDefinition);
+
+        for (IndexDefinition indexDefinition : schemaDefinition.getIndexes()) {
+            index.createTable(database, type, indexDefinition.getName(),
+                    schemaDefinition);
+            index.createIndex(database, type, indexDefinition.getName(),
+                    schemaDefinition);
+        }
+
         return store.update(SCHEMA_PREFIX + ":" + typeId, value);
     }
 
@@ -86,6 +127,8 @@ public class SchemaResource {
             return Response.status(Status.NOT_FOUND).entity("type not found")
                     .build();
         }
+
+        // TODO: actually delete schemas / indexes
 
         return store.delete(SCHEMA_PREFIX + ":" + typeId);
     }

@@ -6,14 +6,14 @@ import org.codehaus.jackson.annotate.JsonProperty;
 /**
  * Class for index column specifications (for user-defined secondary indexes).
  */
-public class IndexColumn {
-    public final String attributeName;
+public class IndexAttribute {
+    public final String name;
     public final SortOrder sortOrder;
 
     @JsonCreator
-    public IndexColumn(@JsonProperty("name") String attributeName,
+    public IndexAttribute(@JsonProperty("name") String name,
             @JsonProperty("sort") SortOrder sortOrder) {
-        if (attributeName == null) {
+        if (name == null) {
             throw new IllegalArgumentException("'name' must not be null");
         }
 
@@ -21,16 +21,15 @@ public class IndexColumn {
             throw new IllegalArgumentException("'sort' must not be null");
         }
 
-        this.attributeName = attributeName;
+        this.name = name;
         this.sortOrder = sortOrder;
     }
 
-    @JsonProperty("name")
-    public String getAttributeName() {
-        return attributeName;
+    public String getName() {
+        return name;
     }
 
-    @JsonProperty("order")
+    @JsonProperty("sort")
     public SortOrder getSortOrder() {
         return sortOrder;
     }

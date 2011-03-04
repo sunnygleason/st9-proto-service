@@ -10,8 +10,7 @@ public class ServiceModule extends ServletModule {
     @Override
     protected void configureServlets() {
         bind(KeyValueResource.class).asEagerSingleton();
-        bind(SchemaResource.class).asEagerSingleton();
-        bind(RelationalIndexResource.class).asEagerSingleton();
+        bind(FakeRelationalIndexResource.class).asEagerSingleton();
 
         serve("*").with(GuiceContainer.class);
     }

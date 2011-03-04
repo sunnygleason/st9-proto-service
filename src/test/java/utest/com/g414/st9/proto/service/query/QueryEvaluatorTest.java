@@ -1,4 +1,4 @@
-package utest.com.g414.st9.proto.query;
+package utest.com.g414.st9.proto.service.query;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;

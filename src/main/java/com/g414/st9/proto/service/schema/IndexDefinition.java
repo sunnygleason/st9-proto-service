@@ -1,9 +1,12 @@
 package com.g414.st9.proto.service.schema;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.codehaus.jackson.annotate.JsonCreator;
+import org.codehaus.jackson.annotate.JsonIgnore;
 import org.codehaus.jackson.annotate.JsonProperty;
 
 /**
@@ -11,29 +14,47 @@ import org.codehaus.jackson.annotate.JsonProperty;
  */
 public class IndexDefinition {
     private final String name;
-    private List<IndexColumn> indexColumns;
+    private final List<IndexAttribute> indexColumns;
+    private final Set<String> attributeNames;
 
     @JsonCreator
     public IndexDefinition(@JsonProperty("name") String name,
-            @JsonProperty("indexColumns") List<IndexColumn> indexColumns) {
+            @JsonProperty("cols") List<IndexAttribute> cols) {
         if (name == null) {
             throw new IllegalArgumentException("'name' must not be null");
         }
 
-        if (indexColumns == null || indexColumns.isEmpty()) {
-            throw new IllegalArgumentException(
-                    "'indexColumns' must not be empty");
+        if (cols == null || cols.isEmpty()) {
+            throw new IllegalArgumentException("'cols' must not be empty");
         }
 
         this.name = name;
-        this.indexColumns = Collections.unmodifiableList(indexColumns);
+
+        Set<String> newAttributeNames = new HashSet<String>();
+        for (IndexAttribute attr : cols) {
+            newAttributeNames.add(attr.getName());
+        }
+
+        if (!newAttributeNames.contains("id")) {
+            newAttributeNames.add("id");
+            cols.add(new IndexAttribute("id", SortOrder.ASC));
+        }
+
+        this.indexColumns = Collections.unmodifiableList(cols);
+        this.attributeNames = Collections.unmodifiableSet(newAttributeNames);
     }
 
     public String getName() {
         return name;
     }
 
-    public List<IndexColumn> getIndexColumns() {
+    @JsonProperty("cols")
+    public List<IndexAttribute> getIndexAttributes() {
         return indexColumns;
+    }
+
+    @JsonIgnore
+    public Set<String> getAttributeNames() {
+        return attributeNames;
     }
 }

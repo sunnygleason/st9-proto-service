@@ -1,7 +1,6 @@
 package com.g414.st9.proto.service;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,26 +16,35 @@ import javax.ws.rs.core.Response.Status;
 
 import org.antlr.runtime.ANTLRStringStream;
 import org.antlr.runtime.CommonTokenStream;
+import org.codehaus.jackson.map.ObjectMapper;
+import org.skife.jdbi.v2.IDBI;
 
-import com.g414.st9.proto.service.query.QueryEvaluator;
+import com.g414.st9.proto.service.index.JDBISecondaryIndex;
 import com.g414.st9.proto.service.query.QueryLexer;
 import com.g414.st9.proto.service.query.QueryParser;
 import com.g414.st9.proto.service.query.QueryTerm;
+import com.g414.st9.proto.service.schema.SchemaDefinition;
 import com.g414.st9.proto.service.store.EncodingHelper;
 import com.g414.st9.proto.service.store.KeyValueStorage;
+import com.g414.st9.proto.service.validator.ValidationException;
 import com.google.inject.Inject;
 
 /**
  * A silly and simple jersey resource that does secondary index search
- * operations for KV documents.
+ * operations for KV documents using a "real" db index.
  */
-@Path("/1.0/i")
-public class RelationalIndexResource {
+@Path("/1.0/i2")
+public class RealRelationalIndexResource {
     @Inject
-    private KeyValueStorage store;
+    private IDBI database;
 
     @Inject
-    private QueryEvaluator eval;
+    private KeyValueStorage storage;
+
+    @Inject
+    private JDBISecondaryIndex index;
+
+    private ObjectMapper mapper = new ObjectMapper();
 
     @GET
     @Path("{type}.{index}")
@@ -57,7 +65,7 @@ public class RelationalIndexResource {
      * @return
      * @throws Exception
      */
-    private Response doSearch(String type, String index, String query)
+    private Response doSearch(String type, String indexName, String query)
             throws Exception {
         List<QueryTerm> queryTerms = null;
         try {
@@ -67,23 +75,46 @@ public class RelationalIndexResource {
                     .entity("Invalid query: " + query).build();
         }
 
+        Integer typeId = storage.getTypeId(type);
+
+        Response schemaResponse = storage.retrieve("$schema:" + typeId);
+
+        List<Long> resultIds = new ArrayList<Long>();
+
+        if (schemaResponse.getStatus() == 200) {
+            try {
+                SchemaDefinition definition = mapper.readValue(schemaResponse
+                        .getEntity().toString(), SchemaDefinition.class);
+
+                resultIds.addAll(index.doIndexQuery(database, type, indexName,
+                        queryTerms, definition));
+            } catch (ValidationException e) {
+                return Response.status(Status.BAD_REQUEST)
+                        .entity(e.getMessage()).build();
+            } catch (Exception other) {
+                // do not apply schema
+                other.printStackTrace();
+                throw other;
+            }
+        } else {
+            return Response
+                    .status(Status.BAD_REQUEST)
+                    .entity("schema or index not found " + type + "."
+                            + indexName).build();
+        }
+
         Map<String, Object> result = new LinkedHashMap<String, Object>();
         List<Map<String, Object>> hits = new ArrayList<Map<String, Object>>();
 
         result.put("kind", type);
-        result.put("index", index);
+        result.put("index", indexName);
         result.put("query", query);
         result.put("results", hits);
 
-        Iterator<Map<String, Object>> iter = store.iterator(type);
-        while (iter.hasNext()) {
-            Map<String, Object> instance = iter.next();
-            if (eval.matches(instance, queryTerms)) {
-                LinkedHashMap<String, Object> hit = new LinkedHashMap<String, Object>();
-                hit.put("id", instance.get("id"));
-
-                hits.add(hit);
-            }
+        for (Long id : resultIds) {
+            LinkedHashMap<String, Object> hit = new LinkedHashMap<String, Object>();
+            hit.put("id", type + ":" + id);
+            hits.add(hit);
         }
 
         String valueJson = EncodingHelper.convertToJson(result);

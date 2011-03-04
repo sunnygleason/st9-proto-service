@@ -55,7 +55,7 @@ public class Validators {
             return new ReferenceValidator(attribute.getName());
         case UTC_DATE_SECS:
             return new UTCDateValidator(attribute.getName());
-        case UTF8_STRING:
+        case UTF8_SMALLSTRING:
             return new StringValidator(attribute.getName(),
                     attribute.getMinlength(), attribute.getMaxlength());
         default:

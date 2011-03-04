@@ -17,7 +17,7 @@ import com.google.common.collect.ImmutableMap;
 @Test
 public class TestSchemaValidator {
     private final String schema1 = "{\"attributes\":[{\"name\":\"isAwesome\",\"type\":\"BOOLEAN\"},{\"name\":\"hotness\",\"type\":\"ENUM\",\"values\":[\"FREEZING\",\"COLD\",\"COOL\",\"WARM\",\"TEH_HOTNESS\"]}],\"indexes\":[]}";
-    private final String schema2 = "{\"attributes\":[{\"name\":\"when\",\"type\":\"UTC_DATE_SECS\"},{\"name\":\"lname\",\"type\":\"UTF8_STRING\"}],\"indexes\":[]}";
+    private final String schema2 = "{\"attributes\":[{\"name\":\"when\",\"type\":\"UTC_DATE_SECS\"},{\"name\":\"lname\",\"type\":\"UTF8_SMALLSTRING\"}],\"indexes\":[]}";
     private final String schema3 = "{\"attributes\":[{\"name\":\"ref\",\"type\":\"REFERENCE\"},{\"name\":\"age\",\"type\":\"U8\"}],\"indexes\":[]}";
     private final String schema4 = "{\"attributes\":[{\"name\":\"x\",\"type\":\"I32\"},{\"name\":\"y\",\"type\":\"I32\"}],\"indexes\":[]}";
 

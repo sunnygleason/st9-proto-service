@@ -5,7 +5,6 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import com.g414.st9.proto.service.store.Key;
 import com.g414.st9.proto.service.validator.ValidationException;
 import com.g414.st9.proto.service.validator.ValidatorTransformer;
 
@@ -71,13 +70,7 @@ public class SchemaValidatorTransformer implements
 
             Object transformed = validator.validateTransform(inbound);
 
-            if (AttributeType.REFERENCE.equals(attribute.getType())) {
-                Key key = (Key) transformed;
-                mindlessClone.put(attribute.getName() + "$t", key.getType());
-                mindlessClone.put(attribute.getName() + "$i", key.getId());
-            } else {
-                mindlessClone.put(attribute.getName(), transformed);
-            }
+            mindlessClone.put(attribute.getName(), transformed);
         }
 
         return mindlessClone;
@@ -95,14 +88,6 @@ public class SchemaValidatorTransformer implements
         for (Map.Entry<String, Object> e : instance.entrySet()) {
             String attrName = e.getKey();
 
-            if (attrName.endsWith("$i")) {
-                continue;
-            }
-
-            if (attrName.endsWith("$t")) {
-                attrName = attrName.substring(0, attrName.length() - 2);
-            }
-
             Attribute attribute = attributesByName.get(attrName);
 
             if (attribute == null) {
@@ -110,14 +95,7 @@ public class SchemaValidatorTransformer implements
                 continue;
             }
 
-            Object inbound = null;
-
-            if (AttributeType.REFERENCE.equals(attribute.getType())) {
-                inbound = Key.valueOf(instance.get(attrName + "$t") + ":"
-                        + instance.get(attrName + "$i"));
-            } else {
-                inbound = e.getValue();
-            }
+            Object inbound = e.getValue();
 
             ValidatorTransformer validator = attributeValidators.get(attrName);
             Object untransformed = validator.untransform(inbound);
@@ -126,5 +104,11 @@ public class SchemaValidatorTransformer implements
         }
 
         return mindlessClone;
+    }
+
+    public Object transformValue(String attrName, Object value) {
+        ValidatorTransformer validator = attributeValidators.get(attrName);
+
+        return validator != null ? validator.validateTransform(value) : value;
     }
 }

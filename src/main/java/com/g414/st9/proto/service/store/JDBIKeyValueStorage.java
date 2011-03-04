@@ -28,6 +28,8 @@ import com.g414.guice.lifecycle.Lifecycle;
 import com.g414.guice.lifecycle.LifecycleRegistration;
 import com.g414.guice.lifecycle.LifecycleSupportBase;
 import com.g414.st9.proto.service.cache.KeyValueCache;
+import com.g414.st9.proto.service.index.JDBISecondaryIndex;
+import com.g414.st9.proto.service.schema.IndexDefinition;
 import com.g414.st9.proto.service.schema.SchemaDefinition;
 import com.g414.st9.proto.service.schema.SchemaValidatorTransformer;
 import com.g414.st9.proto.service.validator.ValidationException;
@@ -43,6 +45,9 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
     @Inject
     protected KeyValueCache cache;
+
+    @Inject
+    protected JDBISecondaryIndex index;
 
     protected final Map<String, Integer> typeCodes = new ConcurrentHashMap<String, Integer>();
 
@@ -105,6 +110,10 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                         final int typeId = SequenceHelper.validateType(
                                 typeCodes, getPrefix(), handle, type, true);
 
+                        final long nextId = (id != null) ? id.longValue()
+                                : SequenceHelper.getNextId(getPrefix(), handle,
+                                        typeId);
+
                         Response schemaResponse = JDBIKeyValueStorage.this
                                 .retrieve("$schema:" + typeId);
 
@@ -120,17 +129,21 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
                                 toInsert = transformer
                                         .validateTransform(readValue);
+
+                                for (IndexDefinition indexDef : definition
+                                        .getIndexes()) {
+                                    index.insertEntity(handle, nextId,
+                                            toInsert, type, indexDef.getName(),
+                                            definition);
+                                }
                             } catch (ValidationException e) {
                                 return Response.status(Status.BAD_REQUEST)
                                         .entity(e.getMessage()).build();
                             } catch (Exception other) {
                                 // do not apply schema
+                                other.printStackTrace();
                             }
                         }
-
-                        final long nextId = (id != null) ? id.longValue()
-                                : SequenceHelper.getNextId(getPrefix(), handle,
-                                        typeId);
 
                         String key = type + ":" + nextId;
 
@@ -314,8 +327,6 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
                 Map<String, Object> toUpdate = readValue;
 
-                System.out.println(schemaResponse.getEntity().toString());
-
                 if (schemaResponse.getStatus() == 200) {
                     SchemaDefinition definition = mapper.readValue(
                             schemaResponse.getEntity().toString(),
@@ -325,11 +336,17 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
                     try {
                         toUpdate = transformer.validateTransform(readValue);
+
+                        for (IndexDefinition indexDef : definition.getIndexes()) {
+                            index.updateEntity(handle, Long.valueOf(keyId),
+                                    toUpdate, (String) keyParts[0],
+                                    indexDef.getName(), definition);
+                        }
                     } catch (ValidationException e) {
                         return Response.status(Status.BAD_REQUEST)
                                 .entity(e.getMessage()).build();
                     } catch (Exception other) {
-                        // do not apply schema
+                        other.printStackTrace();
                     }
                 }
 
@@ -380,6 +397,20 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                 final int typeId = SequenceHelper.validateType(typeCodes,
                         getPrefix(), handle, (String) keyParts[0], false);
                 final long keyId = (Long) keyParts[1];
+
+                Response schemaResponse = JDBIKeyValueStorage.this
+                        .retrieve("$schema:" + typeId);
+
+                if (schemaResponse.getStatus() == 200) {
+                    SchemaDefinition definition = mapper.readValue(
+                            schemaResponse.getEntity().toString(),
+                            SchemaDefinition.class);
+
+                    for (IndexDefinition indexDef : definition.getIndexes()) {
+                        index.deleteEntity(handle, Long.valueOf(keyId),
+                                (String) keyParts[0], indexDef.getName());
+                    }
+                }
 
                 Update delete = handle.createStatement(getPrefix() + "delete");
                 delete.bind("key_type", typeId);

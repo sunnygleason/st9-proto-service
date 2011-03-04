@@ -3,6 +3,10 @@ package com.g414.st9.proto.service.store;
 import org.skife.jdbi.v2.DBI;
 import org.skife.jdbi.v2.IDBI;
 
+import com.g414.st9.proto.service.RealRelationalIndexResource;
+import com.g414.st9.proto.service.SchemaResource;
+import com.g414.st9.proto.service.index.JDBISecondaryIndex;
+import com.g414.st9.proto.service.index.MySQLSecondaryIndex;
 import com.google.inject.AbstractModule;
 import com.google.inject.Binder;
 import com.jolbox.bonecp.BoneCPDataSource;
@@ -32,6 +36,11 @@ public class MySQLKeyValueStorage extends JDBIKeyValueStorage {
 
             binder.bind(KeyValueStorage.class).to(MySQLKeyValueStorage.class)
                     .asEagerSingleton();
+            binder.bind(JDBISecondaryIndex.class).to(MySQLSecondaryIndex.class)
+                    .asEagerSingleton();
+
+            bind(SchemaResource.class).asEagerSingleton();
+            bind(RealRelationalIndexResource.class).asEagerSingleton();
         }
     }
 }
