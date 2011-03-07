@@ -92,5 +92,9 @@ public class SchemaDefinitionValidator {
 
             included.add(colName);
         }
+
+        if (!included.contains("id")) {
+            throw new ValidationException("Index must include 'id' attribute");
+        }
     }
 }

@@ -35,11 +35,6 @@ public class IndexDefinition {
             newAttributeNames.add(attr.getName());
         }
 
-        if (!newAttributeNames.contains("id")) {
-            newAttributeNames.add("id");
-            cols.add(new IndexAttribute("id", SortOrder.ASC));
-        }
-
         this.indexColumns = Collections.unmodifiableList(cols);
         this.attributeNames = Collections.unmodifiableSet(newAttributeNames);
     }

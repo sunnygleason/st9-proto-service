@@ -306,7 +306,7 @@ public abstract class JDBISecondaryIndex {
             List<QueryTerm> termList = termMap.get(attrName);
 
             if (termList == null || termList.isEmpty()) {
-                break;
+                continue;
             }
 
             for (QueryTerm term : termList) {

@@ -20,7 +20,7 @@ NOTE: to use the MySQL storage engine, there must be a database called 'thedb' o
 
 A cook's tour of the Schema api:
 
-$ curl -v -v -X POST --data "{\"attributes\":[{\"name\":\"x\",\"type\":\"I32\"},{\"name\":\"y\",\"type\":\"I32\"}],\"indexes\":[{\"name\":\"xy\",\"cols\":[{\"name\":\"x\",\"sort\":\"ASC\"},{\"name\":\"y\",\"sort\":\"ASC\"}]}]}" -H "Content-Type: application/json" -H "Accept: application/json" "http://localhost:8080/1.0/s/point"
+$ curl -v -v -X POST --data "{\"attributes\":[{\"name\":\"x\",\"type\":\"I32\"},{\"name\":\"y\",\"type\":\"I32\"}],\"indexes\":[{\"name\":\"xy\",\"cols\":[{\"name\":\"x\",\"sort\":\"ASC\"},{\"name\":\"y\",\"sort\":\"ASC\"},{\"name\":\"id\",\"sort\":\"ASC\"}]}]}" -H "Content-Type: application/json" -H "Accept: application/json" "http://localhost:8080/1.0/s/point"
 $ curl -v -v -X GET "http://localhost:8080/1.0/s/point"
 $ curl -v -v -X POST --data "{\"x\":1,\"y\":-1}" -H "Content-Type: application/json" -H "Accept: application/json" "http://localhost:8080/1.0/e/point"
 $ curl -v -v -X POST --data "{\"x\":1,\"y\":true}" -H "Content-Type: application/json" -H "Accept: application/json" "http://localhost:8080/1.0/e/point"
@@ -49,7 +49,7 @@ $ curl -v -v -X GET "http://localhost:8080/1.0/i/foo.index2?q=id+lt+\"foo:2\"+an
 
 More advanced schema and query stuff:
 
-$ curl -v -v -X POST --data "{\"attributes\":[{\"name\":\"msg\",\"type\":\"UTF8_SMALLSTRING\"},{\"name\":\"hotness\",\"type\":\"ENUM\",\"values\":[\"COOL\",\"HOT\"]}],\"indexes\":[{\"name\":\"hotmsg\",\"cols\":[{\"name\":\"hotness\",\"sort\":\"ASC\"},{\"name\":\"msg\",\"sort\":\"ASC\"}]}]}" -H "Content-Type: application/json" -H "Accept: application/json" "http://localhost:8080/1.0/s/message"
+$ curl -v -v -X POST --data "{\"attributes\":[{\"name\":\"msg\",\"type\":\"UTF8_SMALLSTRING\"},{\"name\":\"hotness\",\"type\":\"ENUM\",\"values\":[\"COOL\",\"HOT\"]}],\"indexes\":[{\"name\":\"hotmsg\",\"cols\":[{\"name\":\"hotness\",\"sort\":\"ASC\"},{\"name\":\"msg\",\"sort\":\"ASC\"},{\"name\":\"id\",\"sort\":\"ASC\"}]}]}" -H "Content-Type: application/json" -H "Accept: application/json" "http://localhost:8080/1.0/s/message"
 $ curl -v -v -X POST -H "Content-Type: application/json" -H "Accept: application/json" --data "{\"msg\":\"hello world\",\"hotness\":\"COOL\"}" "http://localhost:8080/1.0/e/message"
 $ curl -v -v -X POST -H "Content-Type: application/json" -H "Accept: application/json" --data "{\"msg\":\"fly like a G6\",\"hotness\":\"HOT\"}" "http://localhost:8080/1.0/e/message"
 $ curl -v -v -X GET "http://localhost:8080/1.0/i2/message.hotmsg?q=hotness+eq+\"COOL\""
