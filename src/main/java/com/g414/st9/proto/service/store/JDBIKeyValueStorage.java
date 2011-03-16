@@ -529,6 +529,40 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
         };
     }
 
+    @Override
+    public Response exportAll() throws Exception {
+        StringBuilder json = new StringBuilder();
+        for (String type : this.getTypes()) {
+            Iterator<Map<String, Object>> entities = this.iterator(type);
+            while (entities.hasNext()) {
+                Map<String, Object> entity = entities.next();
+                json.append(EncodingHelper.convertToJson(entity));
+                json.append("\n");
+            }
+        }
+
+        return Response.status(Status.OK).entity(json.toString()).build();
+    }
+
+    private List<String> getTypes() {
+        return database.inTransaction(new TransactionCallback<List<String>>() {
+            @Override
+            public List<String> inTransaction(Handle handle,
+                    TransactionStatus status) throws Exception {
+                List<String> results = new ArrayList<String>();
+
+                Query<Map<String, Object>> select = handle
+                        .createQuery(getPrefix() + "get_entity_types");
+
+                for (Map<String, Object> object : select.list()) {
+                    results.add((String) object.get("_type_name"));
+                }
+
+                return results;
+            }
+        });
+    }
+
     private byte[] getObjectBytes(final String key, final Object[] keyParts)
             throws Exception {
 

@@ -274,6 +274,21 @@ public class InMemoryKeyValueStorage implements KeyValueStorage {
         };
     }
 
+    @Override
+    public Response exportAll() throws Exception {
+        StringBuilder json = new StringBuilder();
+        for (String type : types.keySet()) {
+            Iterator<Map<String, Object>> entities = this.iterator(type);
+            while (entities.hasNext()) {
+                Map<String, Object> entity = entities.next();
+                json.append(EncodingHelper.convertToJson(entity));
+                json.append("\n");
+            }
+        }
+
+        return Response.status(Status.OK).entity(json.toString()).build();
+    }
+
     private Long nextId(String type) {
         validateType(type);
 

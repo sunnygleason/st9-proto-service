@@ -32,6 +32,11 @@ sqlite_get_type_id() ::=<<
    where `_type_name` = :type_name;
 >>
 
+sqlite_get_entity_types() ::=<< 
+  select `_type_name`
+    from `_key_types`
+>>
+
 sqlite_populate_sequences() ::=<< 
   insert or ignore
     into `_sequences` (`_key_type`, `_next_id`)

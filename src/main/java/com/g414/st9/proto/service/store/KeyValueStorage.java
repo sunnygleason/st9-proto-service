@@ -25,4 +25,6 @@ public interface KeyValueStorage {
 
     public abstract Iterator<Map<String, Object>> iterator(String type)
             throws Exception;
+
+    public abstract Response exportAll() throws Exception;
 }

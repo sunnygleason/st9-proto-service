@@ -57,6 +57,11 @@ mysql_populate_sequences() ::=<<
     (1, 0);
 >>
 
+mysql_get_entity_types() ::=<< 
+  select `_type_name`
+    from `_key_types`
+>>
+
 mysql_create() ::=<< 
   insert into `_key_values` (`_key_type`, `_key_id`, `_created_dt`, `_updated_dt`, `_format`, `_compression`, `_value`)
   values (:key_type, :key_id, :created_dt, :created_dt, 'S', 'F', :value)
