@@ -641,10 +641,12 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
     private Response makeRetrieveResponse(final String type, final String key,
             byte[] valueBytesLzf) throws Exception {
-        LinkedHashMap<String, Object> found = (LinkedHashMap<String, Object>) EncodingHelper
+        Map<String, Object> found = (LinkedHashMap<String, Object>) EncodingHelper
                 .parseSmileLzf(valueBytesLzf);
         found.remove("id");
         found.remove("kind");
+
+        found = schemaUntransform(type, found);
 
         LinkedHashMap<String, Object> value = new LinkedHashMap<String, Object>();
         value.put("id", key);
@@ -654,6 +656,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
         String valueJson = EncodingHelper.convertToJson(value);
         Response createResponse = Response.status(Status.OK).entity(valueJson)
                 .build();
+
         return createResponse;
     }
 
@@ -671,6 +674,8 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                 cached.remove("id");
                 cached.remove("kind");
 
+                cached = schemaUntransform((String) keyParts[0], cached);
+
                 Map<String, Object> newResult = new LinkedHashMap<String, Object>();
                 newResult.put("id", key);
                 newResult.put("kind", keyParts[0]);
@@ -678,7 +683,10 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
                 result.put(key, cached);
             } else if (dbFound.containsKey(key)) {
-                result.put(key, dbFound.get(key));
+                result.put(
+                        key,
+                        schemaUntransform((String) keyParts[0],
+                                (Map<String, Object>) dbFound.get(key)));
             } else {
                 result.put(key, null);
             }
@@ -689,5 +697,29 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
         Response multiResponse = Response.status(Status.OK).entity(valueJson)
                 .build();
         return multiResponse;
+    }
+
+    private Map<String, Object> schemaUntransform(final String type,
+            Map<String, Object> found) throws Exception {
+        Response schemaResponse = JDBIKeyValueStorage.this.retrieve("$schema:"
+                + getTypeId(type));
+
+        if (schemaResponse.getStatus() == 200) {
+            try {
+                SchemaDefinition definition = mapper.readValue(schemaResponse
+                        .getEntity().toString(), SchemaDefinition.class);
+                SchemaValidatorTransformer transformer = new SchemaValidatorTransformer(
+                        definition);
+
+                found = transformer.untransform((Map<String, Object>) found);
+            } catch (ValidationException e) {
+                return found;
+            } catch (Exception other) {
+                // do not apply schema
+                other.printStackTrace();
+            }
+        }
+
+        return found;
     }
 }

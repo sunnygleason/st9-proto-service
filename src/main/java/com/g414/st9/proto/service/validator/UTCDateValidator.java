@@ -8,7 +8,7 @@ import org.joda.time.format.ISODateTimeFormat;
 /**
  * Validates / transforms UTC date values.
  */
-public class UTCDateValidator implements ValidatorTransformer<Object, Long> {
+public class UTCDateValidator implements ValidatorTransformer<Object, Number> {
     private final DateTimeFormatter format = ISODateTimeFormat
             .basicDateTimeNoMillis();
     private final String attribute;
@@ -35,12 +35,13 @@ public class UTCDateValidator implements ValidatorTransformer<Object, Long> {
     }
 
     @Override
-    public Object untransform(Long instance) throws ValidationException {
+    public Object untransform(Number instance) throws ValidationException {
         if (instance == null) {
             throw new ValidationException("'" + attribute
                     + "' must not be null");
         }
 
-        return new DateTime(instance * 1000L, DateTimeZone.UTC);
+        return format.print(new DateTime(instance.longValue() * 1000L,
+                DateTimeZone.UTC));
     }
 }
