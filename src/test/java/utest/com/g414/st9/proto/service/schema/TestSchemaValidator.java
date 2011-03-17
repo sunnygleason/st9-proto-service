@@ -7,6 +7,8 @@ import java.util.Map;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
+import org.joda.time.format.DateTimeFormatter;
+import org.joda.time.format.ISODateTimeFormat;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -20,7 +22,8 @@ public class TestSchemaValidator {
     private final String schema2 = "{\"attributes\":[{\"name\":\"when\",\"type\":\"UTC_DATE_SECS\"},{\"name\":\"lname\",\"type\":\"UTF8_SMALLSTRING\"}],\"indexes\":[]}";
     private final String schema3 = "{\"attributes\":[{\"name\":\"ref\",\"type\":\"REFERENCE\"},{\"name\":\"age\",\"type\":\"U8\"}],\"indexes\":[]}";
     private final String schema4 = "{\"attributes\":[{\"name\":\"x\",\"type\":\"I32\"},{\"name\":\"y\",\"type\":\"I32\"}],\"indexes\":[]}";
-
+    private final DateTimeFormatter format = ISODateTimeFormat
+            .basicDateTimeNoMillis();
     private final ObjectMapper mapper = new ObjectMapper();
 
     public void testSchema1() throws Exception {
@@ -48,11 +51,13 @@ public class TestSchemaValidator {
 
         List<ImmutableMap<String, Object>> instances = new ArrayList<ImmutableMap<String, Object>>();
 
+        instances.add(ImmutableMap.<String, Object> of("when", format
+                .print(new DateTime(
+                        (System.currentTimeMillis() / 1000L) * 1000L,
+                        DateTimeZone.UTC)), "lname", "Dude"));
         instances.add(ImmutableMap.<String, Object> of("when",
-                new DateTime((System.currentTimeMillis() / 1000L) * 1000L,
-                        DateTimeZone.UTC), "lname", "Dude"));
-        instances.add(ImmutableMap.<String, Object> of("when", new DateTime(0,
-                DateTimeZone.UTC), "lname", "Sweet"));
+                format.print(new DateTime(0, DateTimeZone.UTC)), "lname",
+                "Sweet"));
 
         for (ImmutableMap<String, Object> instance : instances) {
             validateInstance(validator, instance);
