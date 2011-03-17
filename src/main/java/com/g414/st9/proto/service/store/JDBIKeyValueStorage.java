@@ -505,6 +505,8 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                     object.remove("id");
                     object.remove("key");
 
+                    object = schemaUntransform(type, object);
+
                     Map<String, Object> result = new LinkedHashMap<String, Object>();
                     result.put("id", nextKey);
                     result.put("kind", keyParts[0]);
