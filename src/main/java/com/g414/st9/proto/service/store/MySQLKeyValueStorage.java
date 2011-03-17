@@ -27,9 +27,10 @@ public class MySQLKeyValueStorage extends JDBIKeyValueStorage {
 
             BoneCPDataSource datasource = new BoneCPDataSource();
             datasource.setDriverClass(Driver.class.getName());
-            datasource.setJdbcUrl("jdbc:mysql://127.0.0.1:3306/thedb");
-            datasource.setUsername("root");
-            datasource.setPassword("");
+            datasource.setJdbcUrl(System.getProperty("jdbc.url",
+                    "jdbc:mysql://127.0.0.1:3306/thedb"));
+            datasource.setUsername(System.getProperty("jdbc.user", "root"));
+            datasource.setPassword(System.getProperty("jdbc.password", ""));
 
             DBI dbi = JDBIHelper.getDBI(datasource);
             binder.bind(IDBI.class).toInstance(dbi);

@@ -73,9 +73,11 @@ public class SqliteKeyValueStorage extends JDBIKeyValueStorage {
 
             BoneCPDataSource datasource = new BoneCPDataSource();
             datasource.setDriverClass(JDBC.class.getName());
-            datasource.setJdbcUrl("jdbc:sqlite:thedb.db");
-            datasource.setUsername("root");
-            datasource.setPassword("notreallyused");
+            datasource.setJdbcUrl(System.getProperty("jdbc.url",
+                    "jdbc:sqlite:thedb.db"));
+            datasource.setUsername(System.getProperty("jdbc.user", "root"));
+            datasource.setPassword(System.getProperty("jdbc.password",
+                    "notreallyused"));
 
             datasource.setConnectionHook(new AbstractConnectionHook() {
                 @Override
