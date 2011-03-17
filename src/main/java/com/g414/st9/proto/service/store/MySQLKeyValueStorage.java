@@ -1,5 +1,7 @@
 package com.g414.st9.proto.service.store;
 
+import javax.ws.rs.core.Response;
+
 import org.skife.jdbi.v2.DBI;
 import org.skife.jdbi.v2.IDBI;
 
@@ -18,6 +20,11 @@ import com.mysql.jdbc.Driver;
 public class MySQLKeyValueStorage extends JDBIKeyValueStorage {
     protected String getPrefix() {
         return "mysql:mysql_";
+    }
+
+    @Override
+    public Response clearRequested() throws Exception {
+        throw new UnsupportedOperationException();
     }
 
     public static class MySQLKeyValueStorageModule extends AbstractModule {

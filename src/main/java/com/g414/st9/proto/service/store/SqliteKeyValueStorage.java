@@ -5,6 +5,7 @@ import java.sql.SQLException;
 import java.util.List;
 
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
 
 import org.skife.jdbi.v2.DBI;
 import org.skife.jdbi.v2.IDBI;
@@ -64,6 +65,13 @@ public class SqliteKeyValueStorage extends JDBIKeyValueStorage {
     @Override
     public synchronized void clear() {
         super.clear();
+    }
+
+    @Override
+    public Response clearRequested() throws Exception {
+        super.clear();
+
+        return Response.status(Status.NO_CONTENT).entity("").build();
     }
 
     public static class SqliteKeyValueStorageModule extends AbstractModule {

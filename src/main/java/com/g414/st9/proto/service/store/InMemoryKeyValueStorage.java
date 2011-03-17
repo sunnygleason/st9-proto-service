@@ -200,6 +200,13 @@ public class InMemoryKeyValueStorage implements KeyValueStorage {
         return Response.status(Status.NO_CONTENT).entity("").build();
     }
 
+    @Override
+    public Response clearRequested() throws Exception {
+        clear();
+
+        return Response.status(Status.NO_CONTENT).entity("").build();
+    }
+
     /**
      * @see com.g414.st9.proto.service.store.KeyValueStorage#clear()
      */

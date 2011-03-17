@@ -21,6 +21,8 @@ public interface KeyValueStorage {
 
     public abstract Response delete(String key) throws Exception;
 
+    public abstract Response clearRequested() throws Exception;
+    
     public abstract void clear();
 
     public abstract Iterator<Map<String, Object>> iterator(String type)
