@@ -3,16 +3,16 @@ CLASSPATH=ENV["CLASSPATH"]
 OPTS = [
   "-Xmx200m",
   "-DoutputDir=/tmp/faban",
-  "-DdriverModule=com.g414.st9.proto.service.perf.scenarios.BasicDriverScenario01\\$GuiceModule",
+  "-DdriverModule=ptest.com.g414.st9.proto.service.perf.BasicDriverScenario01\\$GuiceModule",
   "-DrampUp=60",
-  "-DsteadyState=900",
+  "-DsteadyState=120",
   "-DrampDown=60",
   "-Dmin=1",
   "-Dmax=20000000",
 ].join(" ")
 
 
-THREAD_PARAMS = [8]
+THREAD_PARAMS = [4]
 
 # THREAD_PARAMS = [4, 4, 4, 4, 16, 16, 16, 16]
 
