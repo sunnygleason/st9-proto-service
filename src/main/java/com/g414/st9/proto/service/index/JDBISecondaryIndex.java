@@ -24,6 +24,7 @@ import com.g414.st9.proto.service.schema.IndexAttribute;
 import com.g414.st9.proto.service.schema.IndexDefinition;
 import com.g414.st9.proto.service.schema.SchemaDefinition;
 import com.g414.st9.proto.service.schema.SchemaValidatorTransformer;
+import com.g414.st9.proto.service.store.EncodingHelper;
 import com.g414.st9.proto.service.validator.ValidationException;
 
 public abstract class JDBISecondaryIndex {
@@ -99,6 +100,24 @@ public abstract class JDBISecondaryIndex {
             final String indexName) {
         handle.createStatement(getDeleteStatement(type, indexName))
                 .bind("id", id).execute();
+    }
+
+    public void clear(Handle handle, Iterator<Map<String, Object>> schemas)
+            throws Exception {
+        while (schemas.hasNext()) {
+            Map<String, Object> schema = schemas.next();
+            String type = (String) schema.get("$type");
+
+            for (Map<String, Object> index : (List<Map<String, Object>>) schema
+                    .get("indexes")) {
+                StringBuilder sqlBuilder = new StringBuilder();
+                sqlBuilder.append("drop table if exists ");
+                sqlBuilder
+                        .append(getTableName(type, (String) index.get("name")));
+
+                handle.execute(sqlBuilder.toString());
+            }
+        }
     }
 
     protected static String getColumnName(String attributeName) {

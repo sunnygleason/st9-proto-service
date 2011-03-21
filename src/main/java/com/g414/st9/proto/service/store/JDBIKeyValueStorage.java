@@ -50,6 +50,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
     protected JDBISecondaryIndex index;
 
     protected final Map<String, Integer> typeCodes = new ConcurrentHashMap<String, Integer>();
+    protected final Map<Integer, String> typeNames = new ConcurrentHashMap<Integer, String>();
 
     protected abstract String getPrefix();
 
@@ -83,8 +84,19 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
             @Override
             public Integer inTransaction(Handle handle, TransactionStatus status)
                     throws Exception {
-                return SequenceHelper.validateType(typeCodes, getPrefix(),
-                        handle, type, true);
+                return SequenceHelper.validateType(typeCodes, typeNames,
+                        getPrefix(), handle, type, true);
+            }
+        });
+    }
+
+    public String getTypeName(final Integer id) throws Exception {
+        return database.inTransaction(new TransactionCallback<String>() {
+            @Override
+            public String inTransaction(Handle handle, TransactionStatus status)
+                    throws Exception {
+                return SequenceHelper.getTypeName(id, typeNames, getPrefix(),
+                        handle);
             }
         });
     }
@@ -108,7 +120,8 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                         TransactionStatus status) throws Exception {
                     try {
                         final int typeId = SequenceHelper.validateType(
-                                typeCodes, getPrefix(), handle, type, true);
+                                typeCodes, typeNames, getPrefix(), handle,
+                                type, true);
 
                         final long nextId = (id != null) ? id.longValue()
                                 : SequenceHelper.getNextId(getPrefix(), handle,
@@ -262,7 +275,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                         Object[] keyParts = KeyHelper.validateKey(key);
 
                         final int typeId = SequenceHelper.validateType(
-                                typeCodes, getPrefix(), handle,
+                                typeCodes, typeNames, getPrefix(), handle,
                                 (String) keyParts[0], false);
                         final long keyId = (Long) keyParts[1];
 
@@ -319,7 +332,8 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
             public Response inTransaction(Handle handle,
                     TransactionStatus status) throws Exception {
                 final int typeId = SequenceHelper.validateType(typeCodes,
-                        getPrefix(), handle, (String) keyParts[0], false);
+                        typeNames, getPrefix(), handle, (String) keyParts[0],
+                        false);
                 final long keyId = (Long) keyParts[1];
 
                 Response schemaResponse = JDBIKeyValueStorage.this
@@ -395,7 +409,8 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
             public Response inTransaction(Handle handle,
                     TransactionStatus status) throws Exception {
                 final int typeId = SequenceHelper.validateType(typeCodes,
-                        getPrefix(), handle, (String) keyParts[0], false);
+                        typeNames, getPrefix(), handle, (String) keyParts[0],
+                        false);
                 final long keyId = (Long) keyParts[1];
 
                 Response schemaResponse = JDBIKeyValueStorage.this
@@ -434,13 +449,12 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
      */
     @Override
     public void clear() {
-        typeCodes.clear();
-        cache.clear();
-
         database.inTransaction(new TransactionCallback<Void>() {
             @Override
             public Void inTransaction(Handle handle, TransactionStatus status)
                     throws Exception {
+                index.clear(handle, iterator("$schema"));
+
                 handle.createStatement(getPrefix() + "truncate_key_types")
                         .execute();
                 handle.createStatement(getPrefix() + "truncate_sequences")
@@ -453,6 +467,10 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                 return null;
             }
         });
+
+        typeCodes.clear();
+        typeNames.clear();
+        cache.clear();
     }
 
     @Override
@@ -510,6 +528,12 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                     Map<String, Object> result = new LinkedHashMap<String, Object>();
                     result.put("id", nextKey);
                     result.put("kind", keyParts[0]);
+
+                    if (type.equals("$schema")) {
+                        result.put("$type",
+                                getTypeName(((Long) keyParts[1]).intValue()));
+                    }
+
                     result.putAll(object);
 
                     nextKey = advance();
@@ -583,7 +607,8 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
                 if (valueBytesLzf == null) {
                     final int typeId = SequenceHelper.validateType(typeCodes,
-                            getPrefix(), handle, (String) keyParts[0], false);
+                            typeNames, getPrefix(), handle,
+                            (String) keyParts[0], false);
                     final long keyId = (Long) keyParts[1];
 
                     Query<Map<String, Object>> select = handle
@@ -612,7 +637,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
             @Override
             public Iterator<String> withHandle(Handle handle) throws Exception {
                 final int typeId = SequenceHelper.validateType(typeCodes,
-                        getPrefix(), handle, type, false);
+                        typeNames, getPrefix(), handle, type, false);
 
                 Query<Map<String, Object>> select = handle
                         .createQuery(getPrefix() + "key_ids_of_type");

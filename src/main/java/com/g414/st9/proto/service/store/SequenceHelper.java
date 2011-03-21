@@ -14,7 +14,8 @@ import org.skife.jdbi.v2.Update;
 public class SequenceHelper {
 
     public static Integer validateType(Map<String, Integer> typeCodes,
-            String prefix, Handle handle, final String type, boolean doCreate) {
+            Map<Integer, String> typeNames, String prefix, Handle handle,
+            final String type, boolean doCreate) {
         if (type == null || type.length() == 0 || type.indexOf(":") != -1) {
             throw new WebApplicationException(Response
                     .status(Status.BAD_REQUEST).entity("Invalid entity 'type'")
@@ -60,6 +61,7 @@ public class SequenceHelper {
         }
 
         typeCodes.put(type, typeId);
+        typeNames.put(typeId, type);
 
         return typeId;
     }
@@ -74,5 +76,34 @@ public class SequenceHelper {
         query.bind("key_type", typeId);
 
         return ((Number) query.first().get("_next_id")).longValue();
+    }
+
+    public static String getTypeName(Integer id,
+            Map<Integer, String> typeNames, String prefix, Handle handle) {
+        if (id == null || id < 0) {
+            throw new WebApplicationException(Response
+                    .status(Status.BAD_REQUEST).entity("Invalid entity 'type'")
+                    .build());
+        }
+
+        if (typeNames.containsKey(id)) {
+            return typeNames.get(id);
+        }
+
+        Query<Map<String, Object>> query = handle.createQuery(prefix
+                + "get_type_name");
+        query.bind("key_type", id);
+        List<Map<String, Object>> result = query.list();
+
+        if (result == null || result.isEmpty()) {
+            throw new WebApplicationException(Response
+                    .status(Status.BAD_REQUEST).entity("Invalid entity 'type'")
+                    .build());
+        }
+
+        String typeName = (String) result.iterator().next().get("_type_name");
+        typeNames.put(id, typeName);
+
+        return typeName;
     }
 }
