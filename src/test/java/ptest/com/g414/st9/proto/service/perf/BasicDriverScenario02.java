@@ -11,11 +11,11 @@ import com.sun.faban.driver.BenchmarkOperation;
 import com.sun.faban.driver.FlatMix;
 import com.sun.faban.driver.NegativeExponential;
 
-@BenchmarkDefinition(name = "BasicDriverScenario01", version = "1.0")
-@BenchmarkDriver(name = "BasicDriverScenario01", responseTimeUnit = TimeUnit.MICROSECONDS)
-@FlatMix(operations = { "create", "retrieve" }, mix = { 0.5, 0.5 })
-public class BasicDriverScenario01 extends BasicDriverScenarioBase {
-    public BasicDriverScenario01() throws Exception {
+@BenchmarkDefinition(name = "BasicDriverScenario02", version = "1.0")
+@BenchmarkDriver(name = "BasicDriverScenario02", responseTimeUnit = TimeUnit.MICROSECONDS)
+@FlatMix(operations = { "create", "update", "retrieve" }, mix = { 0.1, 0.1, 0.8 })
+public class BasicDriverScenario02 extends BasicDriverScenarioBase {
+    public BasicDriverScenario02() throws Exception {
         super();
     }
 
@@ -23,6 +23,12 @@ public class BasicDriverScenario01 extends BasicDriverScenarioBase {
     @NegativeExponential(cycleType = THINKTIME, cycleMean = 0, cycleDeviation = 0.0)
     public void create() throws Exception {
         super.create();
+    }
+
+    @BenchmarkOperation(name = "update", max90th = 100000)
+    @NegativeExponential(cycleType = THINKTIME, cycleMean = 0, cycleDeviation = 0.0)
+    public void update() throws Exception {
+        super.update();
     }
 
     @BenchmarkOperation(name = "retrieve", max90th = 100000)
@@ -37,7 +43,7 @@ public class BasicDriverScenario01 extends BasicDriverScenarioBase {
             super.configure();
 
             bind(Key.get(Object.class, BenchmarkDriver.class)).to(
-                    BasicDriverScenario01.class);
+                    BasicDriverScenario02.class);
         }
     }
 }

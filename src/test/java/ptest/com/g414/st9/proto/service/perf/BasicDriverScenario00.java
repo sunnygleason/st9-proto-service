@@ -11,11 +11,11 @@ import com.sun.faban.driver.BenchmarkOperation;
 import com.sun.faban.driver.FlatMix;
 import com.sun.faban.driver.NegativeExponential;
 
-@BenchmarkDefinition(name = "BasicDriverScenario01", version = "1.0")
-@BenchmarkDriver(name = "BasicDriverScenario01", responseTimeUnit = TimeUnit.MICROSECONDS)
-@FlatMix(operations = { "create", "retrieve" }, mix = { 0.5, 0.5 })
-public class BasicDriverScenario01 extends BasicDriverScenarioBase {
-    public BasicDriverScenario01() throws Exception {
+@BenchmarkDefinition(name = "BasicDriverScenario00", version = "1.0")
+@BenchmarkDriver(name = "BasicDriverScenario00", responseTimeUnit = TimeUnit.MICROSECONDS)
+@FlatMix(operations = { "create" }, mix = { 1.0 })
+public class BasicDriverScenario00 extends BasicDriverScenarioBase {
+    public BasicDriverScenario00() throws Exception {
         super();
     }
 
@@ -25,19 +25,13 @@ public class BasicDriverScenario01 extends BasicDriverScenarioBase {
         super.create();
     }
 
-    @BenchmarkOperation(name = "retrieve", max90th = 100000)
-    @NegativeExponential(cycleType = THINKTIME, cycleMean = 0, cycleDeviation = 0.0)
-    public void retrieve() throws Exception {
-        super.retrieve();
-    }
-
     public static class GuiceModule extends BasicDriverScenarioBase.GuiceModule {
         @Override
         protected void configure() {
             super.configure();
 
             bind(Key.get(Object.class, BenchmarkDriver.class)).to(
-                    BasicDriverScenario01.class);
+                    BasicDriverScenario00.class);
         }
     }
 }

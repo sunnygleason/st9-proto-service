@@ -18,8 +18,10 @@ public class RedisKeyValueCache implements KeyValueCache {
     private final int timeoutSecs = 15 * 60;
 
     @Inject
-    public RedisKeyValueCache(JedisPool jedisPool) {
-        this.jedisPool = jedisPool;
+    public RedisKeyValueCache() {
+        this.jedisPool = new JedisPool(System.getProperty("redis.host",
+                "localhost"), Integer.parseInt(System.getProperty("redis.port",
+                "6379")));
     }
 
     @Override

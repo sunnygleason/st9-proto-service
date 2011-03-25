@@ -3,9 +3,8 @@ package com.g414.st9.proto.service.cache;
 import java.util.Collection;
 import java.util.Map;
 
+import net.spy.memcached.AddrUtil;
 import net.spy.memcached.MemcachedClient;
-
-import com.google.inject.Inject;
 
 /**
  * Memcached implementation of Ye Trusty Key Value Cache.
@@ -14,10 +13,9 @@ public class MemcachedKeyValueCache implements KeyValueCache {
     private final MemcachedClient memcachedClient;
     private final int timeoutSecs = 15 * 60;
 
-    @Inject
-    public MemcachedKeyValueCache(MemcachedClient memcachedClient,
-            String keyPrefix) {
-        this.memcachedClient = memcachedClient;
+    public MemcachedKeyValueCache() throws Exception {
+        this.memcachedClient = new MemcachedClient(AddrUtil.getAddresses(System
+                .getProperty("memcached.host", "localhost:11211")));
     }
 
     public byte[] get(final String key) throws Exception {
