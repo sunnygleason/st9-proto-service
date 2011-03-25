@@ -4,9 +4,6 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Binder;
-
 /**
  * This is the Tiniest Cache Ever(TM).
  */
@@ -32,14 +29,5 @@ public class EmptyKeyValueCache implements KeyValueCache {
 
     @Override
     public void clear() {
-    }
-
-    public static class EmptyKeyValueCacheModule extends AbstractModule {
-        @Override
-        public void configure() {
-            Binder binder = binder();
-
-            binder.bind(KeyValueCache.class).to(EmptyKeyValueCache.class);
-        }
     }
 }

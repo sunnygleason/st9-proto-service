@@ -20,7 +20,9 @@ import com.g414.guice.lifecycle.Lifecycle;
 import com.g414.guice.lifecycle.LifecycleModule;
 import com.g414.st9.proto.service.KeyValueResource;
 import com.g414.st9.proto.service.ServiceModule;
-import com.g414.st9.proto.service.cache.EmptyKeyValueCache.EmptyKeyValueCacheModule;
+import com.g414.st9.proto.service.cache.EmptyKeyValueCache;
+import com.g414.st9.proto.service.cache.KeyValueCache;
+import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Module;
@@ -33,8 +35,13 @@ public abstract class KeyValueResourceTestBase {
 
     public KeyValueResourceTestBase() {
         Injector injector = Guice.createInjector(new LifecycleModule(),
-                getKeyValueStorageModule(), new EmptyKeyValueCacheModule(),
-                new ServiceModule());
+                getKeyValueStorageModule(), new AbstractModule() {
+                    @Override
+                    protected void configure() {
+                        bind(KeyValueCache.class).toInstance(
+                                new EmptyKeyValueCache());
+                    }
+                }, new ServiceModule());
 
         this.kvResource = injector.getInstance(KeyValueResource.class);
 

@@ -8,8 +8,6 @@ import java.util.Map;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 
-import com.google.inject.Inject;
-
 /**
  * Redis implementation of Ye Trusty Key Value Cache.
  */
@@ -17,7 +15,6 @@ public class RedisKeyValueCache implements KeyValueCache {
     private final JedisPool jedisPool;
     private final int timeoutSecs = 15 * 60;
 
-    @Inject
     public RedisKeyValueCache() {
         this.jedisPool = new JedisPool(System.getProperty("redis.host",
                 "localhost"), Integer.parseInt(System.getProperty("redis.port",

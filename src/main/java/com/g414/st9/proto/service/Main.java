@@ -5,8 +5,10 @@ import org.eclipse.jetty.servlet.ServletContextHandler;
 
 import com.g414.guice.lifecycle.Lifecycle;
 import com.g414.guice.lifecycle.LifecycleModule;
-import com.g414.st9.proto.service.cache.EmptyKeyValueCache.EmptyKeyValueCacheModule;
+import com.g414.st9.proto.service.cache.EmptyKeyValueCache;
+import com.g414.st9.proto.service.cache.KeyValueCache;
 import com.g414.st9.proto.service.store.SqliteKeyValueStorage.SqliteKeyValueStorageModule;
+import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Module;
@@ -47,9 +49,20 @@ public class Main {
     }
 
     private static Module getCacheModule() throws Exception {
-        String moduleName = System.getProperty("st9.cacheModule",
-                EmptyKeyValueCacheModule.class.getName());
+        final String moduleName = System.getProperty("st9.cacheClass",
+                EmptyKeyValueCache.class.getName());
 
-        return (Module) Class.forName(moduleName).newInstance();
+        return new AbstractModule() {
+            @Override
+            protected void configure() {
+                try {
+                    bind(KeyValueCache.class).toInstance(
+                            (KeyValueCache) Class.forName(moduleName)
+                                    .newInstance());
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
     }
 }
