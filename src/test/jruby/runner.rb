@@ -4,6 +4,8 @@ OPTS = [
   "-Xmx200m",
   "-DoutputDir=/tmp/faban",
   "-DdriverModule=ptest.com.g414.st9.proto.service.perf.BasicDriverScenario01\\$GuiceModule",
+  "-Dhttp.host=localhost",
+  "-Dhttp.port=8080",
   "-DrampUp=60",
   "-DsteadyState=120",
   "-DrampDown=60",

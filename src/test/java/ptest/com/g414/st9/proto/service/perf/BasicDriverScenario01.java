@@ -36,8 +36,9 @@ public class BasicDriverScenario01 {
     private Random random = new Random();
 
     private final EntityGenerator entities = BasicEntity.createGenerator();
-    private final String host = "localhost";
-    private final int port = 8080;
+    private final String host = System.getProperty("http.host", "localhost");
+    private final int port = Integer.parseInt(System.getProperty("http.port",
+            "8080"));
 
     private volatile long maxId = 0L;
 
