@@ -7,7 +7,6 @@ import static org.testng.Assert.assertTrue;
 import java.util.Iterator;
 import java.util.Map;
 
-import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 

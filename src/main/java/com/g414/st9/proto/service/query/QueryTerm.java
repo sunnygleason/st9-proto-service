@@ -26,4 +26,9 @@ public class QueryTerm {
     public QueryValue getValue() {
         return value;
     }
+
+    @Override
+    public String toString() {
+        return this.field + " " + this.operator.name() + " " + this.value;
+    }
 }

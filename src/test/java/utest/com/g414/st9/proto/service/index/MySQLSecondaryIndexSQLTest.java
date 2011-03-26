@@ -8,7 +8,7 @@ import com.g414.st9.proto.service.schema.SchemaDefinition;
 import com.g414.st9.proto.service.schema.SchemaDefinitionValidator;
 
 @Test
-public class TestMySQLSecondaryIndex extends TestSecondaryIndexBase {
+public class MySQLSecondaryIndexSQLTest extends SecondaryIndexSQLTestBase {
     public void testSchemaSpecific() throws Exception {
         SchemaDefinition def = mapper
                 .readValue(schema4, SchemaDefinition.class);

@@ -7,7 +7,7 @@ import org.testng.annotations.Test;
 import com.g414.st9.proto.service.schema.SchemaDefinition;
 
 @Test
-public class TestSchema {
+public class SchemaTest {
     private final String schema1 = "{\"attributes\":[{\"name\":\"isAwesome\",\"type\":\"BOOLEAN\"}],\"indexes\":[]}";
     private final ObjectMapper mapper = new ObjectMapper();
 
@@ -16,7 +16,6 @@ public class TestSchema {
                 .readValue(schema1, SchemaDefinition.class);
 
         String redux = mapper.writeValueAsString(def);
-        System.out.println(redux);
 
         Assert.assertEquals(redux, schema1);
     }

@@ -10,6 +10,7 @@ import org.antlr.runtime.Token;
 import org.antlr.runtime.tree.CommonTree;
 import org.antlr.runtime.tree.CommonTreeAdaptor;
 import org.antlr.runtime.tree.TreeAdaptor;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import com.g414.st9.proto.service.query.QueryLexer;
@@ -41,24 +42,11 @@ public class QueryTest {
         List<QueryTerm> foo = new ArrayList<QueryTerm>();
         term_list_return x = parser.term_list(foo);
 
-        System.out.println(foo);
+        Assert.assertEquals(foo.toString(),
+                "[foo EQ -1, _x NE \"wha\", _bar_val GT 9.91]");
 
-        printTree((CommonTree) x.getTree(), 2);
+        Assert.assertTrue(foo.size() == 3);
 
         return x;
     }
-
-    private void printTree(CommonTree t, int indent) {
-        System.out.println(t.getType() + " " + t.getChildCount());
-        if (t != null) {
-            StringBuffer sb = new StringBuffer(indent);
-            for (int i = 0; i < indent; i++)
-                sb = sb.append("   ");
-            for (int i = 0; i < t.getChildCount(); i++) {
-                System.out.println(sb.toString() + t.getChild(i).toString());
-                printTree((CommonTree) t.getChild(i), indent + 1);
-            }
-        }
-    }
-
 }

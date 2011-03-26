@@ -9,6 +9,7 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import com.g414.st9.proto.service.index.MySQLSecondaryIndex;
+import com.g414.st9.proto.service.index.OpaquePaginationHelper;
 import com.g414.st9.proto.service.query.QueryOperator;
 import com.g414.st9.proto.service.query.QueryTerm;
 import com.g414.st9.proto.service.query.QueryValue;
@@ -18,7 +19,7 @@ import com.g414.st9.proto.service.schema.SchemaDefinitionValidator;
 import com.google.inject.internal.ImmutableList;
 
 @Test
-public abstract class TestSecondaryIndexBase {
+public abstract class SecondaryIndexSQLTestBase {
     protected final String schema4 = "{\"attributes\":[{\"name\":\"x\",\"type\":\"I32\"},{\"name\":\"y\",\"type\":\"I32\"}],"
             + "\"indexes\":[{\"name\":\"xy\",\"cols\":["
             + "{\"name\":\"x\",\"sort\":\"ASC\"},{\"name\":\"y\",\"sort\":\"ASC\"},{\"name\":\"id\",\"sort\":\"ASC\"}]}]}";
@@ -67,8 +68,10 @@ public abstract class TestSecondaryIndexBase {
 
         Map<String, Object> bindParams0 = new LinkedHashMap<String, Object>();
         Assert.assertEquals(
-                "select `_id` from `_i_schema4_xy` where `_x` > :p0 AND `_y` > :p1 AND `_y` < :p2 AND `_id` = :p3",
-                mysql.getIndexQuery("schema4", "xy", query0, def, bindParams0));
+                "select `_id` from `_i_schema4_xy` where `_x` > :p0 AND `_y` > :p1 AND `_y` < :p2 AND `_id` = :p3 order by `_x` ASC, `_y` ASC, `_id` ASC limit 26 offset 0",
+                mysql.getIndexQuery("schema4", "xy", query0, null,
+                        OpaquePaginationHelper.DEFAULT_PAGE_SIZE, def,
+                        bindParams0));
 
         Assert.assertEquals("{p0=1, p1=10, p2=20, p3=3}",
                 bindParams0.toString());
@@ -83,8 +86,10 @@ public abstract class TestSecondaryIndexBase {
 
         Map<String, Object> bindParams1 = new LinkedHashMap<String, Object>();
         Assert.assertEquals(
-                "select `_id` from `_i_schema4_xy` where `_x` > :p0 AND `_y` > :p1 AND `_y` < :p2",
-                mysql.getIndexQuery("schema4", "xy", query1, def, bindParams1));
+                "select `_id` from `_i_schema4_xy` where `_x` > :p0 AND `_y` > :p1 AND `_y` < :p2 order by `_x` ASC, `_y` ASC, `_id` ASC limit 26 offset 0",
+                mysql.getIndexQuery("schema4", "xy", query1, null,
+                        OpaquePaginationHelper.DEFAULT_PAGE_SIZE, def,
+                        bindParams1));
 
         Assert.assertEquals("{p0=1, p1=10, p2=20}", bindParams1.toString());
 
@@ -95,8 +100,10 @@ public abstract class TestSecondaryIndexBase {
 
         Map<String, Object> bindParams2 = new LinkedHashMap<String, Object>();
         Assert.assertEquals(
-                "select `_id` from `_i_schema4_xy` where `_x` is null AND `_y` is not null",
-                mysql.getIndexQuery("schema4", "xy", query2, def, bindParams2));
+                "select `_id` from `_i_schema4_xy` where `_x` is null AND `_y` is not null order by `_x` ASC, `_y` ASC, `_id` ASC limit 26 offset 0",
+                mysql.getIndexQuery("schema4", "xy", query2, null,
+                        OpaquePaginationHelper.DEFAULT_PAGE_SIZE, def,
+                        bindParams2));
 
         Assert.assertEquals("{}", bindParams2.toString());
     }

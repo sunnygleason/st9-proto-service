@@ -24,7 +24,6 @@ import com.g414.st9.proto.service.schema.IndexAttribute;
 import com.g414.st9.proto.service.schema.IndexDefinition;
 import com.g414.st9.proto.service.schema.SchemaDefinition;
 import com.g414.st9.proto.service.schema.SchemaValidatorTransformer;
-import com.g414.st9.proto.service.store.EncodingHelper;
 import com.g414.st9.proto.service.validator.ValidationException;
 
 public abstract class JDBISecondaryIndex {
@@ -120,6 +119,10 @@ public abstract class JDBISecondaryIndex {
         }
     }
 
+    protected static String getColumnName(String attributeName, boolean doQuote) {
+        return doQuote ? getColumnName(attributeName) : "_" + attributeName;
+    }
+
     protected static String getColumnName(String attributeName) {
         return "`_" + attributeName + "`";
     }
@@ -166,6 +169,7 @@ public abstract class JDBISecondaryIndex {
         }
 
         sqlBuilder.append(")");
+
         return sqlBuilder.toString();
     }
 
@@ -268,14 +272,14 @@ public abstract class JDBISecondaryIndex {
         return sqlBuilder.toString();
     }
 
-    public List<Long> doIndexQuery(IDBI database, String type,
-            String indexName, List<QueryTerm> queryTerms,
-            SchemaDefinition schemaDefinition) {
-        final List<Long> resultIds = new ArrayList<Long>();
+    public List<Map<String, Object>> doIndexQuery(IDBI database, String type,
+            String indexName, List<QueryTerm> queryTerms, String token,
+            Long pageSize, SchemaDefinition schemaDefinition) throws Exception {
+        final List<Map<String, Object>> resultIds = new ArrayList<Map<String, Object>>();
         final Map<String, Object> bindParams = new LinkedHashMap<String, Object>();
 
         final String querySql = getIndexQuery(type, indexName, queryTerms,
-                schemaDefinition, bindParams);
+                token, pageSize, schemaDefinition, bindParams);
 
         database.inTransaction(new TransactionCallback<Void>() {
             @Override
@@ -288,7 +292,7 @@ public abstract class JDBISecondaryIndex {
                 }
 
                 for (Map<String, Object> r : query.list()) {
-                    resultIds.add(((Number) r.get("_id")).longValue());
+                    resultIds.add(r);
                 }
 
                 return null;
@@ -299,8 +303,9 @@ public abstract class JDBISecondaryIndex {
     }
 
     public String getIndexQuery(String type, String indexName,
-            List<QueryTerm> queryTerms, SchemaDefinition schemaDefinition,
-            Map<String, Object> bindParams) {
+            List<QueryTerm> queryTerms, String token, Long pageSize,
+            SchemaDefinition schemaDefinition, Map<String, Object> bindParams)
+            throws Exception {
         IndexDefinition indexDefinition = schemaDefinition.getIndexMap().get(
                 indexName);
 
@@ -348,11 +353,24 @@ public abstract class JDBISecondaryIndex {
             }
         }
 
+        List<String> sortOrders = new ArrayList<String>();
+        for (IndexAttribute attr : indexDefinition.getIndexAttributes()) {
+            String colName = getColumnName(attr.getName());
+            sortOrders.add(colName + " " + attr.getSortOrder().name());
+        }
+
         StringBuilder sqlBuilder = new StringBuilder();
-        sqlBuilder.append("select `_id` from ");
+        sqlBuilder.append("select `_id`");
+        sqlBuilder.append(" from ");
         sqlBuilder.append(getTableName(type, indexName));
         sqlBuilder.append(" where ");
         sqlBuilder.append(StringHelper.join(" AND ", clauses));
+        sqlBuilder.append(" order by ");
+        sqlBuilder.append(StringHelper.join(", ", sortOrders));
+        sqlBuilder.append(" limit ");
+        sqlBuilder.append(pageSize + 1L);
+        sqlBuilder.append(" offset ");
+        sqlBuilder.append(OpaquePaginationHelper.decodeOpaqueCursor(token));
 
         return sqlBuilder.toString();
     }

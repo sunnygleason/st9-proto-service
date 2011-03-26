@@ -49,4 +49,21 @@ public class QueryValue {
     public Object getValue() {
         return value;
     }
+
+    @Override
+    public String toString() {
+        switch (valueType) {
+        case DECIMAL:
+        case INTEGER:
+            return this.value.toString();
+        case STRING:
+            return literal;
+        case BOOLEAN:
+            return Boolean.valueOf(literal).toString();
+        case NULL:
+            return null;
+        default:
+            throw new IllegalArgumentException("unknown type: " + valueType);
+        }
+    }
 }
