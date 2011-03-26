@@ -1,6 +1,10 @@
 package com.g414.st9.proto.service;
 
+import org.eclipse.jetty.server.Handler;
+import org.eclipse.jetty.server.NCSARequestLog;
 import org.eclipse.jetty.server.Server;
+import org.eclipse.jetty.server.handler.HandlerCollection;
+import org.eclipse.jetty.server.handler.RequestLogHandler;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 
 import com.g414.guice.lifecycle.Lifecycle;
@@ -19,6 +23,10 @@ import com.google.inject.servlet.GuiceFilter;
  */
 public class Main {
     public static void main(String[] args) throws Exception {
+        if (System.getProperty("java.net.preferIPv4Stack") == null) {
+            System.setProperty("java.net.preferIPv4Stack", "true");
+        }
+
         int port = (args.length == 1) ? Integer.parseInt(args[0]) : 8080;
 
         Server server = new Server(port);
@@ -34,11 +42,30 @@ public class Main {
         root.addFilter(GuiceFilter.class, "/*", 0);
         root.addServlet(EmptyServlet.class, "/*");
 
+        HandlerCollection handlers = new HandlerCollection();
+        handlers.setHandlers(new Handler[] { root,
+                getSecondaryLogHandler(System.getProperty("log.dir", "logs")) });
+        server.setHandler(handlers);
+
         Lifecycle lifecycle = parentInjector.getInstance(Lifecycle.class);
         lifecycle.init();
         lifecycle.start();
 
         server.start();
+    }
+
+    private static RequestLogHandler getSecondaryLogHandler(String localLogPath) {
+        RequestLogHandler logHandler = new RequestLogHandler();
+        NCSARequestLog requestLog = new NCSARequestLog(localLogPath
+                + "/jetty-yyyy_mm_dd.request.log");
+        requestLog.setRetainDays(180);
+        requestLog.setAppend(true);
+        requestLog.setExtended(true);
+        requestLog.setLogLatency(true);
+        requestLog.setLogTimeZone("UTC");
+        logHandler.setRequestLog(requestLog);
+
+        return logHandler;
     }
 
     private static Module getStorageModule() throws Exception {
