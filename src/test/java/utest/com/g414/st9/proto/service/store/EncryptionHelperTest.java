@@ -19,13 +19,16 @@ public class EncryptionHelperTest {
             for (int i = 0; i < 100; i++) {
                 Key key1 = new Key(enc, random.nextLong());
                 Key key2 = new Key(enc, key1.getId());
+
                 Assert.assertEquals(
-                        KeyEncryptionHelper.decrypt(key1.getEncryptedIdentifier())
-                                .getIdentifier(), key1.getIdentifier());
+                        KeyEncryptionHelper.decrypt(
+                                key1.getEncryptedIdentifier()).getIdentifier(),
+                        key1.getIdentifier());
                 Assert.assertEquals(
-                        KeyEncryptionHelper.decrypt(key2.getEncryptedIdentifier())
-                                .getIdentifier(), key1.getIdentifier());
-                Assert.assertNotSame(key1.getEncryptedIdentifier(),
+                        KeyEncryptionHelper.decrypt(
+                                key2.getEncryptedIdentifier()).getIdentifier(),
+                        key1.getIdentifier());
+                Assert.assertEquals(key1.getEncryptedIdentifier(),
                         key2.getEncryptedIdentifier());
             }
         }
