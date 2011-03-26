@@ -33,8 +33,8 @@ import com.google.inject.Inject;
  * A silly and simple jersey resource that does secondary index search
  * operations for KV documents using a "real" db index.
  */
-@Path("/1.0/i2")
-public class RealRelationalIndexResource {
+@Path("/1.0/i")
+public class SecondaryIndexResource {
     @Inject
     private IDBI database;
 

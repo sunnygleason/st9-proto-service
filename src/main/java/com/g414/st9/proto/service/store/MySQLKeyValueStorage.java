@@ -5,7 +5,7 @@ import javax.ws.rs.core.Response;
 import org.skife.jdbi.v2.DBI;
 import org.skife.jdbi.v2.IDBI;
 
-import com.g414.st9.proto.service.RealRelationalIndexResource;
+import com.g414.st9.proto.service.SecondaryIndexResource;
 import com.g414.st9.proto.service.SchemaResource;
 import com.g414.st9.proto.service.index.JDBISecondaryIndex;
 import com.g414.st9.proto.service.index.MySQLSecondaryIndex;
@@ -48,7 +48,7 @@ public class MySQLKeyValueStorage extends JDBIKeyValueStorage {
                     .asEagerSingleton();
 
             bind(SchemaResource.class).asEagerSingleton();
-            bind(RealRelationalIndexResource.class).asEagerSingleton();
+            bind(SecondaryIndexResource.class).asEagerSingleton();
         }
     }
 }

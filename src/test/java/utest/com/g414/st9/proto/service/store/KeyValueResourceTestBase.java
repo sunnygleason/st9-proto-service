@@ -22,6 +22,8 @@ import com.g414.st9.proto.service.KeyValueResource;
 import com.g414.st9.proto.service.ServiceModule;
 import com.g414.st9.proto.service.cache.EmptyKeyValueCache;
 import com.g414.st9.proto.service.cache.KeyValueCache;
+import com.g414.st9.proto.service.store.EncodingHelper;
+import com.g414.st9.proto.service.store.Key;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
@@ -180,13 +182,17 @@ public abstract class KeyValueResourceTestBase {
                 "{\"id\":\"bar:2\",\"kind\":\"bar\"}");
 
         Iterator<Map<String, Object>> fooIter = kvResource.iterator("foo");
-        assertEquals("foo", fooIter.next().get("kind"));
-        assertEquals("foo", fooIter.next().get("kind"));
+        assertEquals("foo:1", Key.valueOf((String) fooIter.next().get("id"))
+                .getIdentifier());
+        assertEquals("foo:2", Key.valueOf((String) fooIter.next().get("id"))
+                .getIdentifier());
         assertFalse(fooIter.hasNext());
 
         Iterator<Map<String, Object>> barIter = kvResource.iterator("bar");
-        assertEquals("bar", barIter.next().get("kind"));
-        assertEquals("bar", barIter.next().get("kind"));
+        assertEquals("bar:1", Key.valueOf((String) barIter.next().get("id"))
+                .getIdentifier());
+        assertEquals("bar:2", Key.valueOf((String) barIter.next().get("id"))
+                .getIdentifier());
         assertFalse(barIter.hasNext());
     }
 
@@ -215,69 +221,86 @@ public abstract class KeyValueResourceTestBase {
                 Status.BAD_REQUEST, "Invalid entity 'value'");
     }
 
-    @Test(expectedExceptions = WebApplicationException.class)
     public void testCreateFailureBadValueJson() throws Exception {
-        assertResponseMatches(kvResource.createEntity("foo", "{}"), Status.OK,
-                "{\"id\":\"foo:1\",\"kind\":\"foo\"}");
-
-        kvResource.updateEntity("foo", "{bad value}");
+        assertResponseMatches(kvResource.createEntity("foo", "{bad value}"),
+                Status.BAD_REQUEST, "Invalid entity 'value'");
     }
 
     public void testRetrieveFailureBadKey() throws Exception {
         assertResponseMatches(kvResource.retrieveEntity("foo"),
-                Status.BAD_REQUEST, "Invalid entity 'id'");
+                Status.BAD_REQUEST, "Invalid key");
     }
 
-    @Test(expectedExceptions = WebApplicationException.class)
     public void testUpdateFailureBadKeyNoId() throws Exception {
-        kvResource.updateEntity("foo", "{}");
+        assertResponseMatches(kvResource.updateEntity("foo", "{}"),
+                Status.BAD_REQUEST, "Invalid key");
     }
 
-    @Test(expectedExceptions = WebApplicationException.class)
     public void testUpdateFailureBadKeyNull() throws Exception {
         assertResponseMatches(kvResource.updateEntity(null, "{}"),
-                Status.BAD_REQUEST, "");
+                Status.BAD_REQUEST, "Invalid key");
     }
 
-    @Test(expectedExceptions = WebApplicationException.class)
     public void testUpdateFailureBadKeyEmpty() throws Exception {
         assertResponseMatches(kvResource.updateEntity("", "{}"),
-                Status.BAD_REQUEST, "");
+                Status.BAD_REQUEST, "Invalid key");
     }
 
-    @Test(expectedExceptions = WebApplicationException.class)
     public void testUpdateFailureBadValueNull() throws Exception {
         assertResponseMatches(kvResource.createEntity("foo", "{}"), Status.OK,
                 "{\"id\":\"foo:1\",\"kind\":\"foo\"}");
 
-        kvResource.updateEntity("foo", null);
+        assertResponseMatches(kvResource.updateEntity("foo:1", null),
+                Status.BAD_REQUEST, "Invalid entity 'value'");
     }
 
-    @Test(expectedExceptions = WebApplicationException.class)
     public void testUpdateFailureBadValueEmpty() throws Exception {
         assertResponseMatches(kvResource.createEntity("foo", "{}"), Status.OK,
                 "{\"id\":\"foo:1\",\"kind\":\"foo\"}");
 
-        kvResource.updateEntity("foo", "");
+        assertResponseMatches(kvResource.updateEntity("foo", ""),
+                Status.BAD_REQUEST, "Invalid key");
     }
 
-    @Test(expectedExceptions = WebApplicationException.class)
     public void testUpdateFailureBadValueJson() throws Exception {
         assertResponseMatches(kvResource.createEntity("foo", "{}"), Status.OK,
                 "{\"id\":\"foo:1\",\"kind\":\"foo\"}");
 
-        kvResource.updateEntity("foo", "{bad value}");
+        assertResponseMatches(kvResource.updateEntity("foo:1", "{bad value}"),
+                Status.BAD_REQUEST, "Invalid entity 'value'");
     }
 
-    @Test(expectedExceptions = WebApplicationException.class)
     public void testDeleteFailureBadKey() throws Exception {
         assertResponseMatches(kvResource.deleteEntity("foo"),
-                Status.BAD_REQUEST, "");
+                Status.BAD_REQUEST, "Invalid key");
+    }
+
+    public void testDeleteFailureNullKey() throws Exception {
+        assertResponseMatches(kvResource.deleteEntity(null),
+                Status.BAD_REQUEST, "Invalid key");
     }
 
     private static void assertResponseMatches(Response r, Status status,
-            String entity) {
+            String entity) throws Exception {
         Assert.assertEquals(r.getStatus(), status.getStatusCode());
-        Assert.assertEquals(r.getEntity(), entity);
+
+        try {
+            Map<String, Object> json1 = EncodingHelper.parseJsonString(r
+                    .getEntity().toString());
+            Map<String, Object> json2 = EncodingHelper.parseJsonString(entity);
+
+            Key id1 = Key.valueOf((String) json1.get("id"));
+            Key id2 = Key.valueOf((String) json2.get("id"));
+
+            Assert.assertEquals(id1, id2);
+
+            json1.remove("id");
+            json2.remove("id");
+
+            Assert.assertEquals(json1, json2);
+        } catch (Exception e) {
+            // in the event parsing JSON fails, fallback on String equality
+            Assert.assertEquals(r.getEntity(), entity);
+        }
     }
 }

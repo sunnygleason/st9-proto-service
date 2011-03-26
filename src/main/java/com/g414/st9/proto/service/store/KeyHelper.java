@@ -8,23 +8,22 @@ public class KeyHelper {
     public static Object[] validateKey(String key) {
         if (key == null || key.length() == 0 || key.indexOf(":") == -1) {
             throw new WebApplicationException(Response
-                    .status(Status.BAD_REQUEST).entity("Invalid entity 'id'")
-                    .build());
+                    .status(Status.BAD_REQUEST).entity("Invalid key").build());
         }
 
         String[] parts = key.split(":");
         if (parts.length != 2) {
             throw new WebApplicationException(Response
-                    .status(Status.BAD_REQUEST).entity("Invalid entity 'id'")
-                    .build());
+                    .status(Status.BAD_REQUEST).entity("Invalid key").build());
         }
 
         try {
-            return new Object[] { parts[0], Long.parseLong(parts[1]) };
-        } catch (NumberFormatException e) {
+            Key realKey = Key.valueOf(key);
+
+            return new Object[] { realKey.getType(), realKey.getId() };
+        } catch (Exception e) {
             throw new WebApplicationException(Response
-                    .status(Status.BAD_REQUEST).entity("Invalid entity 'id'")
-                    .build());
+                    .status(Status.BAD_REQUEST).entity("Invalid key").build());
         }
     }
 }

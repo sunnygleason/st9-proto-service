@@ -13,7 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.sqlite.JDBC;
 
-import com.g414.st9.proto.service.RealRelationalIndexResource;
+import com.g414.st9.proto.service.SecondaryIndexResource;
 import com.g414.st9.proto.service.SchemaResource;
 import com.g414.st9.proto.service.index.JDBISecondaryIndex;
 import com.g414.st9.proto.service.index.SqliteSecondaryIndex;
@@ -126,7 +126,7 @@ public class SqliteKeyValueStorage extends JDBIKeyValueStorage {
                     .to(SqliteSecondaryIndex.class).asEagerSingleton();
 
             bind(SchemaResource.class).asEagerSingleton();
-            bind(RealRelationalIndexResource.class).asEagerSingleton();
+            bind(SecondaryIndexResource.class).asEagerSingleton();
         }
     }
 

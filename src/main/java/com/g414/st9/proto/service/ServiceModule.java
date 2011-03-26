@@ -12,7 +12,6 @@ public class ServiceModule extends ServletModule {
         bind(KeyValueResource.class).asEagerSingleton();
         bind(ExportKeyValueResource.class).asEagerSingleton();
         bind(NukeResource.class).asEagerSingleton();
-        bind(FakeRelationalIndexResource.class).asEagerSingleton();
 
         serve("*").with(GuiceContainer.class);
     }

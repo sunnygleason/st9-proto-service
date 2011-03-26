@@ -20,7 +20,8 @@ import com.google.inject.Binder;
  * In-memory implementation of key-value storage.
  */
 public class InMemoryKeyValueStorage implements KeyValueStorage {
-    private final ConcurrentHashMap<String, byte[]> storage = new ConcurrentHashMap<String, byte[]>();
+    private final Map<String, byte[]> storage = Collections
+            .synchronizedMap(new LinkedHashMap<String, byte[]>());
     private final ConcurrentHashMap<String, Integer> types = new ConcurrentHashMap<String, Integer>();
     private final ConcurrentHashMap<Integer, AtomicLong> sequences = new ConcurrentHashMap<Integer, AtomicLong>();
     private final AtomicInteger typeSeq = new AtomicInteger(0);
@@ -52,9 +53,9 @@ public class InMemoryKeyValueStorage implements KeyValueStorage {
 
             Long theId = (id != null) ? id : this.nextId(type);
 
-            String key = type + ":" + theId;
+            Key key = new Key(type, theId);
             Map<String, Object> value = new LinkedHashMap<String, Object>();
-            value.put("id", key);
+            value.put("id", key.getEncryptedIdentifier());
             value.put("kind", type);
             value.putAll(readValue);
 
@@ -65,7 +66,7 @@ public class InMemoryKeyValueStorage implements KeyValueStorage {
 
             byte[] valueBytes = EncodingHelper.convertToSmileLzf(value);
 
-            storage.put(key, valueBytes);
+            storage.put(key.getIdentifier(), valueBytes);
 
             return Response.status(Status.OK).entity(valueJson).build();
         } catch (WebApplicationException e) {
@@ -81,7 +82,8 @@ public class InMemoryKeyValueStorage implements KeyValueStorage {
         try {
             Object[] keyParts = KeyHelper.validateKey(key);
 
-            byte[] valueBytesLzf = storage.get(key);
+            Key realKey = Key.valueOf(key);
+            byte[] valueBytesLzf = storage.get(realKey.getIdentifier());
 
             if (valueBytesLzf == null) {
                 return Response.status(Status.NOT_FOUND).entity("").build();
@@ -93,8 +95,8 @@ public class InMemoryKeyValueStorage implements KeyValueStorage {
             readValue.remove("kind");
 
             Map<String, Object> value = new LinkedHashMap<String, Object>();
-            value.put("id", key);
-            value.put("kind", keyParts[0]);
+            value.put("id", realKey.getEncryptedIdentifier());
+            value.put("kind", realKey.getType());
             value.putAll(readValue);
 
             String jsonValue = EncodingHelper.convertToJson(value);
@@ -102,6 +104,8 @@ public class InMemoryKeyValueStorage implements KeyValueStorage {
             return Response.status(Status.OK).entity(jsonValue).build();
         } catch (WebApplicationException e) {
             return e.getResponse();
+        } catch (IllegalArgumentException e) {
+            return getErrorResponse(e);
         }
     }
 
@@ -120,9 +124,8 @@ public class InMemoryKeyValueStorage implements KeyValueStorage {
             LinkedHashMap<String, Object> result = new LinkedHashMap<String, Object>();
 
             for (String key : keys) {
-                Object[] keyParts = KeyHelper.validateKey(key);
-
-                byte[] valueBytesLzf = storage.get(key);
+                Key realKey = Key.valueOf(key);
+                byte[] valueBytesLzf = storage.get(realKey.getIdentifier());
 
                 if (valueBytesLzf == null) {
                     result.put(key, null);
@@ -136,8 +139,8 @@ public class InMemoryKeyValueStorage implements KeyValueStorage {
                 readValue.remove("kind");
 
                 Map<String, Object> value = new LinkedHashMap<String, Object>();
-                value.put("id", key);
-                value.put("kind", keyParts[0]);
+                value.put("id", realKey.getEncryptedIdentifier());
+                value.put("kind", realKey.getType());
                 value.putAll(readValue);
 
                 result.put(key, value);
@@ -148,6 +151,8 @@ public class InMemoryKeyValueStorage implements KeyValueStorage {
             return Response.status(Status.OK).entity(jsonValue).build();
         } catch (WebApplicationException e) {
             return e.getResponse();
+        } catch (IllegalArgumentException e) {
+            return getErrorResponse(e);
         }
     }
 
@@ -157,31 +162,38 @@ public class InMemoryKeyValueStorage implements KeyValueStorage {
      */
     @Override
     public Response update(String key, String inValue) throws Exception {
-        Object[] keyParts = KeyHelper.validateKey(key);
+        try {
+            Key realKey = Key.valueOf(key);
 
-        Map<String, Object> readValue = EncodingHelper.parseJsonString(inValue);
-        readValue.remove("id");
-        readValue.remove("kind");
+            Map<String, Object> readValue = EncodingHelper
+                    .parseJsonString(inValue);
+            readValue.remove("id");
+            readValue.remove("kind");
 
-        Map<String, Object> value = new LinkedHashMap<String, Object>();
-        value.put("id", key);
-        value.put("kind", keyParts[0]);
-        value.putAll(readValue);
+            Map<String, Object> value = new LinkedHashMap<String, Object>();
+            value.put("id", realKey.getIdentifier());
+            value.put("kind", realKey.getType());
+            value.putAll(readValue);
 
-        if (!storage.containsKey(key)) {
-            return Response.status(Status.NOT_FOUND).entity("").build();
+            if (!storage.containsKey(key)) {
+                return Response.status(Status.NOT_FOUND).entity("").build();
+            }
+
+            String valueJson = EncodingHelper.convertToJson(value);
+
+            value.remove("id");
+            value.remove("kind");
+
+            byte[] valueBytes = EncodingHelper.convertToSmileLzf(value);
+
+            storage.put(key, valueBytes);
+
+            return Response.status(Status.OK).entity(valueJson).build();
+        } catch (WebApplicationException e) {
+            return e.getResponse();
+        } catch (IllegalArgumentException e) {
+            return getErrorResponse(e);
         }
-
-        String valueJson = EncodingHelper.convertToJson(value);
-
-        value.remove("id");
-        value.remove("kind");
-
-        byte[] valueBytes = EncodingHelper.convertToSmileLzf(value);
-
-        storage.put(key, valueBytes);
-
-        return Response.status(Status.OK).entity(valueJson).build();
     }
 
     /**
@@ -189,15 +201,22 @@ public class InMemoryKeyValueStorage implements KeyValueStorage {
      */
     @Override
     public Response delete(String key) throws Exception {
-        KeyHelper.validateKey(key);
+        try {
+            KeyHelper.validateKey(key);
+            Key realKey = Key.valueOf(key);
 
-        if (!storage.containsKey(key)) {
-            return Response.status(Status.NOT_FOUND).entity("").build();
+            if (!storage.containsKey(realKey.getIdentifier())) {
+                return Response.status(Status.NOT_FOUND).entity("").build();
+            }
+
+            storage.remove(realKey.getIdentifier());
+
+            return Response.status(Status.NO_CONTENT).entity("").build();
+        } catch (WebApplicationException e) {
+            return e.getResponse();
+        } catch (IllegalArgumentException e) {
+            return getErrorResponse(e);
         }
-
-        storage.remove(key);
-
-        return Response.status(Status.NO_CONTENT).entity("").build();
     }
 
     @Override
@@ -262,16 +281,20 @@ public class InMemoryKeyValueStorage implements KeyValueStorage {
                 object.remove("id");
                 object.remove("kind");
 
-                Object[] keyParts = KeyHelper.validateKey(nextKey);
+                try {
+                    Key realKey = Key.valueOf(nextKey);
 
-                Map<String, Object> result = new LinkedHashMap<String, Object>();
-                result.put("id", nextKey);
-                result.put("kind", keyParts[0]);
-                result.putAll(object);
+                    Map<String, Object> result = new LinkedHashMap<String, Object>();
+                    result.put("id", realKey.getEncryptedIdentifier());
+                    result.put("kind", realKey.getType());
+                    result.putAll(object);
 
-                nextKey = advance();
+                    nextKey = advance();
 
-                return result;
+                    return result;
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
             }
 
             @Override
@@ -317,6 +340,11 @@ public class InMemoryKeyValueStorage implements KeyValueStorage {
                     .status(Status.BAD_REQUEST).entity("Invalid entity 'type'")
                     .build());
         }
+    }
+
+    private static Response getErrorResponse(IllegalArgumentException e) {
+        return Response.status(Status.BAD_REQUEST).entity(e.getMessage())
+                .build();
     }
 
     public static class InMemoryKeyValueStorageModule extends AbstractModule {

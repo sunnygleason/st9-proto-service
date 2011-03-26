@@ -17,6 +17,10 @@ public class Key {
     }
 
     public static Key valueOf(String key) throws Exception {
+        if (key == null || key.length() == 0) {
+            throw new IllegalArgumentException("Invalid key");
+        }
+
         if (key.startsWith("@")) {
             return KeyEncryptionHelper.decrypt(key);
         }
