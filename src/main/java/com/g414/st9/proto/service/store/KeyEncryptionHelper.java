@@ -14,8 +14,8 @@ import javax.crypto.spec.SecretKeySpec;
 import org.apache.commons.codec.binary.Hex;
 
 public class KeyEncryptionHelper {
-    private static final char[] keyChars = System.getProperty(
-            "key.encrypt.password", "changeme").toCharArray();
+    private static final String keyString = System.getProperty(
+            "key.encrypt.password", "changeme");
     private static final byte[] saltBytes = System.getProperty(
             "key.encrypt.salt", "asalt").getBytes();
     private static final byte[] ivBytes;
@@ -39,7 +39,7 @@ public class KeyEncryptionHelper {
         encryptedIdentifier.append(":");
 
         byte[] plain = ByteBuffer.allocate(8).putLong(id).array();
-        byte[] encrypted = getCipher(Cipher.ENCRYPT_MODE).doFinal(plain);
+        byte[] encrypted = getCipher(type, Cipher.ENCRYPT_MODE).doFinal(plain);
 
         encryptedIdentifier.append(Hex.encodeHexString(encrypted));
 
@@ -52,25 +52,29 @@ public class KeyEncryptionHelper {
         }
 
         String[] parts = encryptedText.substring(1).split(":");
+        String type = parts[0];
         byte[] encrypted = Hex.decodeHex(parts[1].toCharArray());
-        byte[] decrypted = getCipher(Cipher.DECRYPT_MODE).doFinal(encrypted);
+        byte[] decrypted = getCipher(type, Cipher.DECRYPT_MODE).doFinal(
+                encrypted);
 
         Long id = ByteBuffer.allocate(8).put(decrypted).getLong(0);
 
-        return new Key(parts[0], id);
+        return new Key(type, id);
     }
 
-    private static Cipher getCipher(int mode) throws Exception {
+    private static Cipher getCipher(String type, int mode) throws Exception {
         Cipher cipher = Cipher.getInstance("Blowfish/CBC/NoPadding");
-        cipher.init(mode, getKey(), paramSpec);
+        cipher.init(mode, getKey(type), paramSpec);
 
         return cipher;
     }
 
-    private static SecretKey getKey() throws Exception {
+    private static SecretKey getKey(String type) throws Exception {
         SecretKeyFactory factory = SecretKeyFactory
                 .getInstance("PBKDF2WithHmacSHA1");
-        KeySpec spec = new PBEKeySpec(keyChars, saltBytes, 1024, 256);
+        String password = keyString + ":" + type;
+        KeySpec spec = new PBEKeySpec(password.toCharArray(), saltBytes, 1024,
+                256);
         SecretKey tmp = factory.generateSecret(spec);
         SecretKey key = new SecretKeySpec(tmp.getEncoded(), "Blowfish");
 
