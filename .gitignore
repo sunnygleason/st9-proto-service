@@ -7,3 +7,5 @@ logs
 .settings
 test-output
 thedb.db
+pol.xml.releaseBackup
+release.properties
