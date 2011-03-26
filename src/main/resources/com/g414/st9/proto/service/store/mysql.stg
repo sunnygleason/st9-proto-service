@@ -43,6 +43,12 @@ mysql_populate_key_types() ::=<<
     (1, '$schema');
 >>
 
+mysql_get_type_name() ::=<< 
+  select `_type_name`
+    from `_key_types`
+   where `_key_type` = :key_type;
+>>
+
 mysql_get_type_id() ::=<< 
   select `_key_type`
     from `_key_types`
