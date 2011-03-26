@@ -311,7 +311,8 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                         found.remove("kind");
 
                         LinkedHashMap<String, Object> value = new LinkedHashMap<String, Object>();
-                        value.put("id", key);
+                        value.put("id", Key.valueOf(key)
+                                .getEncryptedIdentifier());
                         value.put("kind", keyParts[0]);
                         value.putAll(found);
 

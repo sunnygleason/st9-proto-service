@@ -23,6 +23,7 @@ import com.g414.st9.proto.service.cache.EmptyKeyValueCache;
 import com.g414.st9.proto.service.cache.KeyValueCache;
 import com.g414.st9.proto.service.store.EncodingHelper;
 import com.g414.st9.proto.service.store.Key;
+import com.google.common.collect.Lists;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
@@ -105,6 +106,24 @@ public abstract class KeyValueResourceTestBase {
 
         assertResponseMatches(kvResource.retrieveEntity("foo:3"),
                 Status.NOT_FOUND, "");
+    }
+
+    public void testMultiRetrieveHappy() throws Exception {
+        assertResponseMatches(kvResource.createEntity("foo", "{}"), Status.OK,
+                "{\"id\":\"foo:1\",\"kind\":\"foo\"}");
+        assertResponseMatches(kvResource.createEntity("foo", "{}"), Status.OK,
+                "{\"id\":\"foo:2\",\"kind\":\"foo\"}");
+        assertResponseMatches(kvResource.createEntity("foo", "{}"), Status.OK,
+                "{\"id\":\"foo:3\",\"kind\":\"foo\"}");
+
+        assertMultiResponseMatches(
+                kvResource.retrieveEntity(Lists.newArrayList("foo:1", "foo:2",
+                        "foo:3", "foo:5")),
+                Status.OK,
+                "{\"foo:1\":{\"id\":\"@foo:1c235904c3ae5200\",\"kind\":\"foo\"},"
+                        + "\"foo:2\":{\"id\":\"@foo:101f036738e46686\",\"kind\":\"foo\"},"
+                        + "\"foo:3\":{\"id\":\"@foo:8a50d85e95bda3a1\",\"kind\":\"foo\"},"
+                        + "\"foo:5\":null}");
     }
 
     public void testUpdateHappy() throws Exception {
@@ -300,6 +319,47 @@ public abstract class KeyValueResourceTestBase {
         } catch (Exception e) {
             // in the event parsing JSON fails, fallback on String equality
             Assert.assertEquals(r.getEntity(), entity);
+        }
+    }
+
+    private static void assertMultiResponseMatches(Response r, Status status,
+            String entity) throws Exception {
+        Assert.assertEquals(r.getStatus(), status.getStatusCode());
+
+        Map<String, Object> json1 = EncodingHelper.parseJsonString(r
+                .getEntity().toString());
+        Map<String, Object> json2 = EncodingHelper.parseJsonString(entity);
+
+        Assert.assertEquals(json1.size(), json2.size());
+
+        for (Map.Entry<String, Object> entry : json1.entrySet()) {
+            Key id1 = Key.valueOf(entry.getKey());
+
+            Map<String, Object> obj1 = (Map<String, Object>) entry.getValue();
+            Map<String, Object> obj2 = (Map<String, Object>) json2.get(entry
+                    .getKey());
+
+            if (obj1 == null) {
+                Assert.assertNull(obj2);
+                continue;
+            }
+
+            String ids1 = (String) obj1.get("id");
+            String ids2 = (String) obj2.get("id");
+
+            Assert.assertEquals(ids1, ids2);
+
+            if (ids1 != null) {
+                Key rk1 = Key.valueOf(ids1);
+                Key rk2 = Key.valueOf(ids2);
+
+                Assert.assertEquals(rk1, rk2);
+            }
+
+            obj1.remove("id");
+            obj2.remove("id");
+
+            Assert.assertEquals(obj1, obj2);
         }
     }
 }
