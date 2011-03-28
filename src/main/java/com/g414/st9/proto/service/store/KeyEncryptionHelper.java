@@ -3,6 +3,7 @@ package com.g414.st9.proto.service.store;
 import java.nio.ByteBuffer;
 import java.security.spec.AlgorithmParameterSpec;
 import java.security.spec.KeySpec;
+import java.util.concurrent.ConcurrentHashMap;
 
 import javax.crypto.Cipher;
 import javax.crypto.SecretKey;
@@ -31,6 +32,7 @@ public class KeyEncryptionHelper {
 
     private static final AlgorithmParameterSpec paramSpec = new IvParameterSpec(
             ivBytes);
+    private static ConcurrentHashMap<String, SecretKey> keyCache = new ConcurrentHashMap<String, SecretKey>();
 
     public static String encrypt(String type, Long id) throws Exception {
         StringBuilder encryptedIdentifier = new StringBuilder();
@@ -63,21 +65,25 @@ public class KeyEncryptionHelper {
     }
 
     private static Cipher getCipher(String type, int mode) throws Exception {
-        Cipher cipher = Cipher.getInstance("Blowfish/CBC/NoPadding");
+        Cipher cipher = Cipher.getInstance("DESede/CBC/NoPadding");
         cipher.init(mode, getKey(type), paramSpec);
 
         return cipher;
     }
 
     private static SecretKey getKey(String type) throws Exception {
-        SecretKeyFactory factory = SecretKeyFactory
-                .getInstance("PBKDF2WithHmacSHA1");
-        String password = keyString + ":" + type;
-        KeySpec spec = new PBEKeySpec(password.toCharArray(), saltBytes, 1024,
-                256);
-        SecretKey tmp = factory.generateSecret(spec);
-        SecretKey key = new SecretKeySpec(tmp.getEncoded(), "Blowfish");
+        if (!keyCache.containsKey(type)) {
+            SecretKeyFactory factory = SecretKeyFactory
+                    .getInstance("PBKDF2WithHmacSHA1");
+            String password = keyString + ":" + type;
+            KeySpec spec = new PBEKeySpec(password.toCharArray(), saltBytes,
+                    1024, 192);
+            SecretKey tmp = factory.generateSecret(spec);
+            SecretKey key = new SecretKeySpec(tmp.getEncoded(), "DESede");
 
-        return key;
+            keyCache.put(type, key);
+        }
+
+        return keyCache.get(type);
     }
 }
