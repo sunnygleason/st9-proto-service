@@ -80,8 +80,7 @@ public class InMemoryKeyValueStorage implements KeyValueStorage {
     @Override
     public Response retrieve(String key) throws Exception {
         try {
-            Object[] keyParts = KeyHelper.validateKey(key);
-
+            KeyHelper.validateKey(key);
             Key realKey = Key.valueOf(key);
             byte[] valueBytesLzf = storage.get(realKey.getIdentifier());
 
@@ -247,8 +246,16 @@ public class InMemoryKeyValueStorage implements KeyValueStorage {
 
                 while (key == null && inner.hasNext()) {
                     String newKey = inner.next();
-                    Object[] keyParts = KeyHelper.validateKey(newKey);
-                    if (type.equals(keyParts[0])) {
+                    KeyHelper.validateKey(newKey);
+
+                    final Key realKey;
+                    try {
+                        realKey = Key.valueOf(newKey);
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+
+                    if (type.equals(realKey.getType())) {
                         key = newKey;
                         break;
                     }

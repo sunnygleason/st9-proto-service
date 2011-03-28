@@ -5,7 +5,7 @@ import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
 public class KeyHelper {
-    public static Object[] validateKey(String key) {
+    public static void validateKey(String key) {
         if (key == null || key.length() == 0 || key.indexOf(":") == -1) {
             throw new WebApplicationException(Response
                     .status(Status.BAD_REQUEST).entity("Invalid key").build());
@@ -18,9 +18,7 @@ public class KeyHelper {
         }
 
         try {
-            Key realKey = Key.valueOf(key);
-
-            return new Object[] { realKey.getType(), realKey.getId() };
+            Key.valueOf(key);
         } catch (Exception e) {
             throw new WebApplicationException(Response
                     .status(Status.BAD_REQUEST).entity("Invalid key").build());

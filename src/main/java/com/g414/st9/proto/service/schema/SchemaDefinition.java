@@ -24,8 +24,8 @@ public class SchemaDefinition {
     public SchemaDefinition(
             @JsonProperty("attributes") List<Attribute> attributes,
             @JsonProperty("indexes") List<IndexDefinition> indexes) {
-        if (attributes == null || attributes.isEmpty()) {
-            throw new IllegalArgumentException("'attributes' must not be empty");
+        if (attributes == null) {
+            throw new IllegalArgumentException("'attributes' must be present");
         }
 
         if (indexes == null) {
