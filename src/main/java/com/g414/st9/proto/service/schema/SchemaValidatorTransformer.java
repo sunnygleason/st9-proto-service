@@ -97,6 +97,11 @@ public class SchemaValidatorTransformer implements
 
             Object inbound = e.getValue();
 
+            if (inbound == null) {
+                mindlessClone.put(attrName, null);
+                continue;
+            }
+
             ValidatorTransformer validator = attributeValidators.get(attrName);
             Object untransformed = validator.untransform(inbound);
 

@@ -1,6 +1,7 @@
 package utest.com.g414.st9.proto.service.schema;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -32,13 +33,21 @@ public class SchemaValidatorTest {
         SchemaValidatorTransformer validator = new SchemaValidatorTransformer(
                 def);
 
-        List<ImmutableMap<String, Object>> instances = new ArrayList<ImmutableMap<String, Object>>();
+        List<Map<String, Object>> instances = new ArrayList<Map<String, Object>>();
         instances.add(ImmutableMap.<String, Object> of("isAwesome", true,
                 "hotness", "COOL"));
         instances.add(ImmutableMap.<String, Object> of("isAwesome", true,
                 "hotness", "COOL", "extra", 12345));
+        instances.add(mapper.readValue(
+                "{\"isAwesome\":null,\"hotness\":\"COOL\"}",
+                LinkedHashMap.class));
+        instances.add(mapper.readValue(
+                "{\"isAwesome\":false,\"hotness\":null}", LinkedHashMap.class));
+        instances.add(mapper.readValue(
+                "{\"isAwesome\":false,\"hotness\":\"COOL\",\"extra\":null}",
+                LinkedHashMap.class));
 
-        for (ImmutableMap<String, Object> instance : instances) {
+        for (Map<String, Object> instance : instances) {
             validateInstance(validator, instance);
         }
     }
