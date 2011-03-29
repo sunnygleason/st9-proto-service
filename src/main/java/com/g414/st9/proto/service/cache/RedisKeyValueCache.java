@@ -7,6 +7,7 @@ import java.util.Map;
 
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
+import redis.clients.jedis.JedisPoolConfig;
 
 /**
  * Redis implementation of Ye Trusty Key Value Cache.
@@ -16,7 +17,10 @@ public class RedisKeyValueCache implements KeyValueCache {
     private final int timeoutSecs = 15 * 60;
 
     public RedisKeyValueCache() {
-        this.jedisPool = new JedisPool(System.getProperty("redis.host",
+        JedisPoolConfig config = new JedisPoolConfig();
+        config.setTestOnBorrow(true);
+
+        this.jedisPool = new JedisPool(config, System.getProperty("redis.host",
                 "localhost"), Integer.parseInt(System.getProperty("redis.port",
                 "6379")));
     }
