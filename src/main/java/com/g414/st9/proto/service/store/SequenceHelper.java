@@ -12,9 +12,8 @@ import org.skife.jdbi.v2.Query;
 import org.skife.jdbi.v2.Update;
 
 public class SequenceHelper {
-
-    public static Integer validateType(Map<String, Integer> typeCodes,
-            Map<Integer, String> typeNames, String prefix, Handle handle,
+    public static Integer validateType(Handle handle, String prefix,
+            Map<String, Integer> typeCodes, Map<Integer, String> typeNames,
             final String type, boolean doCreate) {
         if (type == null || type.length() == 0 || type.indexOf(":") != -1) {
             throw new WebApplicationException(Response
@@ -42,12 +41,12 @@ public class SequenceHelper {
                         .entity("Invalid entity 'type'").build());
             }
 
-            typeId = getNextId(prefix, handle, 0).intValue();
+            typeId = getNextId(handle, prefix, 0, 1L).intValue();
 
             Update newType = handle.createStatement(prefix
                     + "insert_ignore_seq");
             newType.bind("key_type", typeId);
-            newType.bind("next_id", 0);
+            newType.bind("next_id", 0L);
             newType.execute();
 
             Update newTypeName = handle.createStatement(prefix
@@ -66,20 +65,24 @@ public class SequenceHelper {
         return typeId;
     }
 
-    public static Long getNextId(String prefix, Handle handle, Integer typeId) {
-        Update incrSeq = handle.createStatement(prefix + "increment_next_id");
-        incrSeq.bind("key_type", typeId);
-        incrSeq.execute();
-
+    public static synchronized Long getNextId(Handle handle, String prefix,
+            Integer typeId, Long increment) {
         Query<Map<String, Object>> query = handle.createQuery(prefix
                 + "get_next_id");
         query.bind("key_type", typeId);
 
-        return ((Number) query.first().get("_next_id")).longValue();
+        Long nextId = ((Number) query.first().get("_next_id")).longValue();
+
+        Update incrSeq = handle.createStatement(prefix + "increment_next_id");
+        incrSeq.bind("key_type", typeId);
+        incrSeq.bind("increment", increment);
+        incrSeq.execute();
+
+        return nextId;
     }
 
-    public static String getTypeName(Integer id,
-            Map<Integer, String> typeNames, String prefix, Handle handle) {
+    public static String getTypeName(Handle handle, String prefix,
+            Map<Integer, String> typeNames, Integer id) {
         if (id == null || id < 0) {
             throw new WebApplicationException(Response
                     .status(Status.BAD_REQUEST).entity("Invalid entity 'type'")

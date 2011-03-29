@@ -59,8 +59,8 @@ mysql_populate_sequences() ::=<<
   insert ignore
     into `_sequences` (`_key_type`, `_next_id`)
   values
-    (0, 1),
-    (1, 0);
+    (0, 2),
+    (1, 1);
 >>
 
 mysql_get_entity_types() ::=<< 
@@ -123,7 +123,7 @@ mysql_get_next_id() ::=<<
 
 mysql_increment_next_id() ::=<< 
   update `_sequences`
-    set `_next_id` = `_next_id` + 1
+    set `_next_id` =  LAST_INSERT_ID(`_next_id`) + :increment
    where `_key_type` = :key_type
 >>
 

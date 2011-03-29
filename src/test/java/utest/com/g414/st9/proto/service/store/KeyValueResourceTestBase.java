@@ -116,13 +116,11 @@ public abstract class KeyValueResourceTestBase {
         assertResponseMatches(kvResource.createEntity("foo", "{}"), Status.OK,
                 "{\"id\":\"foo:3\",\"kind\":\"foo\"}");
 
-        assertMultiResponseMatches(
-                kvResource.retrieveEntity(Lists.newArrayList("foo:1", "foo:2",
-                        "foo:3", "foo:5")),
-                Status.OK,
-                "{\"foo:1\":{\"id\":\"@foo:1c235904c3ae5200\",\"kind\":\"foo\"},"
-                        + "\"foo:2\":{\"id\":\"@foo:101f036738e46686\",\"kind\":\"foo\"},"
-                        + "\"foo:3\":{\"id\":\"@foo:8a50d85e95bda3a1\",\"kind\":\"foo\"},"
+        assertMultiResponseMatches(kvResource.retrieveEntity(Lists
+                .newArrayList("foo:1", "foo:2", "foo:3", "foo:5")), Status.OK,
+                "{\"foo:1\":{\"id\":\"foo:1\",\"kind\":\"foo\"},"
+                        + "\"foo:2\":{\"id\":\"foo:2\",\"kind\":\"foo\"},"
+                        + "\"foo:3\":{\"id\":\"foo:3\",\"kind\":\"foo\"},"
                         + "\"foo:5\":null}");
     }
 
@@ -346,8 +344,6 @@ public abstract class KeyValueResourceTestBase {
 
             String ids1 = (String) obj1.get("id");
             String ids2 = (String) obj2.get("id");
-
-            Assert.assertEquals(ids1, ids2);
 
             if (ids1 != null) {
                 Key rk1 = Key.valueOf(ids1);

@@ -18,8 +18,6 @@ public class EncodingHelperTest {
             String cacheKey1 = EncodingHelper
                     .toKVCacheKey(key1.getIdentifier());
 
-            System.out.println(key1.getIdentifier() + " " + cacheKey1);
-
             Assert.assertEquals(EncodingHelper.fromKVCacheKey(cacheKey1),
                     key1.getIdentifier());
         }

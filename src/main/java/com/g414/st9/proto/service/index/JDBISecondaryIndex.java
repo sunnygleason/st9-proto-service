@@ -107,14 +107,16 @@ public abstract class JDBISecondaryIndex {
             Map<String, Object> schema = schemas.next();
             String type = (String) schema.get("$type");
 
-            for (Map<String, Object> index : (List<Map<String, Object>>) schema
-                    .get("indexes")) {
-                StringBuilder sqlBuilder = new StringBuilder();
-                sqlBuilder.append("drop table if exists ");
-                sqlBuilder
-                        .append(getTableName(type, (String) index.get("name")));
+            if (schema != null && schema.get("indexes") != null) {
+                for (Map<String, Object> index : (List<Map<String, Object>>) schema
+                        .get("indexes")) {
+                    StringBuilder sqlBuilder = new StringBuilder();
+                    sqlBuilder.append("drop table if exists ");
+                    sqlBuilder.append(getTableName(type,
+                            (String) index.get("name")));
 
-                handle.execute(sqlBuilder.toString());
+                    handle.execute(sqlBuilder.toString());
+                }
             }
         }
     }

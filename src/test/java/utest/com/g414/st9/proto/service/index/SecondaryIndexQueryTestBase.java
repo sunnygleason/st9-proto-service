@@ -33,9 +33,9 @@ public abstract class SecondaryIndexQueryTestBase {
             + "\"indexes\":[{\"name\":\"xy\",\"cols\":["
             + "{\"name\":\"x\",\"sort\":\"DESC\"},{\"name\":\"y\",\"sort\":\"ASC\"},{\"name\":\"id\",\"sort\":\"DESC\"}]}]}";
 
-    private KeyValueResource kvResource;
-    private SecondaryIndexResource indexResource;
-    private SchemaResource schemaResource;
+    protected KeyValueResource kvResource;
+    protected SecondaryIndexResource indexResource;
+    protected SchemaResource schemaResource;
 
     public abstract Module getKeyValueStorageModule();
 
@@ -59,13 +59,11 @@ public abstract class SecondaryIndexQueryTestBase {
 
     @BeforeMethod(alwaysRun = true)
     public void setUp() {
-        this.indexResource.clear();
         this.kvResource.clear();
     }
 
     @AfterMethod(alwaysRun = true)
     public void tearDown() {
-        this.indexResource.clear();
         this.kvResource.clear();
     }
 
@@ -77,7 +75,7 @@ public abstract class SecondaryIndexQueryTestBase {
         runSchemaTest("foo2", schema5);
     }
 
-    private void runSchemaTest(String type, String schema) throws Exception {
+    protected void runSchemaTest(String type, String schema) throws Exception {
         this.schemaResource.createEntity(type, schema);
 
         for (int i = 0; i < 74; i++) {

@@ -46,8 +46,8 @@ sqlite_get_entity_types() ::=<<
 sqlite_populate_sequences() ::=<< 
   insert or ignore
     into `_sequences` (`_key_type`, `_next_id`)
-    select 0 as `_key_type`, 1 as `_next_id`
-    union select 1 as `_key_type`, 0 as `_next_id`;
+    select 0 as `_key_type`, 2 as `_next_id`
+    union select 1 as `_key_type`, 1 as `_next_id`;
 >>
 
 sqlite_create() ::=<< 
@@ -105,7 +105,7 @@ sqlite_populate_key_type() ::=<<
 
 sqlite_increment_next_id() ::=<< 
   update `_sequences`
-    set `_next_id` = `_next_id` + 1
+    set `_next_id` = `_next_id` + :increment
    where `_key_type` = :key_type
 >>
 

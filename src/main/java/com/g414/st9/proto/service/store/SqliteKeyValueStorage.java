@@ -19,6 +19,7 @@ import com.g414.st9.proto.service.index.JDBISecondaryIndex;
 import com.g414.st9.proto.service.index.SqliteSecondaryIndex;
 import com.google.inject.AbstractModule;
 import com.google.inject.Binder;
+import com.google.inject.name.Names;
 import com.jolbox.bonecp.BoneCPDataSource;
 import com.jolbox.bonecp.ConnectionHandle;
 import com.jolbox.bonecp.hooks.AbstractConnectionHook;
@@ -27,11 +28,12 @@ import com.jolbox.bonecp.hooks.AbstractConnectionHook;
  * MySQL implementation of key-value storage using JDBI.
  */
 public class SqliteKeyValueStorage extends JDBIKeyValueStorage {
+    private static final String DATABASE_PREFIX = "sqlite:sqlite_";
     private static final Logger log = LoggerFactory
             .getLogger(SqliteKeyValueStorage.class);
 
     protected String getPrefix() {
-        return "sqlite:sqlite_";
+        return DATABASE_PREFIX;
     }
 
     @Override
@@ -119,6 +121,12 @@ public class SqliteKeyValueStorage extends JDBIKeyValueStorage {
 
             DBI dbi = JDBIHelper.getDBI(datasource);
             binder.bind(IDBI.class).toInstance(dbi);
+
+            binder.bind(String.class).annotatedWith(Names.named("db.prefix"))
+                    .toInstance(DATABASE_PREFIX);
+
+            binder.bind(CounterService.class).toInstance(
+                    new CounterService(dbi, DATABASE_PREFIX));
 
             binder.bind(KeyValueStorage.class).to(SqliteKeyValueStorage.class)
                     .asEagerSingleton();

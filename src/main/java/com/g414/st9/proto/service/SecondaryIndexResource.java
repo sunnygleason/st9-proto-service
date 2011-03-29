@@ -16,7 +16,6 @@ import javax.ws.rs.core.Response.Status;
 
 import org.antlr.runtime.ANTLRStringStream;
 import org.antlr.runtime.CommonTokenStream;
-import org.apache.commons.codec.binary.Hex;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.skife.jdbi.v2.Handle;
 import org.skife.jdbi.v2.IDBI;

@@ -6,7 +6,6 @@ import java.util.Map;
 
 import org.codehaus.jackson.map.ObjectMapper;
 import org.testng.Assert;
-import org.testng.annotations.Test;
 
 import com.g414.st9.proto.service.index.MySQLSecondaryIndex;
 import com.g414.st9.proto.service.index.OpaquePaginationHelper;
@@ -18,7 +17,6 @@ import com.g414.st9.proto.service.schema.SchemaDefinition;
 import com.g414.st9.proto.service.schema.SchemaDefinitionValidator;
 import com.google.inject.internal.ImmutableList;
 
-@Test
 public abstract class SecondaryIndexSQLTestBase {
     protected final String schema4 = "{\"attributes\":[{\"name\":\"x\",\"type\":\"I32\"},{\"name\":\"y\",\"type\":\"I32\"}],"
             + "\"indexes\":[{\"name\":\"xy\",\"cols\":["
