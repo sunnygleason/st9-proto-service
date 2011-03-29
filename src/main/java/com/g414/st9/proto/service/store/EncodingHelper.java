@@ -78,7 +78,7 @@ public class EncodingHelper {
     }
 
     public static String fromKVCacheKey(String cachekey) throws Exception {
-        return new String(cacheKeyCodec.decode(cachekey
-                .substring(KV_CACHE_PREFIX.length())));
+        return new String(cacheKeyCodec.decode(cachekey).substring(
+                KV_CACHE_PREFIX.length()));
     }
 }
