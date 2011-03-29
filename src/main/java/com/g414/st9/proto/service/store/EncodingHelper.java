@@ -74,7 +74,7 @@ public class EncodingHelper {
     }
 
     public static String toKVCacheKey(String key) throws Exception {
-        return KV_CACHE_PREFIX + cacheKeyCodec.encode(key);
+        return cacheKeyCodec.encode(KV_CACHE_PREFIX + key);
     }
 
     public static String fromKVCacheKey(String cachekey) throws Exception {
