@@ -3,6 +3,9 @@ package utest.com.g414.st9.proto.service.index;
 import java.util.List;
 import java.util.Map;
 
+import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.core.Response;
+
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
@@ -73,6 +76,24 @@ public abstract class SecondaryIndexQueryTestBase {
 
     public void testQueryDesc() throws Exception {
         runSchemaTest("foo2", schema5);
+    }
+
+    public void testMissingType() throws Exception {
+        this.schemaResource.createEntity("foo1", schema4);
+
+        Response r = this.indexResource.retrieveEntity("bar", "xy", "x eq 1",
+                null, null);
+        Assert.assertEquals(r.getEntity().toString(),
+                "schema or index not found bar.xy");
+    }
+
+    public void testMissingIndex() throws Exception {
+        this.schemaResource.createEntity("foo1", schema4);
+
+        Response r = this.indexResource.retrieveEntity("foo1", "xyz", "x eq 1",
+                null, null);
+        Assert.assertEquals(r.getEntity().toString(),
+                "schema or index not found foo1.xyz");
     }
 
     protected void runSchemaTest(String type, String schema) throws Exception {

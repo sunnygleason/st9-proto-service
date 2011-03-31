@@ -10,6 +10,7 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
+import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
@@ -114,6 +115,8 @@ public class SecondaryIndexResource {
             } catch (ValidationException e) {
                 return Response.status(Status.BAD_REQUEST)
                         .entity(e.getMessage()).build();
+            } catch (WebApplicationException e) {
+                return e.getResponse();
             } catch (Exception other) {
                 // do not apply schema
                 other.printStackTrace();

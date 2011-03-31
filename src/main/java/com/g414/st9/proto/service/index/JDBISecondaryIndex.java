@@ -7,6 +7,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
+
 import org.skife.jdbi.v2.Handle;
 import org.skife.jdbi.v2.IDBI;
 import org.skife.jdbi.v2.Query;
@@ -283,23 +287,34 @@ public abstract class JDBISecondaryIndex {
         final String querySql = getIndexQuery(type, indexName, queryTerms,
                 token, pageSize, schemaDefinition, bindParams);
 
-        database.inTransaction(new TransactionCallback<Void>() {
-            @Override
-            public Void inTransaction(Handle handle, TransactionStatus status)
-                    throws Exception {
-                Query<Map<String, Object>> query = handle.createQuery(querySql);
+        Response response = database
+                .inTransaction(new TransactionCallback<Response>() {
+                    @Override
+                    public Response inTransaction(Handle handle,
+                            TransactionStatus status) throws Exception {
+                        try {
+                            Query<Map<String, Object>> query = handle
+                                    .createQuery(querySql);
 
-                for (Map.Entry<String, Object> entry : bindParams.entrySet()) {
-                    query.bind(entry.getKey(), entry.getValue());
-                }
+                            for (Map.Entry<String, Object> entry : bindParams
+                                    .entrySet()) {
+                                query.bind(entry.getKey(), entry.getValue());
+                            }
 
-                for (Map<String, Object> r : query.list()) {
-                    resultIds.add(r);
-                }
+                            for (Map<String, Object> r : query.list()) {
+                                resultIds.add(r);
+                            }
 
-                return null;
-            }
-        });
+                            return null;
+                        } catch (WebApplicationException e) {
+                            return e.getResponse();
+                        }
+                    }
+                });
+
+        if (response != null) {
+            throw new WebApplicationException(response);
+        }
 
         return Collections.unmodifiableList(resultIds);
     }
@@ -310,6 +325,13 @@ public abstract class JDBISecondaryIndex {
             throws Exception {
         IndexDefinition indexDefinition = schemaDefinition.getIndexMap().get(
                 indexName);
+
+        if (indexDefinition == null) {
+            throw new WebApplicationException(Response
+                    .status(Status.BAD_REQUEST)
+                    .entity("schema or index not found " + type + "."
+                            + indexName).build());
+        }
 
         final SchemaValidatorTransformer transformer = new SchemaValidatorTransformer(
                 schemaDefinition);
