@@ -23,6 +23,7 @@ mysql_init_key_values() ::=<<
     `_key_id`       bigint unsigned not null,
     `_created_dt`   int unsigned not null,
     `_updated_dt`   int unsigned not null,
+    `_is_deleted`   char(1) not null default 'N',
     `_format`       char(1) not null default 'S',
     `_compression`  char(1) not null default 'F',
     `_value`        blob not null,
@@ -69,8 +70,8 @@ mysql_get_entity_types() ::=<<
 >>
 
 mysql_create() ::=<< 
-  insert into `_key_values` (`_key_type`, `_key_id`, `_created_dt`, `_updated_dt`, `_format`, `_compression`, `_value`)
-  values (:key_type, :key_id, :created_dt, :created_dt, 'S', 'F', :value)
+  insert into `_key_values` (`_key_type`, `_key_id`, `_created_dt`, `_updated_dt`, `_is_deleted`, `_format`, `_compression`, `_value`)
+  values (:key_type, :key_id, :created_dt, :created_dt, 'N', 'S', 'F', :value)
 >>
 
 mysql_retrieve() ::=<< 
@@ -78,6 +79,7 @@ mysql_retrieve() ::=<<
     from `_key_values`
    where `_key_type` = :key_type
      and `_key_id` = :key_id
+     and `_is_deleted` = 'N'
 >>
 
 mysql_update() ::=<< 
@@ -88,11 +90,13 @@ mysql_update() ::=<<
         `_value`      = :value
    where `_key_type` = :key_type
      and `_key_id` = :key_id
+     and `_is_deleted` = 'N'
 >>
 
 mysql_delete() ::=<< 
-  delete
-    from `_key_values`
+  update `_key_values`
+    set `_updated_dt` = :updated_dt,
+        `_is_deleted` = 'Y'
    where `_key_type` = :key_type
      and `_key_id` = :key_id
 >>
@@ -139,3 +143,14 @@ mysql_truncate_key_values() ::=<<
   truncate table `_key_values`
 >>
 
+mysql_table_exists(table_name) ::=<< 
+  select 1 from <table_name>
+>>
+
+mysql_truncate_table(table_name) ::=<< 
+  truncate table <table_name>
+>>
+
+mysql_drop_index(table_name, index_name) ::=<< 
+  drop index <index_name> on <table_name>
+>>

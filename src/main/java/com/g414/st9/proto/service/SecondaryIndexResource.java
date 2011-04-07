@@ -65,7 +65,7 @@ public class SecondaryIndexResource {
         this.database.withHandle(new HandleCallback<Void>() {
             @Override
             public Void withHandle(Handle handle) throws Exception {
-                index.clear(handle, storage.iterator("$schema"));
+                index.clear(handle, storage.iterator("$schema", null));
 
                 return null;
             }

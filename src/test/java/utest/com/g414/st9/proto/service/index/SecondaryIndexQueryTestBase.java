@@ -3,9 +3,9 @@ package utest.com.g414.st9.proto.service.index;
 import java.util.List;
 import java.util.Map;
 
-import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
 
+import org.skife.jdbi.v2.IDBI;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
@@ -19,6 +19,7 @@ import com.g414.st9.proto.service.SecondaryIndexResource;
 import com.g414.st9.proto.service.ServiceModule;
 import com.g414.st9.proto.service.cache.EmptyKeyValueCache;
 import com.g414.st9.proto.service.cache.KeyValueCache;
+import com.g414.st9.proto.service.index.JDBISecondaryIndex;
 import com.g414.st9.proto.service.index.OpaquePaginationHelper;
 import com.g414.st9.proto.service.store.EncodingHelper;
 import com.google.inject.AbstractModule;
@@ -38,7 +39,9 @@ public abstract class SecondaryIndexQueryTestBase {
 
     protected KeyValueResource kvResource;
     protected SecondaryIndexResource indexResource;
+    protected JDBISecondaryIndex index;
     protected SchemaResource schemaResource;
+    protected IDBI database;
 
     public abstract Module getKeyValueStorageModule();
 
@@ -52,8 +55,10 @@ public abstract class SecondaryIndexQueryTestBase {
                     }
                 }, new ServiceModule());
 
+        this.database = injector.getInstance(IDBI.class);
         this.kvResource = injector.getInstance(KeyValueResource.class);
         this.indexResource = injector.getInstance(SecondaryIndexResource.class);
+        this.index = injector.getInstance(JDBISecondaryIndex.class);
         this.schemaResource = injector.getInstance(SchemaResource.class);
 
         injector.getInstance(Lifecycle.class).init();
@@ -71,15 +76,19 @@ public abstract class SecondaryIndexQueryTestBase {
     }
 
     public void testQueryAsc() throws Exception {
-        runSchemaTest("foo1", schema4);
+        runSchemaTest("foo1", "xy", schema4);
     }
 
     public void testQueryDesc() throws Exception {
-        runSchemaTest("foo2", schema5);
+        runSchemaTest("foo2", "xy", schema5);
+    }
+
+    public void testIndexExists() throws Exception {
+        Assert.assertTrue(!this.index.indexExists(database, "foo3", "yy"));
     }
 
     public void testMissingType() throws Exception {
-        this.schemaResource.createEntity("foo1", schema4);
+        this.schemaResource.createEntity("foo4", schema4);
 
         Response r = this.indexResource.retrieveEntity("bar", "xy", "x eq 1",
                 null, null);
@@ -88,16 +97,19 @@ public abstract class SecondaryIndexQueryTestBase {
     }
 
     public void testMissingIndex() throws Exception {
-        this.schemaResource.createEntity("foo1", schema4);
+        this.schemaResource.createEntity("foo5", schema4);
 
-        Response r = this.indexResource.retrieveEntity("foo1", "xyz", "x eq 1",
+        Response r = this.indexResource.retrieveEntity("foo5", "xyz", "x eq 1",
                 null, null);
         Assert.assertEquals(r.getEntity().toString(),
-                "schema or index not found foo1.xyz");
+                "schema or index not found foo5.xyz");
     }
 
-    protected void runSchemaTest(String type, String schema) throws Exception {
+    protected void runSchemaTest(String type, String indexName, String schema)
+            throws Exception {
         this.schemaResource.createEntity(type, schema);
+
+        Assert.assertTrue(this.index.indexExists(database, type, indexName));
 
         for (int i = 0; i < 74; i++) {
             this.kvResource.createEntity(

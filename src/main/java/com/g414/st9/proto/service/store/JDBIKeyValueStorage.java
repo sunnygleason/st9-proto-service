@@ -31,9 +31,9 @@ import com.g414.guice.lifecycle.LifecycleRegistration;
 import com.g414.guice.lifecycle.LifecycleSupportBase;
 import com.g414.st9.proto.service.cache.KeyValueCache;
 import com.g414.st9.proto.service.index.JDBISecondaryIndex;
-import com.g414.st9.proto.service.schema.Attribute;
 import com.g414.st9.proto.service.schema.IndexDefinition;
 import com.g414.st9.proto.service.schema.SchemaDefinition;
+import com.g414.st9.proto.service.schema.SchemaHelper;
 import com.g414.st9.proto.service.schema.SchemaValidatorTransformer;
 import com.g414.st9.proto.service.validator.ValidationException;
 import com.google.inject.Inject;
@@ -95,8 +95,14 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
      *      java.lang.String)
      */
     @Override
-    public Response create(final String type, String inValue, final Long id)
-            throws Exception {
+    public Response create(final String type, String inValue, final Long id,
+            boolean strictType) throws Exception {
+        if (type == null
+                || (strictType && ((type.contains("@") || type.contains("$"))))) {
+            return Response.status(Status.BAD_REQUEST)
+                    .entity("Invalid entity 'type'").build();
+        }
+
         final Map<String, Object> readValue;
 
         try {
@@ -114,7 +120,12 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
         try {
             definition = loadOrCreateEmptySchemaOutsideTxn(counters
                     .getTypeId(type));
-            newKey = counters.nextKey(type);
+            if (id != null) {
+                newKey = new Key(type, id);
+                counters.bumpKey(type, id);
+            } else {
+                newKey = counters.nextKey(type);
+            }
         } catch (Exception e) {
             return getErrorResponse(e);
         }
@@ -393,6 +404,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
                     Update delete = handle.createStatement(getPrefix()
                             + "delete");
+                    delete.bind("updated_dt", getEpochSecondsNow());
                     delete.bind("key_type", typeId);
                     delete.bind("key_id", keyId);
 
@@ -450,10 +462,16 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
     }
 
     @Override
-    public Iterator<Map<String, Object>> iterator(final String type)
-            throws Exception {
+    public Iterator<Map<String, Object>> iterator(String type) throws Exception {
+        return iterator(type,
+                loadOrCreateEmptySchemaOutsideTxn(getTypeId(type)));
+    }
+
+    @Override
+    public Iterator<Map<String, Object>> iterator(final String type,
+            final SchemaDefinition schemaDefinition) throws Exception {
         return new Iterator<Map<String, Object>>() {
-            private final SchemaDefinition definition = loadOrCreateEmptySchemaOutsideTxn(getTypeId(type));
+            private final SchemaDefinition definition = schemaDefinition;
             private final Iterator<String> inner = createKeyIterator(type);
             private String nextKey = advance();
 
@@ -490,34 +508,34 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                 try {
                     Key realKey = null;
                     byte[] objectBytes = null;
-                    while (objectBytes == null && nextKey != null) {
-                        KeyHelper.validateKey(nextKey);
-                        realKey = Key.valueOf(nextKey);
-                        objectBytes = getObjectBytes(realKey);
 
-                        if (objectBytes == null) {
-                            nextKey = advance();
-                        }
+                    KeyHelper.validateKey(nextKey);
+                    realKey = Key.valueOf(nextKey);
+                    objectBytes = getObjectBytes(realKey);
+
+                    Map<String, Object> object = null;
+
+                    if (objectBytes != null) {
+                        object = (Map<String, Object>) EncodingHelper
+                                .parseSmileLzf(objectBytes);
+                        object.remove("id");
+                        object.remove("key");
+                        object = schemaUntransform(definition, object);
+                    } else {
+                        object = new LinkedHashMap<String, Object>();
+                        object.put("$deleted", true);
                     }
-
-                    if (objectBytes == null) {
-                        return null;
-                    }
-
-                    Map<String, Object> object = (Map<String, Object>) EncodingHelper
-                            .parseSmileLzf(objectBytes);
-                    object.remove("id");
-                    object.remove("key");
-
-                    object = schemaUntransform(definition, object);
 
                     Map<String, Object> result = new LinkedHashMap<String, Object>();
                     result.put("id", realKey.getEncryptedIdentifier());
                     result.put("kind", realKey.getType());
 
                     if (type.equals("$schema")) {
-                        result.put("$type", getTypeName(realKey.getId()
-                                .intValue()));
+                        String typeName = getTypeName(realKey.getId()
+                                .intValue());
+                        if (typeName != null) {
+                            result.put("$type", typeName);
+                        }
                     }
 
                     result.putAll(object);
@@ -545,7 +563,11 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
     public Response exportAll() throws Exception {
         StringBuilder json = new StringBuilder();
         for (String type : this.getTypes()) {
-            Iterator<Map<String, Object>> entities = this.iterator(type);
+            SchemaDefinition schema = loadOrCreateEmptySchemaOutsideTxn(getTypeId(type));
+
+            Iterator<Map<String, Object>> entities = this
+                    .iterator(type, schema);
+
             while (entities.hasNext()) {
                 Map<String, Object> entity = entities.next();
                 json.append(EncodingHelper.convertToJson(entity));
@@ -713,16 +735,17 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
     private SchemaDefinition loadOrCreateEmptySchema(Handle handle,
             final int typeId) throws Exception {
         if (typeId == 1) {
-            return getEmptySchema();
+            return SchemaHelper.getEmptySchema();
         }
 
         SchemaDefinition definition = doLoadSchema(typeId);
 
         if (definition == null) {
-            definition = getEmptySchema();
+            definition = SchemaHelper.getEmptySchema();
 
             int inserted = doInsert(handle, 1, typeId,
-                    EncodingHelper.convertToSmileLzf(getEmptySchema()));
+                    EncodingHelper.convertToSmileLzf(SchemaHelper
+                            .getEmptySchema()));
 
             if (inserted != 1) {
                 throw new WebApplicationException(Response
@@ -743,13 +766,14 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
     private SchemaDefinition loadOrCreateEmptySchemaOutsideTxn(final int typeId)
             throws Exception {
         if (typeId == 1) {
-            return getEmptySchema();
+            return SchemaHelper.getEmptySchema();
         }
 
         SchemaDefinition definition = doLoadSchema(typeId);
 
         if (definition == null) {
-            final SchemaDefinition newDefinition = getEmptySchema();
+            final SchemaDefinition newDefinition = SchemaHelper
+                    .getEmptySchema();
             final byte[] definitionBytes = EncodingHelper
                     .convertToSmileLzf(newDefinition);
 
@@ -786,14 +810,6 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
         }
 
         return definition;
-    }
-
-    private SchemaDefinition getEmptySchema() {
-        SchemaDefinition newDefinition = new SchemaDefinition(
-                Collections.<Attribute> emptyList(),
-                Collections.<IndexDefinition> emptyList());
-
-        return newDefinition;
     }
 
     private SchemaDefinition doLoadSchema(final int typeId) throws Exception,
@@ -835,13 +851,10 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
     private int doInsert(Handle handle, final int typeId, final long nextId,
             byte[] valueBytes) {
-        int epochSeconds = (int) (new DateTime().withZone(DateTimeZone.UTC)
-                .getMillis() / 1000);
-
         Update update = handle.createStatement(getPrefix() + "create");
         update.bind("key_type", typeId);
         update.bind("key_id", nextId);
-        update.bind("created_dt", epochSeconds);
+        update.bind("created_dt", getEpochSecondsNow());
         update.bind("value", valueBytes);
         int inserted = update.execute();
 
@@ -850,17 +863,18 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
     private int doUpdate(Handle handle, final int typeId, final long keyId,
             byte[] valueBytes) {
-        int epochSeconds = (int) (new DateTime().withZone(DateTimeZone.UTC)
-                .getMillis() / 1000);
-
         Update update = handle.createStatement(getPrefix() + "update");
         update.bind("key_type", typeId);
         update.bind("key_id", keyId);
-        update.bind("updated_dt", epochSeconds);
+        update.bind("updated_dt", getEpochSecondsNow());
         update.bind("value", valueBytes);
         int updated = update.execute();
 
         return updated;
+    }
+
+    private int getEpochSecondsNow() {
+        return (int) (new DateTime().withZone(DateTimeZone.UTC).getMillis() / 1000);
     }
 
     private byte[] getStorableSmileLzf(Map<String, Object> toInsert) {

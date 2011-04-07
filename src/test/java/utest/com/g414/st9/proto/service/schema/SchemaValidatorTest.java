@@ -1,6 +1,7 @@
 package utest.com.g414.st9.proto.service.schema;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -15,12 +16,21 @@ import org.testng.annotations.Test;
 
 import com.g414.st9.proto.service.schema.SchemaDefinition;
 import com.g414.st9.proto.service.schema.SchemaValidatorTransformer;
+import com.g414.st9.proto.service.validator.AnyValidator;
+import com.g414.st9.proto.service.validator.BooleanValidator;
+import com.g414.st9.proto.service.validator.EnumValidator;
+import com.g414.st9.proto.service.validator.IntegerValidator;
+import com.g414.st9.proto.service.validator.ReferenceValidator;
+import com.g414.st9.proto.service.validator.StringValidator;
+import com.g414.st9.proto.service.validator.UTCDateValidator;
+import com.g414.st9.proto.service.validator.ValidationException;
+import com.g414.st9.proto.service.validator.ValidatorTransformer;
 import com.google.common.collect.ImmutableMap;
 
 @Test
 public class SchemaValidatorTest {
     private final String schema1 = "{\"attributes\":[{\"name\":\"isAwesome\",\"type\":\"BOOLEAN\"},{\"name\":\"hotness\",\"type\":\"ENUM\",\"values\":[\"FREEZING\",\"COLD\",\"COOL\",\"WARM\",\"TEH_HOTNESS\"]}],\"indexes\":[]}";
-    private final String schema2 = "{\"attributes\":[{\"name\":\"when\",\"type\":\"UTC_DATE_SECS\"},{\"name\":\"lname\",\"type\":\"UTF8_SMALLSTRING\"}],\"indexes\":[]}";
+    private final String schema2 = "{\"attributes\":[{\"name\":\"when\",\"type\":\"UTC_DATE_SECS\"},{\"name\":\"lname\",\"type\":\"UTF8_SMALLSTRING\"},{\"name\":\"data\",\"type\":\"ANY\"}],\"indexes\":[]}";
     private final String schema3 = "{\"attributes\":[{\"name\":\"ref\",\"type\":\"REFERENCE\"},{\"name\":\"age\",\"type\":\"U8\"}],\"indexes\":[]}";
     private final String schema4 = "{\"attributes\":[{\"name\":\"x\",\"type\":\"I32\"},{\"name\":\"y\",\"type\":\"I32\"}],\"indexes\":[]}";
     private final DateTimeFormatter format = ISODateTimeFormat
@@ -67,6 +77,12 @@ public class SchemaValidatorTest {
         instances.add(ImmutableMap.<String, Object> of("when",
                 format.print(new DateTime(0, DateTimeZone.UTC)), "lname",
                 "Sweet"));
+        instances.add(ImmutableMap.<String, Object> of("when",
+                format.print(new DateTime(0, DateTimeZone.UTC)), "lname",
+                "Nobody", "data", Long.valueOf(100)));
+        instances.add(ImmutableMap.<String, Object> of("when",
+                format.print(new DateTime(0, DateTimeZone.UTC)), "lname",
+                "Different", "data", Collections.emptyMap()));
 
         for (ImmutableMap<String, Object> instance : instances) {
             validateInstance(validator, instance);
@@ -104,6 +120,26 @@ public class SchemaValidatorTest {
 
         for (ImmutableMap<String, Object> instance : instances) {
             validateInstance(validator, instance);
+        }
+    }
+
+    public void testNulls() throws Exception {
+        doValidateExpectException(new AnyValidator("ignored"));
+        doValidateExpectException(new BooleanValidator("ignored"));
+        doValidateExpectException(new EnumValidator("ignored",
+                Collections.<String> emptyList()));
+        doValidateExpectException(new IntegerValidator("ignored", "0", "1"));
+        doValidateExpectException(new ReferenceValidator("ignored"));
+        doValidateExpectException(new StringValidator("ignored", null, null));
+        doValidateExpectException(new UTCDateValidator("ignored"));
+    }
+
+    private void doValidateExpectException(ValidatorTransformer<?, ?> v) {
+        try {
+            v.validateTransform(null);
+
+            throw new RuntimeException("should have thrown!");
+        } catch (ValidationException expected) {
         }
     }
 

@@ -13,6 +13,8 @@ import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import com.g414.st9.proto.service.schema.SchemaDefinition;
+import com.g414.st9.proto.service.schema.SchemaHelper;
 import com.google.inject.AbstractModule;
 import com.google.inject.Binder;
 
@@ -42,8 +44,14 @@ public class InMemoryKeyValueStorage implements KeyValueStorage {
      *      java.lang.String)
      */
     @Override
-    public Response create(String type, String inValue, Long id)
-            throws Exception {
+    public Response create(String type, String inValue, Long id,
+            boolean strictType) throws Exception {
+        if (type == null
+                || (strictType && ((type.contains("@") || type.contains("$"))))) {
+            return Response.status(Status.BAD_REQUEST)
+                    .entity("Invalid entity 'type'").build();
+        }
+
         try {
             validateType(type);
             Map<String, Object> readValue = EncodingHelper
@@ -235,8 +243,13 @@ public class InMemoryKeyValueStorage implements KeyValueStorage {
     }
 
     @Override
-    public Iterator<Map<String, Object>> iterator(final String type)
-            throws Exception {
+    public Iterator<Map<String, Object>> iterator(String type) throws Exception {
+        return iterator(type, SchemaHelper.getEmptySchema());
+    }
+
+    @Override
+    public Iterator<Map<String, Object>> iterator(final String type,
+            SchemaDefinition schemaDefinition) throws Exception {
         return new Iterator<Map<String, Object>>() {
             private final Iterator<String> inner = storage.keySet().iterator();
             private String nextKey = advance();
@@ -315,7 +328,8 @@ public class InMemoryKeyValueStorage implements KeyValueStorage {
     public Response exportAll() throws Exception {
         StringBuilder json = new StringBuilder();
         for (String type : types.keySet()) {
-            Iterator<Map<String, Object>> entities = this.iterator(type);
+            Iterator<Map<String, Object>> entities = this.iterator(type, null);
+
             while (entities.hasNext()) {
                 Map<String, Object> entity = entities.next();
                 json.append(EncodingHelper.convertToJson(entity));

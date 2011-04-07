@@ -10,7 +10,7 @@ sqlite_init_sequences() ::=<<
 
 sqlite_init_key_values() ::=<<
   create table if not exists `_key_values` (`_key_type` INTEGER, `_key_id` INTEGER,
-    `_created_dt` INTEGER, `_updated_dt` INTEGER,
+    `_created_dt` INTEGER, `_updated_dt` INTEGER, `_is_deleted`,
     `_format`, `_compression`, `_value`,
     PRIMARY KEY(`_key_type`, `_key_id`))
 >>
@@ -51,8 +51,8 @@ sqlite_populate_sequences() ::=<<
 >>
 
 sqlite_create() ::=<< 
-  insert into `_key_values` (`_key_type`, `_key_id`, `_created_dt`, `_updated_dt`, `_format`, `_compression`, `_value`)
-  values (:key_type, :key_id, :created_dt, :created_dt, 'S', 'F', :value)
+  insert into `_key_values` (`_key_type`, `_key_id`, `_created_dt`, `_updated_dt`, `_is_deleted`, `_format`, `_compression`, `_value`)
+  values (:key_type, :key_id, :created_dt, :created_dt, 'N', 'S', 'F', :value)
 >>
 
 sqlite_retrieve() ::=<< 
@@ -60,6 +60,7 @@ sqlite_retrieve() ::=<<
     from `_key_values`
    where `_key_type` = :key_type
      and `_key_id` = :key_id
+     and `_is_deleted` = 'N'
 >>
 
 sqlite_update() ::=<< 
@@ -70,11 +71,13 @@ sqlite_update() ::=<<
         `_value`      = :value
    where `_key_type` = :key_type
      and `_key_id` = :key_id
+     and `_is_deleted` = 'N'
 >>
 
 sqlite_delete() ::=<< 
-  delete
-    from `_key_values`
+  update `_key_values`
+    set `_updated_dt` = :updated_dt,
+        `_is_deleted` = 'Y'
    where `_key_type` = :key_type
      and `_key_id` = :key_id
 >>
@@ -121,3 +124,14 @@ sqlite_truncate_key_values() ::=<<
   delete from `_key_values`
 >>
 
+sqlite_table_exists(table_name) ::=<< 
+  select 1 from <table_name>
+>>
+
+sqlite_truncate_table(table_name) ::=<< 
+  delete from <table_name>
+>>
+
+sqlite_drop_index(table_name, index_name) ::=<< 
+  drop index if exists <index_name>
+>>

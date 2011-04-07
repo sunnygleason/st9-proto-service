@@ -36,22 +36,22 @@ public abstract class SecondaryIndexSQLTestBase {
         MySQLSecondaryIndex mysql = new MySQLSecondaryIndex();
 
         Assert.assertEquals(
-                "create table if not exists `_i_schema4_xy` (`_id` BIGINT UNSIGNED PRIMARY KEY, `_x` INT, `_y` INT)",
+                "create table if not exists `_i_schema4__xy` (`_id` BIGINT UNSIGNED PRIMARY KEY, `_x` INT, `_y` INT)",
                 mysql.getTableDefinition("schema4", "xy", def));
 
         Assert.assertEquals(
-                "create index `_idx_schema4_xy` on `_i_schema4_xy` (`_x` ASC, `_y` ASC, `_id` ASC)",
+                "create index `_idx_schema4__xy` on `_i_schema4__xy` (`_x` ASC, `_y` ASC, `_id` ASC)",
                 mysql.getIndexDefinition("schema4", "xy", def));
 
         Assert.assertEquals(
-                "insert into `_i_schema4_xy` (`_x`, `_y`, `_id`) values (:x, :y, :id)",
+                "insert into `_i_schema4__xy` (`_x`, `_y`, `_id`) values (:x, :y, :id)",
                 mysql.getInsertStatement("schema4", "xy", def));
 
         Assert.assertEquals(
-                "update `_i_schema4_xy` set `_x` = :x, `_y` = :y where `_id` = :id",
+                "update `_i_schema4__xy` set `_x` = :x, `_y` = :y where `_id` = :id",
                 mysql.getUpdateStatement("schema4", "xy", def));
 
-        Assert.assertEquals("delete from `_i_schema4_xy` where `_id` = :id",
+        Assert.assertEquals("delete from `_i_schema4__xy` where `_id` = :id",
                 mysql.getDeleteStatement("schema4", "xy"));
 
         List<QueryTerm> query0 = ImmutableList.<QueryTerm> of(
@@ -66,7 +66,7 @@ public abstract class SecondaryIndexSQLTestBase {
 
         Map<String, Object> bindParams0 = new LinkedHashMap<String, Object>();
         Assert.assertEquals(
-                "select `_id` from `_i_schema4_xy` where `_x` > :p0 AND `_y` > :p1 AND `_y` < :p2 AND `_id` = :p3 order by `_x` ASC, `_y` ASC, `_id` ASC limit 26 offset 0",
+                "select `_id` from `_i_schema4__xy` where `_x` > :p0 AND `_y` > :p1 AND `_y` < :p2 AND `_id` = :p3 order by `_x` ASC, `_y` ASC, `_id` ASC limit 26 offset 0",
                 mysql.getIndexQuery("schema4", "xy", query0, null,
                         OpaquePaginationHelper.DEFAULT_PAGE_SIZE, def,
                         bindParams0));
@@ -84,7 +84,7 @@ public abstract class SecondaryIndexSQLTestBase {
 
         Map<String, Object> bindParams1 = new LinkedHashMap<String, Object>();
         Assert.assertEquals(
-                "select `_id` from `_i_schema4_xy` where `_x` > :p0 AND `_y` > :p1 AND `_y` < :p2 order by `_x` ASC, `_y` ASC, `_id` ASC limit 26 offset 0",
+                "select `_id` from `_i_schema4__xy` where `_x` > :p0 AND `_y` > :p1 AND `_y` < :p2 order by `_x` ASC, `_y` ASC, `_id` ASC limit 26 offset 0",
                 mysql.getIndexQuery("schema4", "xy", query1, null,
                         OpaquePaginationHelper.DEFAULT_PAGE_SIZE, def,
                         bindParams1));
@@ -98,7 +98,7 @@ public abstract class SecondaryIndexSQLTestBase {
 
         Map<String, Object> bindParams2 = new LinkedHashMap<String, Object>();
         Assert.assertEquals(
-                "select `_id` from `_i_schema4_xy` where `_x` is null AND `_y` is not null order by `_x` ASC, `_y` ASC, `_id` ASC limit 26 offset 0",
+                "select `_id` from `_i_schema4__xy` where `_x` is null AND `_y` is not null order by `_x` ASC, `_y` ASC, `_id` ASC limit 26 offset 0",
                 mysql.getIndexQuery("schema4", "xy", query2, null,
                         OpaquePaginationHelper.DEFAULT_PAGE_SIZE, def,
                         bindParams2));

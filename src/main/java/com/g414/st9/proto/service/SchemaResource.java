@@ -8,12 +8,15 @@ import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
 import org.codehaus.jackson.map.ObjectMapper;
+import org.skife.jdbi.v2.Handle;
 import org.skife.jdbi.v2.IDBI;
+import org.skife.jdbi.v2.tweak.HandleCallback;
 
 import com.g414.st9.proto.service.index.JDBISecondaryIndex;
 import com.g414.st9.proto.service.schema.IndexDefinition;
@@ -63,13 +66,13 @@ public class SchemaResource {
         validator.validate(schemaDefinition);
 
         for (IndexDefinition indexDefinition : schemaDefinition.getIndexes()) {
-            index.createTable(database, type, indexDefinition.getName(),
-                    schemaDefinition);
-            index.createIndex(database, type, indexDefinition.getName(),
-                    schemaDefinition);
+            String indexName = indexDefinition.getName();
+
+            index.createTable(database, type, indexName, schemaDefinition);
+            index.createIndex(database, type, indexName, schemaDefinition);
         }
 
-        return store.create(SCHEMA_PREFIX, value, typeId.longValue());
+        return store.create(SCHEMA_PREFIX, value, typeId.longValue(), false);
     }
 
     @GET
@@ -92,8 +95,8 @@ public class SchemaResource {
     @Consumes(MediaType.APPLICATION_JSON)
     // TODO using String for the input value is busted/whack - pending better
     // automagical jackson configuration
-    public Response updateEntity(@PathParam("type") String type, String value)
-            throws Exception {
+    public Response updateEntity(@PathParam("type") final String type,
+            final String value) throws Exception {
         Integer typeId = store.getTypeId(type);
 
         if (typeId == null) {
@@ -101,18 +104,37 @@ public class SchemaResource {
                     .build();
         }
 
-        SchemaDefinition schemaDefinition = mapper.readValue(value,
+        final SchemaDefinition schemaDefinition = mapper.readValue(value,
                 SchemaDefinition.class);
 
         SchemaDefinitionValidator validator = new SchemaDefinitionValidator();
         validator.validate(schemaDefinition);
 
         for (IndexDefinition indexDefinition : schemaDefinition.getIndexes()) {
-            index.createTable(database, type, indexDefinition.getName(),
-                    schemaDefinition);
-            index.createIndex(database, type, indexDefinition.getName(),
-                    schemaDefinition);
+            String indexName = indexDefinition.getName();
+
+            if (!index.indexExists(database, type, indexName)) {
+                index.createTable(database, type, indexName, schemaDefinition);
+                index.createIndex(database, type, indexName, schemaDefinition);
+            }
         }
+
+        database.withHandle(new HandleCallback<Void>() {
+            @Override
+            public Void withHandle(Handle handle) throws Exception {
+                try {
+                    index.rebuildIndexes(handle, type, schemaDefinition,
+                            store.iterator(type, schemaDefinition));
+                    return null;
+                } catch (WebApplicationException e) {
+                    e.printStackTrace();
+
+                    return null;
+                }
+            }
+        });
+
+        store.delete(SCHEMA_PREFIX + ":" + typeId);
 
         return store.update(SCHEMA_PREFIX + ":" + typeId, value);
     }

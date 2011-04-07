@@ -17,6 +17,8 @@ import org.skife.jdbi.v2.Query;
 import org.skife.jdbi.v2.TransactionCallback;
 import org.skife.jdbi.v2.TransactionStatus;
 import org.skife.jdbi.v2.Update;
+import org.skife.jdbi.v2.exceptions.UnableToCreateStatementException;
+import org.skife.jdbi.v2.exceptions.UnableToExecuteStatementException;
 
 import com.g414.st9.proto.service.query.QueryOperator;
 import com.g414.st9.proto.service.query.QueryTerm;
@@ -28,15 +30,24 @@ import com.g414.st9.proto.service.schema.IndexAttribute;
 import com.g414.st9.proto.service.schema.IndexDefinition;
 import com.g414.st9.proto.service.schema.SchemaDefinition;
 import com.g414.st9.proto.service.schema.SchemaValidatorTransformer;
+import com.g414.st9.proto.service.store.Key;
 import com.g414.st9.proto.service.validator.ValidationException;
+import com.google.inject.Inject;
+import com.google.inject.name.Named;
 
 public abstract class JDBISecondaryIndex {
+    @Inject
+    @Named("db.prefix")
+    private String prefix;
+
     public void createTable(IDBI database, final String type,
             final String indexName, final SchemaDefinition schemaDefinition) {
         database.inTransaction(new TransactionCallback<Void>() {
             @Override
             public Void inTransaction(Handle handle, TransactionStatus arg1)
                     throws Exception {
+                handle.createStatement(getTableDrop(type, indexName)).execute();
+
                 handle.createStatement(
                         getTableDefinition(type, indexName, schemaDefinition))
                         .execute();
@@ -52,6 +63,15 @@ public abstract class JDBISecondaryIndex {
             @Override
             public Void inTransaction(Handle handle, TransactionStatus arg1)
                     throws Exception {
+                try {
+                    handle.createStatement(prefix + "drop_index")
+                            .define("table_name", getTableName(type, indexName))
+                            .define("index_name", getIndexName(type, indexName))
+                            .execute();
+                } catch (UnableToExecuteStatementException ok) {
+                    // expected case in mysql - this is just best-effort anyway
+                }
+
                 handle.createStatement(
                         getIndexDefinition(type, indexName, schemaDefinition))
                         .execute();
@@ -105,10 +125,34 @@ public abstract class JDBISecondaryIndex {
                 .bind("id", id).execute();
     }
 
+    public void rebuildIndexes(Handle handle, String type,
+            SchemaDefinition schemaDefinition,
+            Iterator<Map<String, Object>> instances) throws Exception {
+        for (IndexDefinition index : schemaDefinition.getIndexes()) {
+            this.truncateIndexTable(handle, type, index.getName());
+        }
+
+        while (instances.hasNext()) {
+            Map<String, Object> instance = instances.next();
+            Key key = Key.valueOf((String) instance.get("id"));
+
+            for (IndexDefinition index : schemaDefinition.getIndexes()) {
+                String indexName = index.getName();
+
+                this.insertEntity(handle, key.getId(), instance, type,
+                        indexName, schemaDefinition);
+            }
+        }
+    }
+
     public void clear(Handle handle, Iterator<Map<String, Object>> schemas)
             throws Exception {
         while (schemas.hasNext()) {
             Map<String, Object> schema = schemas.next();
+            if (schema == null) {
+                continue;
+            }
+
             String type = (String) schema.get("$type");
 
             if (schema != null && schema.get("indexes") != null) {
@@ -134,14 +178,32 @@ public abstract class JDBISecondaryIndex {
     }
 
     protected static String getTableName(String type, String index) {
-        return "`_i_" + type + "_" + index + "`";
+        return "`_i_" + type + "__" + index + "`";
     }
 
     protected static String getIndexName(String type, String index) {
-        return "`_idx_" + type + "_" + index + "`";
+        return "`_idx_" + type + "__" + index + "`";
     }
 
     protected abstract String getSqlType(AttributeType type);
+
+    public String getTableDrop(String type, String indexName) {
+        StringBuilder sqlBuilder = new StringBuilder();
+        sqlBuilder.append("drop table if exists ");
+        sqlBuilder.append(getTableName(type, indexName));
+
+        return sqlBuilder.toString();
+    }
+
+    public String getIndexDrop(String type, String indexName) {
+        StringBuilder sqlBuilder = new StringBuilder();
+        sqlBuilder.append("drop index ");
+        sqlBuilder.append(getIndexName(type, indexName));
+        sqlBuilder.append(" on ");
+        sqlBuilder.append(getTableName(type, indexName));
+
+        return sqlBuilder.toString();
+    }
 
     public String getTableDefinition(String type, String indexName,
             SchemaDefinition schemaDefinition) {
@@ -397,6 +459,36 @@ public abstract class JDBISecondaryIndex {
         sqlBuilder.append(OpaquePaginationHelper.decodeOpaqueCursor(token));
 
         return sqlBuilder.toString();
+    }
+
+    public boolean indexExists(IDBI database, final String type,
+            final String indexName) {
+        return database.inTransaction(new TransactionCallback<Boolean>() {
+            @Override
+            public Boolean inTransaction(Handle handle, TransactionStatus arg1)
+                    throws Exception {
+                String indexTableName = getTableName(type, indexName);
+                try {
+                    handle.createStatement(prefix + "table_exists")
+                            .define("table_name", indexTableName).execute();
+
+                    return true;
+                } catch (UnableToExecuteStatementException e) {
+                    // expected in missing case
+                } catch (UnableToCreateStatementException e) {
+                    // expected in missing case
+                }
+
+                return false;
+            }
+        });
+    }
+
+    public void truncateIndexTable(Handle handle, final String type,
+            final String indexName) {
+        String indexTableName = getTableName(type, indexName);
+        handle.createStatement(prefix + "truncate_table")
+                .define("table_name", indexTableName).execute();
     }
 
     protected static Map<String, List<QueryTerm>> sortTerms(

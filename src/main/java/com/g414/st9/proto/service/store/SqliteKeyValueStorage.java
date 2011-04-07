@@ -13,6 +13,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.sqlite.JDBC;
 
+import com.g414.st9.proto.service.ImportExportResource;
 import com.g414.st9.proto.service.SecondaryIndexResource;
 import com.g414.st9.proto.service.SchemaResource;
 import com.g414.st9.proto.service.index.JDBISecondaryIndex;
@@ -37,9 +38,9 @@ public class SqliteKeyValueStorage extends JDBIKeyValueStorage {
     }
 
     @Override
-    public synchronized Response create(String type, String inValue, Long id)
-            throws Exception {
-        return super.create(type, inValue, id);
+    public synchronized Response create(String type, String inValue, Long id,
+            boolean strictType) throws Exception {
+        return super.create(type, inValue, id, strictType);
     }
 
     @Override
@@ -135,6 +136,7 @@ public class SqliteKeyValueStorage extends JDBIKeyValueStorage {
 
             bind(SchemaResource.class).asEagerSingleton();
             bind(SecondaryIndexResource.class).asEagerSingleton();
+            bind(ImportExportResource.class).asEagerSingleton();
         }
     }
 

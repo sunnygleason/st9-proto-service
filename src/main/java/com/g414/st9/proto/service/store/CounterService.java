@@ -40,6 +40,18 @@ public class CounterService {
         this.increment = increment;
     }
 
+    public synchronized void bumpKey(final String type, long id)
+            throws Exception {
+        Key key = this.peekKey(type);
+
+        if (key != null && key.getId() < id) {
+            long diff = id - key.getId();
+            for (int i = 0; i < diff; i++) {
+                this.nextKey(type);
+            }
+        }
+    }
+
     public synchronized Key nextKey(final String type) throws Exception {
         if (type == null) {
             throw new WebApplicationException(Response
@@ -106,8 +118,14 @@ public class CounterService {
             @Override
             public String inTransaction(Handle handle, TransactionStatus status)
                     throws Exception {
-                return SequenceHelper
-                        .getTypeName(handle, prefix, typeNames, id);
+                try {
+                    return SequenceHelper.getTypeName(handle, prefix,
+                            typeNames, id);
+                } catch (WebApplicationException e) {
+                    e.printStackTrace();
+
+                    return null;
+                }
             }
         });
     }
