@@ -59,6 +59,12 @@ public class SchemaResource {
                     .build();
         }
 
+        Response exists = this.store.retrieve(SCHEMA_PREFIX + ":" + typeId);
+        if (exists.getStatus() == 200) {
+            return Response.status(Status.CONFLICT)
+                    .entity("schema already exists").build();
+        }
+
         SchemaDefinition schemaDefinition = mapper.readValue(value,
                 SchemaDefinition.class);
 
@@ -104,6 +110,22 @@ public class SchemaResource {
                     .build();
         }
 
+        Response existing = this.store.retrieve(SCHEMA_PREFIX + ":" + typeId);
+        if (existing.getStatus() != 200) {
+            return Response.status(Status.NOT_FOUND).entity("schema not found")
+                    .build();
+        }
+
+        final SchemaDefinition original = mapper.readValue(
+                (String) existing.getEntity(), SchemaDefinition.class);
+        for (IndexDefinition indexDefinition : original.getIndexes()) {
+            String indexName = indexDefinition.getName();
+
+            if (index.indexExists(database, type, indexName)) {
+                index.dropTableAndIndex(database, type, indexName);
+            }
+        }
+
         final SchemaDefinition schemaDefinition = mapper.readValue(value,
                 SchemaDefinition.class);
 
@@ -134,8 +156,6 @@ public class SchemaResource {
             }
         });
 
-        store.delete(SCHEMA_PREFIX + ":" + typeId);
-
         return store.update(SCHEMA_PREFIX + ":" + typeId, value);
     }
 
@@ -150,7 +170,22 @@ public class SchemaResource {
                     .build();
         }
 
-        // TODO: actually delete schemas / indexes
+        Response existing = this.store.retrieve(SCHEMA_PREFIX + ":" + typeId);
+        if (existing.getStatus() != 200) {
+            return Response.status(Status.NOT_FOUND).entity("schema not found")
+                    .build();
+        }
+
+        final SchemaDefinition original = mapper.readValue(
+                (String) existing.getEntity(), SchemaDefinition.class);
+
+        for (IndexDefinition indexDefinition : original.getIndexes()) {
+            String indexName = indexDefinition.getName();
+
+            if (index.indexExists(database, type, indexName)) {
+                index.dropTableAndIndex(database, type, indexName);
+            }
+        }
 
         return store.delete(SCHEMA_PREFIX + ":" + typeId);
     }

@@ -81,6 +81,28 @@ public abstract class JDBISecondaryIndex {
         });
     }
 
+    public void dropTableAndIndex(IDBI database, final String type,
+            final String indexName) {
+        database.inTransaction(new TransactionCallback<Void>() {
+            @Override
+            public Void inTransaction(Handle handle, TransactionStatus arg1)
+                    throws Exception {
+                handle.createStatement(getTableDrop(type, indexName)).execute();
+
+                try {
+                    handle.createStatement(prefix + "drop_index")
+                            .define("table_name", getTableName(type, indexName))
+                            .define("index_name", getIndexName(type, indexName))
+                            .execute();
+                } catch (UnableToExecuteStatementException ok) {
+                    // expected case in mysql - this is just best-effort anyway
+                }
+
+                return null;
+            }
+        });
+    }
+
     public void insertEntity(Handle handle, final Long id,
             final Map<String, Object> value, final String type,
             final String indexName, final SchemaDefinition schemaDefinition) {
