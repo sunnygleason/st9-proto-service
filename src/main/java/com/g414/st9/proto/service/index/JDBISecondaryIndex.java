@@ -81,22 +81,27 @@ public abstract class JDBISecondaryIndex {
         });
     }
 
+    public void dropTableAndIndex(Handle handle, final String type,
+            final String indexName) {
+        handle.createStatement(getTableDrop(type, indexName)).execute();
+
+        try {
+            handle.createStatement(prefix + "drop_index")
+                    .define("table_name", getTableName(type, indexName))
+                    .define("index_name", getIndexName(type, indexName))
+                    .execute();
+        } catch (UnableToExecuteStatementException ok) {
+            // expected case in mysql - this is just best-effort anyway
+        }
+    }
+
     public void dropTableAndIndex(IDBI database, final String type,
             final String indexName) {
         database.inTransaction(new TransactionCallback<Void>() {
             @Override
             public Void inTransaction(Handle handle, TransactionStatus arg1)
                     throws Exception {
-                handle.createStatement(getTableDrop(type, indexName)).execute();
-
-                try {
-                    handle.createStatement(prefix + "drop_index")
-                            .define("table_name", getTableName(type, indexName))
-                            .define("index_name", getIndexName(type, indexName))
-                            .execute();
-                } catch (UnableToExecuteStatementException ok) {
-                    // expected case in mysql - this is just best-effort anyway
-                }
+                dropTableAndIndex(handle, type, indexName);
 
                 return null;
             }
@@ -167,8 +172,8 @@ public abstract class JDBISecondaryIndex {
         }
     }
 
-    public void clear(Handle handle, Iterator<Map<String, Object>> schemas)
-            throws Exception {
+    public void clear(Handle handle, Iterator<Map<String, Object>> schemas,
+            boolean preserveSchema) throws Exception {
         while (schemas.hasNext()) {
             Map<String, Object> schema = schemas.next();
             if (schema == null) {
@@ -180,12 +185,13 @@ public abstract class JDBISecondaryIndex {
             if (schema != null && schema.get("indexes") != null) {
                 for (Map<String, Object> index : (List<Map<String, Object>>) schema
                         .get("indexes")) {
-                    StringBuilder sqlBuilder = new StringBuilder();
-                    sqlBuilder.append("drop table if exists ");
-                    sqlBuilder.append(getTableName(type,
-                            (String) index.get("name")));
+                    String indexName = (String) index.get("name");
 
-                    handle.execute(sqlBuilder.toString());
+                    if (preserveSchema) {
+                        this.truncateIndexTable(handle, type, indexName);
+                    } else {
+                        this.dropTableAndIndex(handle, type, indexName);
+                    }
                 }
             }
         }

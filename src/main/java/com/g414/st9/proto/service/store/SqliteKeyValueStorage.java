@@ -66,13 +66,13 @@ public class SqliteKeyValueStorage extends JDBIKeyValueStorage {
     }
 
     @Override
-    public synchronized void clear() {
-        super.clear();
+    public synchronized void clear(boolean preserveSchema) {
+        super.clear(preserveSchema);
     }
 
     @Override
-    public Response clearRequested() throws Exception {
-        super.clear();
+    public Response clearRequested(boolean preserveSchema) throws Exception {
+        super.clear(preserveSchema);
 
         return Response.status(Status.NO_CONTENT).entity("").build();
     }

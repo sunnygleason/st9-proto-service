@@ -227,8 +227,13 @@ public class InMemoryKeyValueStorage implements KeyValueStorage {
     }
 
     @Override
-    public Response clearRequested() throws Exception {
-        clear();
+    public Response clearRequested(boolean preserveSchema) throws Exception {
+        if (preserveSchema) {
+            return Response.status(Status.BAD_REQUEST)
+                    .entity("preserve schema not implemented").build();
+        }
+
+        clear(preserveSchema);
 
         return Response.status(Status.NO_CONTENT).entity("").build();
     }
@@ -237,7 +242,13 @@ public class InMemoryKeyValueStorage implements KeyValueStorage {
      * @see com.g414.st9.proto.service.store.KeyValueStorage#clear()
      */
     @Override
-    public void clear() {
+    public void clear(boolean preserveSchema) {
+        if (preserveSchema) {
+            throw new WebApplicationException(Response
+                    .status(Status.BAD_REQUEST)
+                    .entity("preserve schema not implemented").build());
+        }
+
         this.sequences.clear();
         this.storage.clear();
     }

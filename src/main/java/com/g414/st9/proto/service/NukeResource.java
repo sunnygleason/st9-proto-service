@@ -2,6 +2,7 @@ package com.g414.st9.proto.service;
 
 import javax.ws.rs.POST;
 import javax.ws.rs.Path;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.Response;
 
 import com.g414.st9.proto.service.store.KeyValueStorage;
@@ -16,7 +17,10 @@ public class NukeResource {
     private KeyValueStorage store;
 
     @POST
-    public Response nuke() throws Exception {
-        return store.clearRequested();
+    public Response nuke(@QueryParam("preserveSchema") Boolean preserveSchema)
+            throws Exception {
+        boolean preserve = (preserveSchema != null) && preserveSchema;
+
+        return store.clearRequested(preserve);
     }
 }

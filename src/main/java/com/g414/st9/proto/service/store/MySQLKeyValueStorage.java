@@ -27,7 +27,7 @@ public class MySQLKeyValueStorage extends JDBIKeyValueStorage {
     }
 
     @Override
-    public Response clearRequested() throws Exception {
+    public Response clearRequested(boolean preserveSchema) throws Exception {
         throw new UnsupportedOperationException();
     }
 

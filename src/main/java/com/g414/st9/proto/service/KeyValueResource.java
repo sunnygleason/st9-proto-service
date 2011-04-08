@@ -74,7 +74,7 @@ public class KeyValueResource {
 
     /** Just for testing of course... */
     public void clear() {
-        store.clear();
+        store.clear(false);
     }
 
     /** Just for testing of course... */

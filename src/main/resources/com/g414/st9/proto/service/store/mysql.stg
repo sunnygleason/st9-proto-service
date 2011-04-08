@@ -143,6 +143,14 @@ mysql_truncate_key_values() ::=<<
   truncate table `_key_values`
 >>
 
+mysql_reset_sequences() ::=<< 
+  update `_sequences` set `_next_id` = 0 where `_key_type` > 1
+>>
+
+mysql_reset_key_values() ::=<< 
+  delete from `_key_values` where `_key_type` > 1
+>>
+
 mysql_table_exists(table_name) ::=<< 
   select 1 from <table_name>
 >>

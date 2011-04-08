@@ -431,22 +431,29 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
      * @see com.g414.st9.proto.service.store.KeyValueStorage#clear()
      */
     @Override
-    public void clear() {
+    public void clear(final boolean preserveSchema) {
         database.inTransaction(new TransactionCallback<Void>() {
             @Override
             public Void inTransaction(Handle handle, TransactionStatus status)
                     throws Exception {
                 try {
-                    index.clear(handle, iterator("$schema"));
+                    index.clear(handle, iterator("$schema"), preserveSchema);
 
-                    handle.createStatement(getPrefix() + "truncate_key_types")
-                            .execute();
-                    handle.createStatement(getPrefix() + "truncate_sequences")
-                            .execute();
-                    handle.createStatement(getPrefix() + "truncate_key_values")
-                            .execute();
+                    if (preserveSchema) {
+                        handle.createStatement(getPrefix() + "reset_sequences")
+                                .execute();
+                        handle.createStatement(getPrefix() + "reset_key_values")
+                                .execute();
+                    } else {
+                        handle.createStatement(
+                                getPrefix() + "truncate_key_types").execute();
+                        handle.createStatement(
+                                getPrefix() + "truncate_sequences").execute();
+                        handle.createStatement(
+                                getPrefix() + "truncate_key_values").execute();
 
-                    performInitialization(handle);
+                        performInitialization(handle);
+                    }
 
                     return null;
                 } catch (Exception e) {

@@ -61,11 +61,12 @@ public class SecondaryIndexResource {
         return doSearch(type, indexName, query, token, num);
     }
 
-    public void clear() {
+    public void clear(final boolean preserveSchema) {
         this.database.withHandle(new HandleCallback<Void>() {
             @Override
             public Void withHandle(Handle handle) throws Exception {
-                index.clear(handle, storage.iterator("$schema", null));
+                index.clear(handle, storage.iterator("$schema", null),
+                        preserveSchema);
 
                 return null;
             }

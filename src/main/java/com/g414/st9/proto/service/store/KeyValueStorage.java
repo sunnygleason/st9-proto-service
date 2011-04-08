@@ -23,9 +23,10 @@ public interface KeyValueStorage {
 
     public abstract Response delete(String key) throws Exception;
 
-    public abstract Response clearRequested() throws Exception;
+    public abstract Response clearRequested(boolean preserveSchema)
+            throws Exception;
 
-    public abstract void clear();
+    public abstract void clear(boolean preserveSchema);
 
     public abstract Iterator<Map<String, Object>> iterator(String type)
             throws Exception;
