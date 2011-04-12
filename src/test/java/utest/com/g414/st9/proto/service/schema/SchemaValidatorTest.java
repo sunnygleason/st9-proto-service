@@ -97,10 +97,10 @@ public class SchemaValidatorTest {
 
         List<ImmutableMap<String, Object>> instances = new ArrayList<ImmutableMap<String, Object>>();
 
-        instances.add(ImmutableMap.<String, Object> of("ref", "foo:1", "age",
-                18L));
-        instances.add(ImmutableMap.<String, Object> of("ref", "bar:7", "age",
-                21L));
+        instances.add(ImmutableMap.<String, Object> of("ref",
+                "@foo:190272f987c6ac27", "age", 18L));
+        instances.add(ImmutableMap.<String, Object> of("ref",
+                "@bar:eff93f04beb16640", "age", 21L));
 
         for (ImmutableMap<String, Object> instance : instances) {
             validateInstance(validator, instance);

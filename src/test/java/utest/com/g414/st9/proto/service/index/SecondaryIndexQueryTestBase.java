@@ -37,6 +37,10 @@ public abstract class SecondaryIndexQueryTestBase {
             + "\"indexes\":[{\"name\":\"xy\",\"cols\":["
             + "{\"name\":\"x\",\"sort\":\"DESC\"},{\"name\":\"y\",\"sort\":\"ASC\"},{\"name\":\"id\",\"sort\":\"DESC\"}]}]}";
 
+    protected final String schema6 = "{\"attributes\":[{\"name\":\"x\",\"type\":\"I32\"},{\"name\":\"ref\",\"type\":\"REFERENCE\"}],"
+            + "\"indexes\":[{\"name\":\"xref\",\"cols\":["
+            + "{\"name\":\"x\",\"sort\":\"ASC\"},{\"name\":\"ref\",\"sort\":\"ASC\"},{\"name\":\"id\",\"sort\":\"ASC\"}]}]}";
+
     protected KeyValueResource kvResource;
     protected SecondaryIndexResource indexResource;
     protected JDBISecondaryIndex index;
@@ -103,6 +107,22 @@ public abstract class SecondaryIndexQueryTestBase {
                 null, null);
         Assert.assertEquals(r.getEntity().toString(),
                 "schema or index not found foo5.xyz");
+    }
+
+    public void testReferenceType() throws Exception {
+        String type = "foo6";
+        this.schemaResource.createEntity(type, schema6);
+
+        Response r1 = this.kvResource.createEntity(type,
+                "{\"x\":1,\"ref\":\"foo:1\",\"isAwesome\":true}");
+        Assert.assertEquals(
+                r1.getEntity(),
+                "{\"id\":\"@foo6:e5cbb6f9271a64f5\",\"kind\":\"foo6\",\"x\":1,\"ref\":\"foo:1\",\"isAwesome\":true}");
+
+        Response r2 = this.kvResource.retrieveEntity("foo6:1");
+        Assert.assertEquals(
+                r2.getEntity(),
+                "{\"id\":\"@foo6:e5cbb6f9271a64f5\",\"kind\":\"foo6\",\"x\":1,\"ref\":\"@foo:190272f987c6ac27\",\"isAwesome\":true}");
     }
 
     protected void runSchemaTest(String type, String indexName, String schema)
