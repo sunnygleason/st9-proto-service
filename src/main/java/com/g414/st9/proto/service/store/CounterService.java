@@ -42,14 +42,12 @@ public class CounterService {
 
     public synchronized void bumpKey(final String type, long id)
             throws Exception {
-        Key key = this.peekKey(type);
-
-        if (key != null && key.getId() < id) {
-            long diff = id - key.getId();
-            for (int i = 0; i < diff; i++) {
-                this.nextKey(type);
-            }
+        Counter counter = this.counters.get(type);
+        if (counter == null) {
+            this.nextKey(type);
         }
+
+        this.counters.get(type).bumpKey(id);
     }
 
     public synchronized Key nextKey(final String type) throws Exception {
@@ -167,6 +165,23 @@ public class CounterService {
             this.type = type;
             this.base = base;
             this.max = max;
+        }
+
+        public void bumpKey(long id) throws Exception {
+            long wouldBe = base + offset.get();
+            long diff = id - wouldBe;
+
+            if (diff <= 0) {
+                return;
+            }
+
+            if (id >= max) {
+                throw new IllegalStateException("cannot move counter from "
+                        + wouldBe + " to desired position " + id + " past "
+                        + max);
+            }
+
+            this.offset.addAndGet(diff);
         }
 
         public Key getNext() throws Exception {

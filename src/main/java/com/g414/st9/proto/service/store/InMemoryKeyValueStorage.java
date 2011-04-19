@@ -59,7 +59,7 @@ public class InMemoryKeyValueStorage implements KeyValueStorage {
             readValue.remove("id");
             readValue.remove("kind");
 
-            Long theId = (id != null) ? id : this.nextId(type);
+            Long theId = this.nextId(type, id);
 
             Key key = new Key(type, theId);
             Map<String, Object> value = new LinkedHashMap<String, Object>();
@@ -351,7 +351,7 @@ public class InMemoryKeyValueStorage implements KeyValueStorage {
         return Response.status(Status.OK).entity(json.toString()).build();
     }
 
-    private Long nextId(String type) {
+    private Long nextId(String type, Long id) {
         validateType(type);
 
         Integer typeId = getTypeId(type);
@@ -361,6 +361,10 @@ public class InMemoryKeyValueStorage implements KeyValueStorage {
 
         if (existing == null) {
             existing = aNewSeq;
+        }
+
+        if (id != null) {
+            existing.set(id - 1);
         }
 
         return existing.incrementAndGet();

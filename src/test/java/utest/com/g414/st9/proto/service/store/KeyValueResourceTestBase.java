@@ -23,6 +23,7 @@ import com.g414.st9.proto.service.cache.EmptyKeyValueCache;
 import com.g414.st9.proto.service.cache.KeyValueCache;
 import com.g414.st9.proto.service.store.EncodingHelper;
 import com.g414.st9.proto.service.store.Key;
+import com.g414.st9.proto.service.store.KeyValueStorage;
 import com.google.common.collect.Lists;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
@@ -32,6 +33,7 @@ import com.google.inject.Module;
 @Test
 public abstract class KeyValueResourceTestBase {
     private KeyValueResource kvResource;
+    private KeyValueStorage store;
 
     public abstract Module getKeyValueStorageModule();
 
@@ -46,6 +48,7 @@ public abstract class KeyValueResourceTestBase {
                 }, new ServiceModule());
 
         this.kvResource = injector.getInstance(KeyValueResource.class);
+        this.store = injector.getInstance(KeyValueStorage.class);
 
         injector.getInstance(Lifecycle.class).init();
         injector.getInstance(Lifecycle.class).start();
@@ -87,6 +90,17 @@ public abstract class KeyValueResourceTestBase {
 
         assertResponseMatches(kvResource.retrieveEntity("bar:2"), Status.OK,
                 "{\"id\":\"bar:2\",\"kind\":\"bar\"}");
+    }
+
+    public void testCreateSkipHappy() throws Exception {
+        assertResponseMatches(store.create("foo", "{}", null, false),
+                Status.OK, "{\"id\":\"foo:1\",\"kind\":\"foo\"}");
+        assertResponseMatches(store.create("foo", "{}", null, false),
+                Status.OK, "{\"id\":\"foo:2\",\"kind\":\"foo\"}");
+        assertResponseMatches(store.create("foo", "{}", 6L, false), Status.OK,
+                "{\"id\":\"foo:6\",\"kind\":\"foo\"}");
+        assertResponseMatches(store.create("foo", "{}", null, false),
+                Status.OK, "{\"id\":\"foo:7\",\"kind\":\"foo\"}");
     }
 
     public void testRetrieveHappy() throws Exception {
