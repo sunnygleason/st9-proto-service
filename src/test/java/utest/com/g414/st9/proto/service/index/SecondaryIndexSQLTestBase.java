@@ -6,6 +6,7 @@ import java.util.Map;
 
 import org.codehaus.jackson.map.ObjectMapper;
 import org.testng.Assert;
+import org.testng.annotations.Test;
 
 import com.g414.st9.proto.service.index.MySQLSecondaryIndex;
 import com.g414.st9.proto.service.index.OpaquePaginationHelper;
@@ -17,10 +18,15 @@ import com.g414.st9.proto.service.schema.SchemaDefinition;
 import com.g414.st9.proto.service.schema.SchemaDefinitionValidator;
 import com.google.inject.internal.ImmutableList;
 
+@Test
 public abstract class SecondaryIndexSQLTestBase {
     protected final String schema4 = "{\"attributes\":[{\"name\":\"x\",\"type\":\"I32\"},{\"name\":\"y\",\"type\":\"I32\"}],"
             + "\"indexes\":[{\"name\":\"xy\",\"cols\":["
             + "{\"name\":\"x\",\"sort\":\"ASC\"},{\"name\":\"y\",\"sort\":\"ASC\"},{\"name\":\"id\",\"sort\":\"ASC\"}]}]}";
+
+    protected final String schema5 = "{\"attributes\":[{\"name\":\"hotness\",\"type\":\"ENUM\",\"values\":[\"hot\",\"cold\"]}],"
+            + "\"indexes\":[{\"name\":\"hotness\",\"cols\":["
+            + "{\"name\":\"hotness\",\"sort\":\"ASC\"},{\"name\":\"id\",\"sort\":\"ASC\"}]}]}";
 
     protected final ObjectMapper mapper = new ObjectMapper();
 
@@ -100,6 +106,75 @@ public abstract class SecondaryIndexSQLTestBase {
         Assert.assertEquals(
                 "select `_id` from `_i_schema4__xy` where `_x` is null AND `_y` is not null order by `_x` ASC, `_y` ASC, `_id` ASC limit 26 offset 0",
                 mysql.getIndexQuery("schema4", "xy", query2, null,
+                        OpaquePaginationHelper.DEFAULT_PAGE_SIZE, def,
+                        bindParams2));
+
+        Assert.assertEquals("{}", bindParams2.toString());
+    }
+
+    public void testSchemaSpecialFeatures() throws Exception {
+        SchemaDefinition def = mapper
+                .readValue(schema5, SchemaDefinition.class);
+
+        SchemaDefinitionValidator v = new SchemaDefinitionValidator();
+        v.validate(def);
+
+        MySQLSecondaryIndex mysql = new MySQLSecondaryIndex();
+
+        Assert.assertEquals(
+                "create table if not exists `_i_schema5__hotness` (`_id` BIGINT UNSIGNED PRIMARY KEY, `_hotness` SMALLINT)",
+                mysql.getTableDefinition("schema5", "hotness", def));
+
+        Assert.assertEquals(
+                "create index `_idx_schema5__hotness` on `_i_schema5__hotness` (`_hotness` ASC, `_id` ASC)",
+                mysql.getIndexDefinition("schema5", "hotness", def));
+
+        Assert.assertEquals(
+                "insert into `_i_schema5__hotness` (`_hotness`, `_id`) values (:hotness, :id)",
+                mysql.getInsertStatement("schema5", "hotness", def));
+
+        Assert.assertEquals(
+                "update `_i_schema5__hotness` set `_hotness` = :hotness where `_id` = :id",
+                mysql.getUpdateStatement("schema5", "hotness", def));
+
+        Assert.assertEquals(
+                "delete from `_i_schema5__hotness` where `_id` = :id",
+                mysql.getDeleteStatement("schema5", "hotness"));
+
+        List<QueryTerm> query0 = ImmutableList.<QueryTerm> of(new QueryTerm(
+                QueryOperator.EQ, "hotness", new QueryValue(ValueType.STRING,
+                        "\"hot\"")));
+
+        Map<String, Object> bindParams0 = new LinkedHashMap<String, Object>();
+        Assert.assertEquals(
+                "select `_id` from `_i_schema5__hotness` where `_hotness` = :p0 order by `_hotness` ASC, `_id` ASC limit 26 offset 0",
+                mysql.getIndexQuery("schema5", "hotness", query0, null,
+                        OpaquePaginationHelper.DEFAULT_PAGE_SIZE, def,
+                        bindParams0));
+
+        Assert.assertEquals("{p0=0}", bindParams0.toString());
+
+        List<QueryTerm> query1 = ImmutableList.<QueryTerm> of(new QueryTerm(
+                QueryOperator.EQ, "hotness", new QueryValue(ValueType.STRING,
+                        "\"cold\"")));
+
+        Map<String, Object> bindParams1 = new LinkedHashMap<String, Object>();
+        Assert.assertEquals(
+                "select `_id` from `_i_schema5__hotness` where `_hotness` = :p0 order by `_hotness` ASC, `_id` ASC limit 26 offset 0",
+                mysql.getIndexQuery("schema5", "hotness", query1, null,
+                        OpaquePaginationHelper.DEFAULT_PAGE_SIZE, def,
+                        bindParams1));
+
+        Assert.assertEquals("{p0=1}", bindParams1.toString());
+
+        List<QueryTerm> query2 = ImmutableList
+                .<QueryTerm> of(new QueryTerm(QueryOperator.NE, "hotness",
+                        new QueryValue(ValueType.NULL, "")));
+
+        Map<String, Object> bindParams2 = new LinkedHashMap<String, Object>();
+        Assert.assertEquals(
+                "select `_id` from `_i_schema5__hotness` where `_hotness` is not null order by `_hotness` ASC, `_id` ASC limit 26 offset 0",
+                mysql.getIndexQuery("schema5", "hotness", query2, null,
                         OpaquePaginationHelper.DEFAULT_PAGE_SIZE, def,
                         bindParams2));
 

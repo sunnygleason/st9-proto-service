@@ -238,6 +238,13 @@ public abstract class JDBISecondaryIndex {
         IndexDefinition indexDefinition = schemaDefinition.getIndexMap().get(
                 indexName);
 
+        if (indexDefinition == null) {
+            throw new WebApplicationException(Response
+                    .status(Status.BAD_REQUEST)
+                    .entity("schema or index not found " + type + "."
+                            + indexName).build());
+        }
+
         StringBuilder sqlBuilder = new StringBuilder();
         sqlBuilder.append("create table if not exists ");
         sqlBuilder.append(getTableName(type, indexName));
@@ -273,6 +280,13 @@ public abstract class JDBISecondaryIndex {
             SchemaDefinition schemaDefinition) {
         IndexDefinition indexDefinition = schemaDefinition.getIndexMap().get(
                 indexName);
+
+        if (indexDefinition == null) {
+            throw new WebApplicationException(Response
+                    .status(Status.BAD_REQUEST)
+                    .entity("schema or index not found " + type + "."
+                            + indexName).build());
+        }
 
         StringBuilder sqlBuilder = new StringBuilder();
         sqlBuilder.append("create index ");
