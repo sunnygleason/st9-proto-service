@@ -3,7 +3,9 @@ package utest.com.g414.st9.proto.service.index;
 import java.util.List;
 import java.util.Map;
 
+import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
 
 import org.skife.jdbi.v2.IDBI;
 import org.testng.Assert;
@@ -32,6 +34,10 @@ public abstract class SecondaryIndexQueryTestBase {
     protected final String schema4 = "{\"attributes\":[{\"name\":\"x\",\"type\":\"I32\"},{\"name\":\"y\",\"type\":\"I32\"}],"
             + "\"indexes\":[{\"name\":\"xy\",\"cols\":["
             + "{\"name\":\"x\",\"sort\":\"ASC\"},{\"name\":\"y\",\"sort\":\"ASC\"},{\"name\":\"id\",\"sort\":\"ASC\"}]}]}";
+
+    protected final String schema4_isAwesome = "{\"attributes\":[{\"name\":\"x\",\"type\":\"I32\"},{\"name\":\"y\",\"type\":\"I32\"},{\"name\":\"isAwesome\",\"type\":\"BOOLEAN\"}],"
+            + "\"indexes\":[{\"name\":\"xy\",\"cols\":["
+            + "{\"name\":\"isAwesome\",\"sort\":\"ASC\"},{\"name\":\"x\",\"sort\":\"ASC\"},{\"name\":\"y\",\"sort\":\"ASC\"},{\"name\":\"id\",\"sort\":\"ASC\"}]}]}";
 
     protected final String schema5 = "{\"attributes\":[{\"name\":\"x\",\"type\":\"I32\"},{\"name\":\"y\",\"type\":\"I32\"}],"
             + "\"indexes\":[{\"name\":\"xy\",\"cols\":["
@@ -125,6 +131,36 @@ public abstract class SecondaryIndexQueryTestBase {
                 "{\"id\":\"@foo6:e5cbb6f9271a64f5\",\"kind\":\"foo6\",\"x\":1,\"ref\":\"@foo:190272f987c6ac27\",\"isAwesome\":true}");
     }
 
+    public void testSchemaMigrate() throws Exception {
+        runSchemaTest("foo1", "xy", schema4);
+
+        Response r = this.indexResource.retrieveEntity("foo1", "xy",
+                "isAwesome eq true and x gt -1", null, null);
+
+        Assert.assertEquals(Status.BAD_REQUEST.getStatusCode(), r.getStatus());
+        Assert.assertEquals("'isAwesome' not in index", r.getEntity());
+
+        this.schemaResource.updateEntity("foo1", schema4_isAwesome);
+
+        Map<String, Object> result1 = EncodingHelper
+                .parseJsonString(this.indexResource
+                        .retrieveEntity("foo1", "xy",
+                                "isAwesome eq true and x gt -1", null, null)
+                        .getEntity().toString());
+        Assert.assertTrue(((List<?>) result1.get("results")).size() == OpaquePaginationHelper.DEFAULT_PAGE_SIZE);
+        Assert.assertNotNull(result1.get("next"));
+        Assert.assertNull(result1.get("prev"));
+
+        Map<String, Object> result2 = EncodingHelper
+                .parseJsonString(this.indexResource
+                        .retrieveEntity("foo1", "xy",
+                                "isAwesome eq false and x gt -1", null, null)
+                        .getEntity().toString());
+        Assert.assertTrue(((List<?>) result2.get("results")).size() == OpaquePaginationHelper.DEFAULT_PAGE_SIZE);
+        Assert.assertNotNull(result2.get("next"));
+        Assert.assertNull(result2.get("prev"));
+    }
+
     protected void runSchemaTest(String type, String indexName, String schema)
             throws Exception {
         this.schemaResource.createEntity(type, schema);
@@ -137,6 +173,7 @@ public abstract class SecondaryIndexQueryTestBase {
                     "{\"x\":" + i + ",\"y\":" + -i + ",\"isAwesome\":"
                             + (i % 2 == 0) + "}").getEntity();
         }
+
         Map<String, Object> result0 = EncodingHelper
                 .parseJsonString(this.indexResource
                         .retrieveEntity(type, "xy", "x gt 1000", null, null)

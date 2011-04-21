@@ -159,9 +159,21 @@ public abstract class JDBISecondaryIndex {
             this.truncateIndexTable(handle, type, index.getName());
         }
 
+        SchemaValidatorTransformer transformer = new SchemaValidatorTransformer(
+                schemaDefinition);
+
         while (instances.hasNext()) {
-            Map<String, Object> instance = instances.next();
+            Map<String, Object> notTransformed = instances.next();
+            Map<String, Object> instance = transformer
+                    .validateTransform(notTransformed);
+
             Key key = Key.valueOf((String) instance.get("id"));
+
+            Boolean deleted = (Boolean) instance.get("$deleted");
+
+            if (deleted != null && deleted.booleanValue()) {
+                continue;
+            }
 
             for (IndexDefinition index : schemaDefinition.getIndexes()) {
                 String indexName = index.getName();
