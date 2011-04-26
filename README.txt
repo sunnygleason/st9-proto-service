@@ -6,13 +6,13 @@ $ mvn dependency:copy-dependencies
 
 To run this, run:
 
-$ java -cp target/dependency/"*":target/"*" com.g414.st9.proto.service.Main
+$ java -jar target/st9-proto-service.jar
 
 To use alternate storage engines (In-Memory, SQLite, MySQL):
 
-$ java -cp target/dependency/"*":target/"*" -Dst9.storageModule="com.g414.st9.proto.service.store.InMemoryKeyValueStorage\$InMemoryKeyValueStorageModule" com.g414.st9.proto.service.Main
-$ java -cp target/dependency/"*":target/"*" -Dst9.storageModule="com.g414.st9.proto.service.store.SqliteKeyValueStorage\$SqliteKeyValueStorageModule" com.g414.st9.proto.service.Main
-$ java -cp target/dependency/"*":target/"*" -Dst9.storageModule="com.g414.st9.proto.service.store.MySQLKeyValueStorage\$MySQLKeyValueStorageModule" com.g414.st9.proto.service.Main
+$ java -Dst9.storageModule="com.g414.st9.proto.service.store.InMemoryKeyValueStorage\$InMemoryKeyValueStorageModule" -jar target/st9-proto-service.jar
+$ java -Dst9.storageModule="com.g414.st9.proto.service.store.SqliteKeyValueStorage\$SqliteKeyValueStorageModule" -jar target/st9-proto-service.jar
+$ java -Dst9.storageModule="com.g414.st9.proto.service.store.MySQLKeyValueStorage\$MySQLKeyValueStorageModule" -jar target/st9-proto-service.jar
 
 NOTE: to use the MySQL storage engine, there must be a database called 'thedb' on the local machine.
 (This will soon be a configurable option). Likewise, SQLite writes to "thedb.db".
