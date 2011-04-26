@@ -27,7 +27,7 @@ public class Main {
             System.setProperty("java.net.preferIPv4Stack", "true");
         }
 
-        int port = (args.length == 1) ? Integer.parseInt(args[0]) : 8080;
+        int port = Integer.parseInt(System.getProperty("http.port", "8080"));
 
         Server server = new Server(port);
         ServletContextHandler root = new ServletContextHandler(server, "/",
