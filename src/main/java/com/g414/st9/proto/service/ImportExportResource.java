@@ -62,6 +62,8 @@ public class ImportExportResource {
                 Boolean deleted = (Boolean) object.remove("$deleted");
 
                 Key key = Key.valueOf((String) object.get("id"));
+                Long version = (object.containsKey("version")) ? ((Number) object
+                        .get("version")).longValue() : null;
 
                 Response r = null;
 
@@ -75,7 +77,7 @@ public class ImportExportResource {
                 } else if (!key.getType().startsWith("$")) {
                     r = store.create(key.getType(),
                             EncodingHelper.convertToJson(object), key.getId(),
-                            true);
+                            version, true);
 
                     if (r.getStatus() != Status.OK.getStatusCode()) {
                         failed.add(instance);

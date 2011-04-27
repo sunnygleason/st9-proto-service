@@ -96,7 +96,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
      */
     @Override
     public Response create(final String type, String inValue, final Long id,
-            boolean strictType) throws Exception {
+            final Long version, boolean strictType) throws Exception {
         if (type == null
                 || (strictType && ((type.contains("@") || type.contains("$"))))) {
             return Response.status(Status.BAD_REQUEST)
@@ -113,6 +113,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
         readValue.remove("id");
         readValue.remove("kind");
+        readValue.remove("version");
 
         final SchemaDefinition definition;
         final Key newKey;
@@ -130,29 +131,37 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
             return getErrorResponse(e);
         }
 
-        final String valueJson = getDisplayJson(newKey, readValue);
+        final Long realVersion = (version != null) ? version : 1L;
+        final String valueJson = getDisplayJson(newKey, realVersion, readValue);
 
         return database.inTransaction(new TransactionCallback<Response>() {
             @Override
             public Response inTransaction(Handle handle,
                     TransactionStatus status) throws Exception {
                 try {
-                    Map<String, Object> toInsert = readValue;
-                    toInsert = applySchema(definition, toInsert);
+                    Map<String, Object> toInsert = applySchema(definition,
+                            readValue);
 
                     for (IndexDefinition indexDef : definition.getIndexes()) {
                         index.insertEntity(handle, newKey.getId(), toInsert,
                                 type, indexDef.getName(), definition);
                     }
 
-                    byte[] valueBytes = getStorableSmileLzf(toInsert);
+                    byte[] storeValueBytes = getStorableSmileLzf(toInsert);
+
+                    Map<String, Object> cacheInsert = new LinkedHashMap<String, Object>();
+                    cacheInsert.put("version", realVersion);
+                    cacheInsert.putAll(toInsert);
+
+                    byte[] cacheValueBytes = EncodingHelper
+                            .convertToSmileLzf(cacheInsert);
 
                     int inserted = doInsert(handle, getTypeId(type),
-                            newKey.getId(), valueBytes);
+                            newKey.getId(), storeValueBytes);
 
                     if (inserted > 0) {
                         cache.put(EncodingHelper.toKVCacheKey(newKey
-                                .getIdentifier()), valueBytes);
+                                .getIdentifier()), cacheValueBytes);
                     }
 
                     return (inserted == 1) ? Response.status(Status.OK)
@@ -284,23 +293,33 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                             continue;
                         }
 
-                        byte[] valueBytesLzf = (byte[]) results.iterator()
-                                .next().get("_value");
+                        Map<String, Object> first = results.iterator().next();
+                        Long version = ((Number) first.get("_version"))
+                                .longValue();
+
+                        byte[] valueBytesLzf = (byte[]) first.get("_value");
                         LinkedHashMap<String, Object> found = (LinkedHashMap<String, Object>) EncodingHelper
                                 .parseSmileLzf(valueBytesLzf);
                         found.remove("id");
                         found.remove("kind");
+                        found.remove("version");
+
+                        LinkedHashMap<String, Object> cacheIn = new LinkedHashMap<String, Object>();
+                        cacheIn.put("version", version.toString());
+                        cacheIn.putAll(found);
 
                         LinkedHashMap<String, Object> value = new LinkedHashMap<String, Object>();
                         value.put("id", Key.valueOf(key)
                                 .getEncryptedIdentifier());
                         value.put("kind", realKey.getType());
+                        value.put("version", version.toString());
                         value.putAll(found);
 
                         dbFound.put(key, value);
 
                         cache.put(EncodingHelper.toKVCacheKey(realKey
-                                .getIdentifier()), valueBytesLzf);
+                                .getIdentifier()), EncodingHelper
+                                .convertToSmileLzf(cacheIn));
                     }
 
                     return makeMultiRetrieveResponse(keys, cacheFound, dbFound,
@@ -330,6 +349,13 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
         }
 
         final Key realKey = Key.valueOf(key);
+
+        final Object versionObject = readValue.remove("version");
+        if (versionObject == null) {
+            return Response.status(Status.BAD_REQUEST)
+                    .entity("missing 'version'").build();
+        }
+
         final SchemaDefinition definition = loadOrCreateEmptySchemaOutsideTxn(getTypeId(realKey
                 .getType()));
 
@@ -341,9 +367,35 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                     final int typeId = counters.getTypeId(realKey.getType());
                     final long keyId = realKey.getId();
 
-                    Map<String, Object> toUpdate = readValue;
+                    Query<Map<String, Object>> select = handle
+                            .createQuery(getPrefix() + "get_version");
 
-                    toUpdate = applySchema(definition, toUpdate);
+                    select.bind("key_type", typeId);
+                    select.bind("key_id", keyId);
+
+                    List<Map<String, Object>> results = select.list();
+
+                    if (results == null || results.isEmpty()) {
+                        return Response.status(Status.NOT_FOUND).entity("")
+                                .build();
+                    }
+
+                    String oldVersionString = results.get(0).get("_version")
+                            .toString();
+
+                    if (!versionObject.toString().equals(oldVersionString)) {
+                        return Response.status(Status.CONFLICT)
+                                .entity("version conflict").build();
+                    }
+
+                    Long oldVersion = Long.parseLong(oldVersionString);
+                    Long newVersion = oldVersion + 1L;
+
+                    String valueJson = getDisplayJson(realKey, newVersion,
+                            readValue);
+
+                    Map<String, Object> toUpdate = applySchema(definition,
+                            readValue);
 
                     for (IndexDefinition indexDef : definition.getIndexes()) {
                         index.updateEntity(handle, Long.valueOf(keyId),
@@ -351,14 +403,21 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                                 indexDef.getName(), definition);
                     }
 
-                    String valueJson = getDisplayJson(realKey, readValue);
-                    byte[] valueBytes = getStorableSmileLzf(toUpdate);
+                    byte[] storeValueBytes = getStorableSmileLzf(toUpdate);
 
-                    int updated = doUpdate(handle, typeId, keyId, valueBytes);
+                    Map<String, Object> cacheUpdate = new LinkedHashMap<String, Object>();
+                    cacheUpdate.put("version", newVersion.toString());
+                    cacheUpdate.putAll(toUpdate);
+
+                    byte[] cacheValueBytes = EncodingHelper
+                            .convertToSmileLzf(cacheUpdate);
+
+                    int updated = doUpdate(handle, typeId, keyId, oldVersion,
+                            storeValueBytes);
 
                     if (updated > 0) {
                         cache.put(EncodingHelper.toKVCacheKey(realKey
-                                .getIdentifier()), valueBytes);
+                                .getIdentifier()), cacheValueBytes);
                     }
 
                     return (updated == 0) ? Response.status(Status.NOT_FOUND)
@@ -632,8 +691,20 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                     return null;
                 }
 
-                byte[] valueBytesLzf = (byte[]) results.iterator().next()
-                        .get("_value");
+                Map<String, Object> first = results.iterator().next();
+
+                Long version = ((Number) first.get("_version")).longValue();
+                byte[] foundBytes = (byte[]) first.get("_value");
+
+                Map<String, Object> found = (Map<String, Object>) EncodingHelper
+                        .parseSmileLzf(foundBytes);
+
+                Map<String, Object> withVersion = new LinkedHashMap<String, Object>();
+                withVersion.put("version", version.toString());
+                withVersion.putAll(found);
+
+                byte[] valueBytesLzf = EncodingHelper
+                        .convertToSmileLzf(withVersion);
 
                 cache.put(EncodingHelper.toKVCacheKey(key.getIdentifier()),
                         valueBytesLzf);
@@ -862,6 +933,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
         update.bind("key_type", typeId);
         update.bind("key_id", nextId);
         update.bind("created_dt", getEpochSecondsNow());
+        update.bind("version", 1L);
         update.bind("value", valueBytes);
         int inserted = update.execute();
 
@@ -869,11 +941,13 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
     }
 
     private int doUpdate(Handle handle, final int typeId, final long keyId,
-            byte[] valueBytes) {
+            final long oldVersion, byte[] valueBytes) {
         Update update = handle.createStatement(getPrefix() + "update");
         update.bind("key_type", typeId);
         update.bind("key_id", keyId);
         update.bind("updated_dt", getEpochSecondsNow());
+        update.bind("old_version", oldVersion);
+        update.bind("new_version", oldVersion + 1L);
         update.bind("value", valueBytes);
         int updated = update.execute();
 
@@ -887,16 +961,18 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
     private byte[] getStorableSmileLzf(Map<String, Object> toInsert) {
         toInsert.remove("id");
         toInsert.remove("kind");
+        toInsert.remove("version");
 
         byte[] valueBytes = EncodingHelper.convertToSmileLzf(toInsert);
         return valueBytes;
     }
 
-    private String getDisplayJson(Key key, final Map<String, Object> entity)
-            throws Exception {
+    private String getDisplayJson(Key key, Long version,
+            final Map<String, Object> entity) throws Exception {
         Map<String, Object> value = new LinkedHashMap<String, Object>();
         value.put("id", key.getEncryptedIdentifier());
         value.put("kind", key.getType());
+        value.put("version", version.toString());
         value.putAll(entity);
 
         String valueJson = EncodingHelper.convertToJson(value);

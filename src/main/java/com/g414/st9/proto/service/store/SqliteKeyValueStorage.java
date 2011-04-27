@@ -39,8 +39,8 @@ public class SqliteKeyValueStorage extends JDBIKeyValueStorage {
 
     @Override
     public synchronized Response create(String type, String inValue, Long id,
-            boolean strictType) throws Exception {
-        return super.create(type, inValue, id, strictType);
+            Long version, boolean strictType) throws Exception {
+        return super.create(type, inValue, id, version, strictType);
     }
 
     @Override

@@ -78,7 +78,8 @@ public class SchemaResource {
             index.createIndex(database, type, indexName, schemaDefinition);
         }
 
-        return store.create(SCHEMA_PREFIX, value, typeId.longValue(), false);
+        return store.create(SCHEMA_PREFIX, value, typeId.longValue(), null,
+                false);
     }
 
     @GET

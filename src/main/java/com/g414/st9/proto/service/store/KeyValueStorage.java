@@ -12,7 +12,7 @@ public interface KeyValueStorage {
     public abstract Integer getTypeId(String type) throws Exception;
 
     public abstract Response create(String type, String inValue, Long id,
-            boolean strictType) throws Exception;
+            Long version, boolean strictType) throws Exception;
 
     public abstract Response retrieve(String key) throws Exception;
 

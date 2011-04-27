@@ -19,7 +19,6 @@ import com.g414.guice.lifecycle.Lifecycle;
 import com.g414.guice.lifecycle.LifecycleModule;
 import com.g414.st9.proto.service.KeyValueResource;
 import com.g414.st9.proto.service.ServiceModule;
-import com.g414.st9.proto.service.cache.EmptyKeyValueCache;
 import com.g414.st9.proto.service.cache.KeyValueCache;
 import com.g414.st9.proto.service.store.EncodingHelper;
 import com.g414.st9.proto.service.store.Key;
@@ -34,6 +33,7 @@ import com.google.inject.Module;
 public abstract class KeyValueResourceTestBase {
     private KeyValueResource kvResource;
     private KeyValueStorage store;
+    private EmptyWriteThroughKeyValueCache cache;
 
     public abstract Module getKeyValueStorageModule();
 
@@ -43,12 +43,14 @@ public abstract class KeyValueResourceTestBase {
                     @Override
                     protected void configure() {
                         bind(KeyValueCache.class).toInstance(
-                                new EmptyKeyValueCache());
+                                new EmptyWriteThroughKeyValueCache());
                     }
                 }, new ServiceModule());
 
         this.kvResource = injector.getInstance(KeyValueResource.class);
         this.store = injector.getInstance(KeyValueStorage.class);
+        this.cache = (EmptyWriteThroughKeyValueCache) injector
+                .getInstance(KeyValueCache.class);
 
         injector.getInstance(Lifecycle.class).init();
         injector.getInstance(Lifecycle.class).start();
@@ -66,57 +68,65 @@ public abstract class KeyValueResourceTestBase {
 
     public void testCreateHappy() throws Exception {
         assertResponseMatches(kvResource.createEntity("foo", "{}"), Status.OK,
-                "{\"id\":\"foo:1\",\"kind\":\"foo\"}");
+                "{\"id\":\"foo:1\",\"kind\":\"foo\",\"version\":\"1\"}");
 
         assertResponseMatches(
                 kvResource.createEntity("foo", "{\"isAwesome\":true}"),
                 Status.OK,
-                "{\"id\":\"foo:2\",\"kind\":\"foo\",\"isAwesome\":true}");
+                "{\"id\":\"foo:2\",\"kind\":\"foo\",\"version\":\"1\",\"isAwesome\":true}");
 
         assertResponseMatches(kvResource.createEntity("bar", "{}"), Status.OK,
-                "{\"id\":\"bar:1\",\"kind\":\"bar\"}");
+                "{\"id\":\"bar:1\",\"kind\":\"bar\",\"version\":\"1\"}");
 
         assertResponseMatches(kvResource.createEntity("bar", "{}"), Status.OK,
-                "{\"id\":\"bar:2\",\"kind\":\"bar\"}");
+                "{\"id\":\"bar:2\",\"kind\":\"bar\",\"version\":\"1\"}");
 
         assertResponseMatches(kvResource.retrieveEntity("foo:1"), Status.OK,
-                "{\"id\":\"foo:1\",\"kind\":\"foo\"}");
+                "{\"id\":\"foo:1\",\"kind\":\"foo\",\"version\":\"1\"}");
 
         assertResponseMatches(kvResource.retrieveEntity("foo:2"), Status.OK,
-                "{\"id\":\"foo:2\",\"kind\":\"foo\",\"isAwesome\":true}");
+                "{\"id\":\"foo:2\",\"kind\":\"foo\",\"version\":\"1\",\"isAwesome\":true}");
 
         assertResponseMatches(kvResource.retrieveEntity("bar:1"), Status.OK,
-                "{\"id\":\"bar:1\",\"kind\":\"bar\"}");
+                "{\"id\":\"bar:1\",\"kind\":\"bar\",\"version\":\"1\"}");
 
         assertResponseMatches(kvResource.retrieveEntity("bar:2"), Status.OK,
-                "{\"id\":\"bar:2\",\"kind\":\"bar\"}");
+                "{\"id\":\"bar:2\",\"kind\":\"bar\",\"version\":\"1\"}");
+
+        for (Map<String, Object> value : cache.getValues().values()) {
+            Assert.assertEquals(value.get("version"), "1");
+        }
     }
 
     public void testCreateSkipHappy() throws Exception {
-        assertResponseMatches(store.create("foo", "{}", null, false),
-                Status.OK, "{\"id\":\"foo:1\",\"kind\":\"foo\"}");
-        assertResponseMatches(store.create("foo", "{}", null, false),
-                Status.OK, "{\"id\":\"foo:2\",\"kind\":\"foo\"}");
-        assertResponseMatches(store.create("foo", "{}", 6L, false), Status.OK,
-                "{\"id\":\"foo:6\",\"kind\":\"foo\"}");
-        assertResponseMatches(store.create("foo", "{}", null, false),
-                Status.OK, "{\"id\":\"foo:7\",\"kind\":\"foo\"}");
+        assertResponseMatches(store.create("foo", "{}", null, null, false),
+                Status.OK,
+                "{\"id\":\"foo:1\",\"kind\":\"foo\",\"version\":\"1\"}");
+        assertResponseMatches(store.create("foo", "{}", null, null, false),
+                Status.OK,
+                "{\"id\":\"foo:2\",\"kind\":\"foo\",\"version\":\"1\"}");
+        assertResponseMatches(store.create("foo", "{}", 6L, null, false),
+                Status.OK,
+                "{\"id\":\"foo:6\",\"kind\":\"foo\",\"version\":\"1\"}");
+        assertResponseMatches(store.create("foo", "{}", null, null, false),
+                Status.OK,
+                "{\"id\":\"foo:7\",\"kind\":\"foo\",\"version\":\"1\"}");
     }
 
     public void testRetrieveHappy() throws Exception {
         assertResponseMatches(kvResource.createEntity("foo", "{}"), Status.OK,
-                "{\"id\":\"foo:1\",\"kind\":\"foo\"}");
+                "{\"id\":\"foo:1\",\"kind\":\"foo\",\"version\":\"1\"}");
 
         assertResponseMatches(
                 kvResource.createEntity("foo", "{\"isAwesome\":true}"),
                 Status.OK,
-                "{\"id\":\"foo:2\",\"kind\":\"foo\",\"isAwesome\":true}");
+                "{\"id\":\"foo:2\",\"kind\":\"foo\",\"version\":\"1\",\"isAwesome\":true}");
 
         assertResponseMatches(kvResource.retrieveEntity("foo:1"), Status.OK,
-                "{\"id\":\"foo:1\",\"kind\":\"foo\"}");
+                "{\"id\":\"foo:1\",\"kind\":\"foo\",\"version\":\"1\"}");
 
         assertResponseMatches(kvResource.retrieveEntity("foo:2"), Status.OK,
-                "{\"id\":\"foo:2\",\"kind\":\"foo\",\"isAwesome\":true}");
+                "{\"id\":\"foo:2\",\"kind\":\"foo\",\"version\":\"1\",\"isAwesome\":true}");
 
         assertResponseMatches(kvResource.retrieveEntity("foo:3"),
                 Status.NOT_FOUND, "");
@@ -124,58 +134,71 @@ public abstract class KeyValueResourceTestBase {
 
     public void testMultiRetrieveHappy() throws Exception {
         assertResponseMatches(kvResource.createEntity("foo", "{}"), Status.OK,
-                "{\"id\":\"foo:1\",\"kind\":\"foo\"}");
+                "{\"id\":\"foo:1\",\"kind\":\"foo\",\"version\":\"1\"}");
         assertResponseMatches(kvResource.createEntity("foo", "{}"), Status.OK,
-                "{\"id\":\"foo:2\",\"kind\":\"foo\"}");
+                "{\"id\":\"foo:2\",\"kind\":\"foo\",\"version\":\"1\"}");
         assertResponseMatches(kvResource.createEntity("foo", "{}"), Status.OK,
-                "{\"id\":\"foo:3\",\"kind\":\"foo\"}");
+                "{\"id\":\"foo:3\",\"kind\":\"foo\",\"version\":\"1\"}");
 
-        assertMultiResponseMatches(kvResource.retrieveEntity(Lists
-                .newArrayList("foo:1", "foo:2", "foo:3", "foo:5")), Status.OK,
-                "{\"foo:1\":{\"id\":\"foo:1\",\"kind\":\"foo\"},"
-                        + "\"foo:2\":{\"id\":\"foo:2\",\"kind\":\"foo\"},"
-                        + "\"foo:3\":{\"id\":\"foo:3\",\"kind\":\"foo\"},"
+        assertMultiResponseMatches(
+                kvResource.retrieveEntity(Lists.newArrayList("foo:1", "foo:2",
+                        "foo:3", "foo:5")),
+                Status.OK,
+                "{\"foo:1\":{\"id\":\"foo:1\",\"kind\":\"foo\",\"version\":\"1\"},"
+                        + "\"foo:2\":{\"id\":\"foo:2\",\"kind\":\"foo\",\"version\":\"1\"},"
+                        + "\"foo:3\":{\"id\":\"foo:3\",\"kind\":\"foo\",\"version\":\"1\"},"
                         + "\"foo:5\":null}");
     }
 
     public void testUpdateHappy() throws Exception {
         assertResponseMatches(kvResource.createEntity("foo", "{}"), Status.OK,
-                "{\"id\":\"foo:1\",\"kind\":\"foo\"}");
+                "{\"id\":\"foo:1\",\"kind\":\"foo\",\"version\":\"1\"}");
 
         assertResponseMatches(
                 kvResource.createEntity("foo", "{\"isAwesome\":true}"),
                 Status.OK,
-                "{\"id\":\"foo:2\",\"kind\":\"foo\",\"isAwesome\":true}");
+                "{\"id\":\"foo:2\",\"kind\":\"foo\",\"version\":\"1\",\"isAwesome\":true}");
 
-        assertResponseMatches(
-                kvResource.updateEntity("foo:1", "{\"isAwesome\":true}"),
-                Status.OK,
-                "{\"id\":\"foo:1\",\"kind\":\"foo\",\"isAwesome\":true}");
+        assertResponseMatches(kvResource.updateEntity("foo:1",
+                "{\"version\":\"1\",\"isAwesome\":true}"), Status.OK,
+                "{\"id\":\"foo:1\",\"kind\":\"foo\",\"version\":\"2\",\"isAwesome\":true}");
 
-        assertResponseMatches(
-                kvResource.updateEntity("foo:2", "{\"isAwesome\":false}"),
-                Status.OK,
-                "{\"id\":\"foo:2\",\"kind\":\"foo\",\"isAwesome\":false}");
+        assertResponseMatches(kvResource.updateEntity("foo:2",
+                "{\"version\":\"1\",\"isAwesome\":false}"), Status.OK,
+                "{\"id\":\"foo:2\",\"kind\":\"foo\",\"version\":\"2\",\"isAwesome\":false}");
+
+        assertResponseMatches(kvResource.updateEntity("foo:2",
+                "{\"version\":\"1\",\"isAwesome\":false}"), Status.CONFLICT,
+                "version conflict");
 
         assertResponseMatches(
                 kvResource.updateEntity("foo:3", "{\"isAwesome\":false}"),
-                Status.NOT_FOUND, "");
+                Status.BAD_REQUEST, "missing 'version'");
+
+        assertResponseMatches(kvResource.updateEntity("foo:3",
+                "{\"isAwesome\":false,\"version\":\"1\"}"), Status.NOT_FOUND,
+                "");
+
+        for (Map<String, Object> value : cache.getValues().values()) {
+            Assert.assertEquals(value.get("version"),
+                    value.containsKey("isAwesome") ? "2" : "1");
+        }
     }
 
     public void testDeleteHappy() throws Exception {
         assertResponseMatches(kvResource.createEntity("foo", "{}"), Status.OK,
-                "{\"id\":\"foo:1\",\"kind\":\"foo\"}");
+                "{\"id\":\"foo:1\",\"kind\":\"foo\",\"version\":\"1\"}");
 
         assertResponseMatches(
                 kvResource.createEntity("foo", "{\"isAwesome\":true}"),
                 Status.OK,
-                "{\"id\":\"foo:2\",\"kind\":\"foo\",\"isAwesome\":true}");
+                "{\"id\":\"foo:2\",\"kind\":\"foo\",\"version\":\"1\",\"isAwesome\":true}");
 
         assertResponseMatches(kvResource.retrieveEntity("foo:1"), Status.OK,
-                "{\"id\":\"foo:1\",\"kind\":\"foo\"}");
+                "{\"id\":\"foo:1\",\"kind\":\"foo\",\"version\":\"1\"}");
 
         assertResponseMatches(kvResource.retrieveEntity("foo:2"), Status.OK,
-                "{\"id\":\"foo:2\",\"kind\":\"foo\",\"isAwesome\":true}");
+                "{\"id\":\"foo:2\",\"kind\":\"foo\",\"version\":\"1\",\"isAwesome\":true}");
 
         assertResponseMatches(kvResource.deleteEntity("foo:1"),
                 Status.NO_CONTENT, "");
@@ -196,20 +219,20 @@ public abstract class KeyValueResourceTestBase {
 
     public void testIteratorHappy() throws Exception {
         assertResponseMatches(kvResource.createEntity("foo", "{}"), Status.OK,
-                "{\"id\":\"foo:1\",\"kind\":\"foo\"}");
+                "{\"id\":\"foo:1\",\"kind\":\"foo\",\"version\":\"1\"}");
 
         assertTrue(kvResource.iterator("foo").hasNext());
 
         assertResponseMatches(
                 kvResource.createEntity("foo", "{\"isAwesome\":true}"),
                 Status.OK,
-                "{\"id\":\"foo:2\",\"kind\":\"foo\",\"isAwesome\":true}");
+                "{\"id\":\"foo:2\",\"kind\":\"foo\",\"version\":\"1\",\"isAwesome\":true}");
 
         assertResponseMatches(kvResource.createEntity("bar", "{}"), Status.OK,
-                "{\"id\":\"bar:1\",\"kind\":\"bar\"}");
+                "{\"id\":\"bar:1\",\"kind\":\"bar\",\"version\":\"1\"}");
 
         assertResponseMatches(kvResource.createEntity("bar", "{}"), Status.OK,
-                "{\"id\":\"bar:2\",\"kind\":\"bar\"}");
+                "{\"id\":\"bar:2\",\"kind\":\"bar\",\"version\":\"1\"}");
 
         Iterator<Map<String, Object>> fooIter = kvResource.iterator("foo");
         assertEquals("foo:1", Key.valueOf((String) fooIter.next().get("id"))
@@ -278,7 +301,7 @@ public abstract class KeyValueResourceTestBase {
 
     public void testUpdateFailureBadValueNull() throws Exception {
         assertResponseMatches(kvResource.createEntity("foo", "{}"), Status.OK,
-                "{\"id\":\"foo:1\",\"kind\":\"foo\"}");
+                "{\"id\":\"foo:1\",\"kind\":\"foo\",\"version\":\"1\"}");
 
         assertResponseMatches(kvResource.updateEntity("foo:1", null),
                 Status.BAD_REQUEST, "Invalid entity 'value'");
@@ -286,7 +309,7 @@ public abstract class KeyValueResourceTestBase {
 
     public void testUpdateFailureBadValueEmpty() throws Exception {
         assertResponseMatches(kvResource.createEntity("foo", "{}"), Status.OK,
-                "{\"id\":\"foo:1\",\"kind\":\"foo\"}");
+                "{\"id\":\"foo:1\",\"kind\":\"foo\",\"version\":\"1\"}");
 
         assertResponseMatches(kvResource.updateEntity("foo", ""),
                 Status.BAD_REQUEST, "Invalid key");
@@ -294,7 +317,7 @@ public abstract class KeyValueResourceTestBase {
 
     public void testUpdateFailureBadValueJson() throws Exception {
         assertResponseMatches(kvResource.createEntity("foo", "{}"), Status.OK,
-                "{\"id\":\"foo:1\",\"kind\":\"foo\"}");
+                "{\"id\":\"foo:1\",\"kind\":\"foo\",\"version\":\"1\"}");
 
         assertResponseMatches(kvResource.updateEntity("foo:1", "{bad value}"),
                 Status.BAD_REQUEST, "Invalid entity 'value'");

@@ -10,7 +10,7 @@ sqlite_init_sequences() ::=<<
 
 sqlite_init_key_values() ::=<<
   create table if not exists `_key_values` (`_key_type` INTEGER, `_key_id` INTEGER,
-    `_created_dt` INTEGER, `_updated_dt` INTEGER, `_is_deleted`,
+    `_created_dt` INTEGER, `_updated_dt` INTEGER, `_version` INTEGER, `_is_deleted`,
     `_format`, `_compression`, `_value`,
     PRIMARY KEY(`_key_type`, `_key_id`))
 >>
@@ -51,12 +51,20 @@ sqlite_populate_sequences() ::=<<
 >>
 
 sqlite_create() ::=<< 
-  insert into `_key_values` (`_key_type`, `_key_id`, `_created_dt`, `_updated_dt`, `_is_deleted`, `_format`, `_compression`, `_value`)
-  values (:key_type, :key_id, :created_dt, :created_dt, 'N', 'S', 'F', :value)
+  insert into `_key_values` (`_key_type`, `_key_id`, `_created_dt`, `_updated_dt`, `_version`, `_is_deleted`, `_format`, `_compression`, `_value`)
+  values (:key_type, :key_id, :created_dt, :created_dt, :version, 'N', 'S', 'F', :value)
 >>
 
 sqlite_retrieve() ::=<< 
-  select `_key_type`, `_key_id`, `_created_dt`, `_updated_dt`, `_format`, `_compression`, `_value`
+  select `_key_type`, `_key_id`, `_created_dt`, `_updated_dt`, `_format`, `_compression`, `_version`, `_value`
+    from `_key_values`
+   where `_key_type` = :key_type
+     and `_key_id` = :key_id
+     and `_is_deleted` = 'N'
+>>
+
+sqlite_get_version() ::=<< 
+  select `_version`
     from `_key_values`
    where `_key_type` = :key_type
      and `_key_id` = :key_id
@@ -65,13 +73,15 @@ sqlite_retrieve() ::=<<
 
 sqlite_update() ::=<< 
   update `_key_values`
-    set `_key_type`   = :key_type,
-        `_key_id`     = :key_id,
-        `_updated_dt` = :updated_dt,
-        `_value`      = :value
-   where `_key_type` = :key_type
-     and `_key_id` = :key_id
+    set `_key_type`    = :key_type,
+        `_key_id`      = :key_id,
+        `_updated_dt`  = :updated_dt,
+        `_version`     = :new_version,
+        `_value`       = :value
+   where `_key_type`   = :key_type
+     and `_key_id`     = :key_id
      and `_is_deleted` = 'N'
+     and `_version`    = :old_version
 >>
 
 sqlite_delete() ::=<< 

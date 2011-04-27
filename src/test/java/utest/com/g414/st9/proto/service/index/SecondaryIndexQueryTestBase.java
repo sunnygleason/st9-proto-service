@@ -3,7 +3,6 @@ package utest.com.g414.st9.proto.service.index;
 import java.util.List;
 import java.util.Map;
 
-import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
@@ -35,7 +34,7 @@ public abstract class SecondaryIndexQueryTestBase {
             + "\"indexes\":[{\"name\":\"xy\",\"cols\":["
             + "{\"name\":\"x\",\"sort\":\"ASC\"},{\"name\":\"y\",\"sort\":\"ASC\"},{\"name\":\"id\",\"sort\":\"ASC\"}]}]}";
 
-    protected final String schema4_isAwesome = "{\"attributes\":[{\"name\":\"x\",\"type\":\"I32\"},{\"name\":\"y\",\"type\":\"I32\"},{\"name\":\"isAwesome\",\"type\":\"BOOLEAN\"}],"
+    protected final String schema4_isAwesome = "{\"version\":\"1\",\"attributes\":[{\"name\":\"x\",\"type\":\"I32\"},{\"name\":\"y\",\"type\":\"I32\"},{\"name\":\"isAwesome\",\"type\":\"BOOLEAN\"}],"
             + "\"indexes\":[{\"name\":\"xy\",\"cols\":["
             + "{\"name\":\"isAwesome\",\"sort\":\"ASC\"},{\"name\":\"x\",\"sort\":\"ASC\"},{\"name\":\"y\",\"sort\":\"ASC\"},{\"name\":\"id\",\"sort\":\"ASC\"}]}]}";
 
@@ -123,24 +122,38 @@ public abstract class SecondaryIndexQueryTestBase {
                 "{\"x\":1,\"ref\":\"foo:1\",\"isAwesome\":true}");
         Assert.assertEquals(
                 r1.getEntity(),
-                "{\"id\":\"@foo6:e5cbb6f9271a64f5\",\"kind\":\"foo6\",\"x\":1,\"ref\":\"foo:1\",\"isAwesome\":true}");
+                "{\"id\":\"@foo6:e5cbb6f9271a64f5\",\"kind\":\"foo6\",\"version\":\"1\",\"x\":1,\"ref\":\"foo:1\",\"isAwesome\":true}");
 
         Response r2 = this.kvResource.retrieveEntity("foo6:1");
         Assert.assertEquals(
                 r2.getEntity(),
-                "{\"id\":\"@foo6:e5cbb6f9271a64f5\",\"kind\":\"foo6\",\"x\":1,\"ref\":\"@foo:190272f987c6ac27\",\"isAwesome\":true}");
+                "{\"id\":\"@foo6:e5cbb6f9271a64f5\",\"kind\":\"foo6\",\"version\":\"1\",\"x\":1,\"ref\":\"@foo:190272f987c6ac27\",\"isAwesome\":true}");
     }
 
     public void testSchemaMigrate() throws Exception {
         runSchemaTest("foo1", "xy", schema4);
 
-        Response r = this.indexResource.retrieveEntity("foo1", "xy",
+        Response r1 = this.indexResource.retrieveEntity("foo1", "xy",
                 "isAwesome eq true and x gt -1", null, null);
 
-        Assert.assertEquals(Status.BAD_REQUEST.getStatusCode(), r.getStatus());
-        Assert.assertEquals("'isAwesome' not in index", r.getEntity());
+        Assert.assertEquals(Status.BAD_REQUEST.getStatusCode(), r1.getStatus());
+        Assert.assertEquals("'isAwesome' not in index", r1.getEntity());
 
-        this.schemaResource.updateEntity("foo1", schema4_isAwesome);
+        Response r2 = this.schemaResource.updateEntity("foo1",
+                schema4_isAwesome);
+        Assert.assertEquals(Status.OK.getStatusCode(), r2.getStatus());
+
+        Map<String, Object> before = EncodingHelper
+                .parseJsonString(schema4_isAwesome);
+        before.remove("version");
+
+        Map<String, Object> after = EncodingHelper.parseJsonString((String) r2
+                .getEntity());
+        after.remove("id");
+        after.remove("kind");
+        after.remove("version");
+
+        Assert.assertEquals(before, after);
 
         Map<String, Object> result1 = EncodingHelper
                 .parseJsonString(this.indexResource

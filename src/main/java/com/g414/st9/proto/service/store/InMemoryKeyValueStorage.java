@@ -44,7 +44,7 @@ public class InMemoryKeyValueStorage implements KeyValueStorage {
      *      java.lang.String)
      */
     @Override
-    public Response create(String type, String inValue, Long id,
+    public Response create(String type, String inValue, Long id, Long version,
             boolean strictType) throws Exception {
         if (type == null
                 || (strictType && ((type.contains("@") || type.contains("$"))))) {
@@ -58,6 +58,7 @@ public class InMemoryKeyValueStorage implements KeyValueStorage {
                     .parseJsonString(inValue);
             readValue.remove("id");
             readValue.remove("kind");
+            readValue.put("version", "1");
 
             Long theId = this.nextId(type, id);
 
@@ -177,13 +178,32 @@ public class InMemoryKeyValueStorage implements KeyValueStorage {
             readValue.remove("id");
             readValue.remove("kind");
 
+            final Object versionObject = readValue.remove("version");
+            if (versionObject == null) {
+                return Response.status(Status.BAD_REQUEST)
+                        .entity("missing 'version'").build();
+            }
+
+            String inVersion = versionObject.toString();
+
             Map<String, Object> value = new LinkedHashMap<String, Object>();
             value.put("id", realKey.getIdentifier());
             value.put("kind", realKey.getType());
+            value.put("version", Long.toString(Long.parseLong(versionObject
+                    .toString()) + 1L));
             value.putAll(readValue);
 
             if (!storage.containsKey(key)) {
                 return Response.status(Status.NOT_FOUND).entity("").build();
+            }
+
+            Map<String, Object> oldObject = (Map<String, Object>) EncodingHelper
+                    .parseSmileLzf(storage.get(realKey.getIdentifier()));
+            String oldVersion = (String) oldObject.get("version");
+
+            if (oldVersion == null || !oldVersion.equals(inVersion)) {
+                return Response.status(Status.CONFLICT)
+                        .entity("version conflict").build();
             }
 
             String valueJson = EncodingHelper.convertToJson(value);
