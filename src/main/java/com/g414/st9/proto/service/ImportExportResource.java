@@ -62,8 +62,9 @@ public class ImportExportResource {
                 Boolean deleted = (Boolean) parsedObject.remove("$deleted");
 
                 Key key = Key.valueOf((String) parsedObject.remove("id"));
-                Long version = (parsedObject.containsKey("version")) ? ((Number) parsedObject
-                        .get("version")).longValue() : 1L;
+                Long version = (parsedObject.containsKey("version")) ? Long
+                        .parseLong((String) parsedObject.remove("version"))
+                        : 1L;
 
                 Map<String, Object> object = new LinkedHashMap<String, Object>();
                 object.put("id", key.getEncryptedIdentifier());
