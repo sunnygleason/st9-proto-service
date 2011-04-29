@@ -57,13 +57,19 @@ public class ImportExportResource {
             }
 
             try {
-                Map<String, Object> object = EncodingHelper
+                Map<String, Object> parsedObject = EncodingHelper
                         .parseJsonString(instance);
-                Boolean deleted = (Boolean) object.remove("$deleted");
+                Boolean deleted = (Boolean) parsedObject.remove("$deleted");
 
-                Key key = Key.valueOf((String) object.get("id"));
-                Long version = (object.containsKey("version")) ? ((Number) object
-                        .get("version")).longValue() : null;
+                Key key = Key.valueOf((String) parsedObject.remove("id"));
+                Long version = (parsedObject.containsKey("version")) ? ((Number) parsedObject
+                        .get("version")).longValue() : 1L;
+
+                Map<String, Object> object = new LinkedHashMap<String, Object>();
+                object.put("id", key.getEncryptedIdentifier());
+                object.put("kind", key.getType());
+                object.put("version", version.toString());
+                object.putAll(parsedObject);
 
                 Response r = null;
 
@@ -75,8 +81,8 @@ public class ImportExportResource {
 
                     success.add(key.getEncryptedIdentifier());
                 } else if (!key.getType().startsWith("$")) {
-                    r = store.create(key.getType(),
-                            EncodingHelper.convertToJson(object), key.getId(),
+                    String jsonValue = EncodingHelper.convertToJson(object);
+                    r = store.create(key.getType(), jsonValue, key.getId(),
                             version, true);
 
                     if (r.getStatus() != Status.OK.getStatusCode()) {
@@ -86,7 +92,7 @@ public class ImportExportResource {
 
                     if (deleted != null && deleted) {
                         store.delete(key.getIdentifier());
-                    } else if (r.getEntity().equals(instance)) {
+                    } else if (r.getEntity().equals(jsonValue)) {
                         // perfect!
                     } else {
                         throw new RuntimeException("mismatched entity : "
