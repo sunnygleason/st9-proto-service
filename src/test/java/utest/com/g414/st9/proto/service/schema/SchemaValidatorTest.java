@@ -33,6 +33,7 @@ public class SchemaValidatorTest {
     private final String schema2 = "{\"attributes\":[{\"name\":\"when\",\"type\":\"UTC_DATE_SECS\"},{\"name\":\"lname\",\"type\":\"UTF8_SMALLSTRING\"},{\"name\":\"data\",\"type\":\"ANY\"}],\"indexes\":[]}";
     private final String schema3 = "{\"attributes\":[{\"name\":\"ref\",\"type\":\"REFERENCE\"},{\"name\":\"age\",\"type\":\"U8\"}],\"indexes\":[]}";
     private final String schema4 = "{\"attributes\":[{\"name\":\"x\",\"type\":\"I32\"},{\"name\":\"y\",\"type\":\"I32\"}],\"indexes\":[]}";
+    private final String schema5 = "{\"attributes\":[{\"name\":\"x\",\"type\":\"UTF8_TEXT\"}],\"indexes\":[]}";
     private final DateTimeFormatter format = ISODateTimeFormat
             .basicDateTimeNoMillis();
     private final ObjectMapper mapper = new ObjectMapper();
@@ -117,6 +118,30 @@ public class SchemaValidatorTest {
 
         instances.add(ImmutableMap.<String, Object> of("x", -1L, "y", 21L));
         instances.add(ImmutableMap.<String, Object> of("x", 10L, "y", -27L));
+
+        for (ImmutableMap<String, Object> instance : instances) {
+            validateInstance(validator, instance);
+        }
+    }
+
+    public void testSchema5() throws Exception {
+        SchemaDefinition def = mapper
+                .readValue(schema5, SchemaDefinition.class);
+        SchemaValidatorTransformer validator = new SchemaValidatorTransformer(
+                def);
+
+        List<ImmutableMap<String, Object>> instances = new ArrayList<ImmutableMap<String, Object>>();
+
+        instances.add(ImmutableMap.<String, Object> of("x",
+                "thisisareallylongstring"));
+        instances
+                .add(ImmutableMap
+                        .<String, Object> of(
+                                "x",
+                                "thisisareallylongstringthisisareallylongstringthisisareallylongstringthisisareallylongstring"
+                                        + "thisisareallylongstringthisisareallylongstringthisisareallylongstringthisisareallylongstring"
+                                        + "thisisareallylongstringthisisareallylongstringthisisareallylongstringthisisareallylongstring"
+                                        + "thisisareallylongstringthisisareallylongstringthisisareallylongstringthisisareallylongstring"));
 
         for (ImmutableMap<String, Object> instance : instances) {
             validateInstance(validator, instance);
