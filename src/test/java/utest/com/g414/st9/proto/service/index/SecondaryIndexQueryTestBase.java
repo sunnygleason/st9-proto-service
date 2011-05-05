@@ -46,6 +46,10 @@ public abstract class SecondaryIndexQueryTestBase {
             + "\"indexes\":[{\"name\":\"xref\",\"cols\":["
             + "{\"name\":\"x\",\"sort\":\"ASC\"},{\"name\":\"ref\",\"sort\":\"ASC\"},{\"name\":\"id\",\"sort\":\"ASC\"}]}]}";
 
+    protected final String schema7 = "{\"attributes\":[{\"name\":\"small\",\"type\":\"UTF8_SMALLSTRING\"},{\"name\":\"text\",\"type\":\"UTF8_TEXT\"}],"
+            + "\"indexes\":[{\"name\":\"xref\",\"cols\":["
+            + "{\"name\":\"small\",\"sort\":\"ASC\"},{\"name\":\"id\",\"sort\":\"ASC\"}]}]}";
+
     protected KeyValueResource kvResource;
     protected SecondaryIndexResource indexResource;
     protected JDBISecondaryIndex index;
@@ -128,6 +132,26 @@ public abstract class SecondaryIndexQueryTestBase {
         Assert.assertEquals(
                 r2.getEntity(),
                 "{\"id\":\"@foo6:e5cbb6f9271a64f5\",\"kind\":\"foo6\",\"version\":\"1\",\"x\":1,\"ref\":\"@foo:190272f987c6ac27\",\"isAwesome\":true}");
+    }
+
+    public void testUtf8Types() throws Exception {
+        String type = "foo7";
+        this.schemaResource.createEntity(type, schema7);
+
+        Assert.assertTrue(this.index.indexExists(database, type, "xref"));
+
+        for (int i = 0; i < 74; i++) {
+            this.kvResource.createEntity(
+                    type,
+                    "{\"small\":\"" + i + "\",\"text\":\"" + -i + " even? "
+                            + (i % 2 == 0) + "\"}").getEntity();
+        }
+
+        Response r = this.indexResource.retrieveEntity("foo7", "xref",
+                "small eq \"1\"", null, null);
+        Assert.assertEquals(
+                r.getEntity().toString(),
+                "{\"kind\":\"foo7\",\"index\":\"xref\",\"query\":\"small eq \\\"1\\\"\",\"results\":[{\"id\":\"@foo7:d53307ca898701db\"}],\"pageSize\":25,\"next\":null,\"prev\":null}");
     }
 
     public void testSchemaMigrate() throws Exception {
