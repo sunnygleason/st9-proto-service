@@ -8,6 +8,8 @@ import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
@@ -58,6 +60,8 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
     protected abstract String getPrefix();
 
     protected final ObjectMapper mapper = new ObjectMapper();
+
+    protected final Lock nukeLock = new ReentrantLock();
 
     @Inject
     public void register(Lifecycle lifecycle) {
@@ -491,40 +495,49 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
      */
     @Override
     public void clear(final boolean preserveSchema) {
-        database.inTransaction(new TransactionCallback<Void>() {
-            @Override
-            public Void inTransaction(Handle handle, TransactionStatus status)
-                    throws Exception {
-                try {
-                    index.clear(handle, iterator("$schema"), preserveSchema);
+        nukeLock.lock();
 
-                    if (preserveSchema) {
-                        handle.createStatement(getPrefix() + "reset_sequences")
-                                .execute();
-                        handle.createStatement(getPrefix() + "reset_key_values")
-                                .execute();
-                    } else {
-                        handle.createStatement(
-                                getPrefix() + "truncate_key_types").execute();
-                        handle.createStatement(
-                                getPrefix() + "truncate_sequences").execute();
-                        handle.createStatement(
-                                getPrefix() + "truncate_key_values").execute();
+        try {
+            database.inTransaction(new TransactionCallback<Void>() {
+                @Override
+                public Void inTransaction(Handle handle,
+                        TransactionStatus status) throws Exception {
+                    try {
+                        index.clear(handle, iterator("$schema"), preserveSchema);
 
-                        performInitialization(handle);
+                        if (preserveSchema) {
+                            handle.createStatement(
+                                    getPrefix() + "reset_sequences").execute();
+                            handle.createStatement(
+                                    getPrefix() + "reset_key_values").execute();
+                        } else {
+                            handle.createStatement(
+                                    getPrefix() + "truncate_key_types")
+                                    .execute();
+                            handle.createStatement(
+                                    getPrefix() + "truncate_sequences")
+                                    .execute();
+                            handle.createStatement(
+                                    getPrefix() + "truncate_key_values")
+                                    .execute();
+
+                            performInitialization(handle);
+                        }
+
+                        return null;
+                    } catch (Exception e) {
+                        e.printStackTrace();
+
+                        throw new RuntimeException(e);
                     }
-
-                    return null;
-                } catch (Exception e) {
-                    e.printStackTrace();
-
-                    throw new RuntimeException(e);
                 }
-            }
-        });
+            });
 
-        cache.clear();
-        counters.clear();
+            cache.clear();
+            counters.clear();
+        } finally {
+            nukeLock.unlock();
+        }
     }
 
     @Override
