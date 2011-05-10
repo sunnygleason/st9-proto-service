@@ -55,12 +55,12 @@
     <dependency>
       <groupId>org.eclipse.jetty</groupId>
       <artifactId>jetty-server</artifactId>
-      <version>7.2.2.v20101205</version>
+      <version>7.3.1.v20110307</version>
     </dependency>
     <dependency>
       <groupId>org.eclipse.jetty</groupId>
       <artifactId>jetty-servlet</artifactId>
-      <version>7.2.2.v20101205</version>
+      <version>7.3.1.v20110307</version>
     </dependency>
     <dependency>
       <groupId>com.google.inject</groupId>
@@ -90,17 +90,17 @@
     <dependency>
       <groupId>org.codehaus.jackson</groupId>
       <artifactId>jackson-core-asl</artifactId>
-      <version>1.7.1</version>
+      <version>1.8.0</version>
     </dependency>
     <dependency>
       <groupId>org.codehaus.jackson</groupId>
       <artifactId>jackson-mapper-asl</artifactId>
-      <version>1.7.1</version>
+      <version>1.8.0</version>
     </dependency>
     <dependency>
       <groupId>org.codehaus.jackson</groupId>
       <artifactId>jackson-smile</artifactId>
-      <version>1.7.1</version>
+      <version>1.8.0</version>
     </dependency>
     <dependency>
       <groupId>com.g414.codec</groupId>
