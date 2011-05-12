@@ -32,6 +32,18 @@ public class SchemaDefinition {
             throw new IllegalArgumentException("'indexes' must be present");
         }
 
+        boolean isFirst = true;
+        if (!indexes.isEmpty()) {
+            for (IndexDefinition def : indexes) {
+                if (def.isUnique() && !isFirst) {
+                    throw new IllegalArgumentException(
+                            "at most one unique 'index' may be present per schema and must be the first index listed in order");
+                }
+
+                isFirst = false;
+            }
+        }
+
         this.attributes = Collections.unmodifiableList(attributes);
         this.indexes = Collections.unmodifiableList(indexes);
 

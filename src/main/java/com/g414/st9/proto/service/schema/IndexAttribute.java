@@ -9,9 +9,11 @@ import org.codehaus.jackson.annotate.JsonProperty;
 public class IndexAttribute {
     public final String name;
     public final SortOrder sortOrder;
+    public final AttributeTransform transform;
 
     @JsonCreator
     public IndexAttribute(@JsonProperty("name") String name,
+            @JsonProperty("transform") AttributeTransform transform,
             @JsonProperty("sort") SortOrder sortOrder) {
         if (name == null) {
             throw new IllegalArgumentException("'name' must not be null");
@@ -23,10 +25,16 @@ public class IndexAttribute {
 
         this.name = name;
         this.sortOrder = sortOrder;
+        this.transform = (transform == null) ? AttributeTransform.NONE
+                : transform;
     }
 
     public String getName() {
         return name;
+    }
+
+    public AttributeTransform getTransform() {
+        return transform;
     }
 
     @JsonProperty("sort")

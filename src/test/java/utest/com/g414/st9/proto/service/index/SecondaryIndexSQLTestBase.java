@@ -28,6 +28,10 @@ public abstract class SecondaryIndexSQLTestBase {
             + "\"indexes\":[{\"name\":\"hotness\",\"cols\":["
             + "{\"name\":\"hotness\",\"sort\":\"ASC\"},{\"name\":\"id\",\"sort\":\"ASC\"}]}]}";
 
+    protected final String schema6 = "{\"attributes\":[{\"name\":\"hotness\",\"type\":\"ENUM\",\"values\":[\"hot\",\"cold\"]}],"
+            + "\"indexes\":[{\"name\":\"hotness\",\"unique\":true,\"cols\":["
+            + "{\"name\":\"hotness\",\"sort\":\"ASC\"},{\"name\":\"id\",\"sort\":\"ASC\"}]}]}";
+
     protected final ObjectMapper mapper = new ObjectMapper();
 
     public abstract void testSchemaSpecific() throws Exception;
@@ -179,5 +183,20 @@ public abstract class SecondaryIndexSQLTestBase {
                         bindParams2));
 
         Assert.assertEquals("{}", bindParams2.toString());
+
+        SchemaDefinition def2 = mapper.readValue(schema6,
+                SchemaDefinition.class);
+
+        SchemaDefinitionValidator v2 = new SchemaDefinitionValidator();
+        v2.validate(def2);
+
+        Assert.assertEquals(
+                "create table if not exists `_i_schema6__hotness` (`_id` BIGINT UNSIGNED PRIMARY KEY, `_hotness` SMALLINT)",
+                mysql.getTableDefinition("schema6", "hotness", def2));
+
+        Assert.assertEquals(
+                "create unique index `_idx_schema6__hotness` on `_i_schema6__hotness` (`_hotness` ASC)",
+                mysql.getIndexDefinition("schema6", "hotness", def2));
+
     }
 }

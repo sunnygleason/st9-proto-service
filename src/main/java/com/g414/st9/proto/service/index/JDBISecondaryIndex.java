@@ -2,10 +2,12 @@ package com.g414.st9.proto.service.index;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
@@ -114,17 +116,30 @@ public abstract class JDBISecondaryIndex {
         Update insert = handle.createStatement(getInsertStatement(type,
                 indexName, schemaDefinition));
 
-        for (IndexAttribute attr : schemaDefinition.getIndexMap()
-                .get(indexName).getIndexAttributes()) {
+        IndexDefinition indexDefinition = schemaDefinition.getIndexMap().get(
+                indexName);
+
+        for (IndexAttribute attr : indexDefinition.getIndexAttributes()) {
             String attrName = attr.getName();
             if ("id".equals(attrName)) {
                 insert.bind("id", id);
             } else {
-                insert.bind(attrName, value.get(attrName));
+                insert.bind(attrName,
+                        transformAttributeValue(value.get(attrName), attr));
             }
         }
 
-        insert.execute();
+        try {
+            insert.execute();
+        } catch (UnableToExecuteStatementException e) {
+            if (isConstraintViolation(e)) {
+                throw new WebApplicationException(Response
+                        .status(Status.CONFLICT)
+                        .entity("unique index constraint violation").build());
+            } else {
+                throw e;
+            }
+        }
     }
 
     public void updateEntity(Handle handle, final Long id,
@@ -133,17 +148,30 @@ public abstract class JDBISecondaryIndex {
         Update update = handle.createStatement(getUpdateStatement(type,
                 indexName, schemaDefinition));
 
-        for (IndexAttribute attr : schemaDefinition.getIndexMap()
-                .get(indexName).getIndexAttributes()) {
+        IndexDefinition indexDefinition = schemaDefinition.getIndexMap().get(
+                indexName);
+
+        for (IndexAttribute attr : indexDefinition.getIndexAttributes()) {
             String attrName = attr.getName();
             if ("id".equals(attrName)) {
                 update.bind("id", id);
             } else {
-                update.bind(attrName, value.get(attrName));
+                update.bind(attrName,
+                        transformAttributeValue(value.get(attrName), attr));
             }
         }
 
-        update.execute();
+        try {
+            update.execute();
+        } catch (UnableToExecuteStatementException e) {
+            if (isConstraintViolation(e)) {
+                throw new WebApplicationException(Response
+                        .status(Status.CONFLICT)
+                        .entity("unique index constraint violation").build());
+            } else {
+                throw e;
+            }
+        }
     }
 
     public void deleteEntity(Handle handle, final Long id, final String type,
@@ -300,16 +328,10 @@ public abstract class JDBISecondaryIndex {
                             + indexName).build());
         }
 
-        StringBuilder sqlBuilder = new StringBuilder();
-        sqlBuilder.append("create index ");
-        sqlBuilder.append(getIndexName(type, indexName));
-        sqlBuilder.append(" on ");
-        sqlBuilder.append(getTableName(type, indexName));
-        sqlBuilder.append(" (");
-
         Iterator<IndexAttribute> iter = indexDefinition.getIndexAttributes()
                 .iterator();
 
+        List<String> colDefs = new ArrayList<String>();
         while (iter.hasNext()) {
             IndexAttribute column = iter.next();
 
@@ -321,15 +343,27 @@ public abstract class JDBISecondaryIndex {
                         + column.getName());
             }
 
-            sqlBuilder.append(getColumnName(column.getName()));
-            sqlBuilder.append(" ");
-            sqlBuilder.append(column.getSortOrder().toString());
-
-            if (iter.hasNext()) {
-                sqlBuilder.append(", ");
+            if (indexDefinition.isUnique() && column.getName().equals("id")) {
+                continue;
             }
+
+            colDefs.add(getColumnName(column.getName()) + " "
+                    + column.getSortOrder().toString());
         }
 
+        StringBuilder sqlBuilder = new StringBuilder();
+        sqlBuilder.append("create ");
+
+        if (indexDefinition.isUnique()) {
+            sqlBuilder.append("unique ");
+        }
+
+        sqlBuilder.append("index ");
+        sqlBuilder.append(getIndexName(type, indexName));
+        sqlBuilder.append(" on ");
+        sqlBuilder.append(getTableName(type, indexName));
+        sqlBuilder.append(" (");
+        sqlBuilder.append(StringHelper.join(", ", colDefs));
         sqlBuilder.append(")");
 
         return sqlBuilder.toString();
@@ -481,7 +515,8 @@ public abstract class JDBISecondaryIndex {
                     Object transformed = transformer.transformValue(attrName,
                             instance);
 
-                    bindParams.put("p" + param, transformed);
+                    bindParams.put("p" + param,
+                            transformAttributeValue(transformed, attribute));
 
                     maybeParam = " :p" + param;
                     param += 1;
@@ -549,8 +584,11 @@ public abstract class JDBISecondaryIndex {
             IndexDefinition indexDef, List<QueryTerm> terms) {
         Map<String, List<QueryTerm>> termMap = new LinkedHashMap<String, List<QueryTerm>>();
 
+        Set<String> termFields = new HashSet<String>();
+
         for (QueryTerm term : terms) {
             String attrName = term.getField();
+            termFields.add(attrName);
 
             if (!indexDef.getAttributeNames().contains(attrName)) {
                 throw new ValidationException("'" + attrName + "' not in index");
@@ -559,6 +597,12 @@ public abstract class JDBISecondaryIndex {
 
         for (IndexAttribute attribute : indexDef.getIndexAttributes()) {
             String attrName = attribute.getName();
+
+            if (indexDef.isUnique() && !attrName.equals("id")
+                    && !termFields.contains(attrName)) {
+                throw new ValidationException(
+                        "unique index query must specify all fields");
+            }
 
             for (QueryTerm term : terms) {
                 if (term.getField().equals(attrName)) {
@@ -595,5 +639,35 @@ public abstract class JDBISecondaryIndex {
         default:
             throw new IllegalArgumentException("Unknown operator: " + operator);
         }
+    }
+
+    protected Object transformAttributeValue(Object value, IndexAttribute attr) {
+        Object toBind = value;
+
+        if (toBind != null) {
+            switch (attr.getTransform()) {
+            case UPPERCASE:
+                toBind = toBind.toString().toUpperCase();
+                break;
+            case LOWERCASE:
+                toBind = toBind.toString().toLowerCase();
+                break;
+            default:
+                break;
+            }
+        }
+
+        return toBind;
+    }
+
+    protected boolean isConstraintViolation(UnableToExecuteStatementException e) {
+        if (e.getCause() != null) {
+            String message = e.getCause().getMessage().toLowerCase();
+
+            return message.contains("constraint violation")
+                    || message.contains("duplicate entry");
+        }
+
+        return false;
     }
 }

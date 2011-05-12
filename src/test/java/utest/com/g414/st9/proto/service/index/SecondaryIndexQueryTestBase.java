@@ -50,6 +50,22 @@ public abstract class SecondaryIndexQueryTestBase {
             + "\"indexes\":[{\"name\":\"xref\",\"cols\":["
             + "{\"name\":\"small\",\"sort\":\"ASC\"},{\"name\":\"id\",\"sort\":\"ASC\"}]}]}";
 
+    protected final String schema8 = "{\"attributes\":[{\"name\":\"small\",\"type\":\"UTF8_SMALLSTRING\"},{\"name\":\"text\",\"type\":\"UTF8_TEXT\"}],"
+            + "\"indexes\":[{\"name\":\"uniq\",\"unique\":true,\"cols\":["
+            + "{\"name\":\"small\",\"sort\":\"ASC\"},{\"name\":\"id\",\"sort\":\"ASC\"}]}]}";
+
+    protected final String schema9 = "{\"attributes\":[{\"name\":\"small\",\"type\":\"UTF8_SMALLSTRING\"},{\"name\":\"text\",\"type\":\"UTF8_TEXT\"}],"
+            + "\"indexes\":[{\"name\":\"uniq\",\"unique\":true,\"cols\":["
+            + "{\"name\":\"small\",\"transform\":\"LOWERCASE\",\"sort\":\"ASC\"},{\"name\":\"id\",\"sort\":\"ASC\"}]}]}";
+
+    protected final String schema10 = "{\"attributes\":[{\"name\":\"x\",\"type\":\"I32\"}],"
+            + "\"indexes\":[{\"name\":\"uniq\",\"unique\":true,\"cols\":["
+            + "{\"name\":\"x\",\"sort\":\"ASC\"},{\"name\":\"id\",\"sort\":\"ASC\"}]}]}";
+
+    protected final String schema11 = "{\"attributes\":[{\"name\":\"small\",\"type\":\"UTF8_SMALLSTRING\"},{\"name\":\"x\",\"type\":\"I32\"}],"
+            + "\"indexes\":[{\"name\":\"uniq_compound\",\"unique\":true,\"cols\":["
+            + "{\"name\":\"small\",\"sort\":\"ASC\"},{\"name\":\"x\",\"sort\":\"ASC\"},{\"name\":\"id\",\"sort\":\"ASC\"}]}]}";
+
     protected KeyValueResource kvResource;
     protected SecondaryIndexResource indexResource;
     protected JDBISecondaryIndex index;
@@ -147,11 +163,29 @@ public abstract class SecondaryIndexQueryTestBase {
                             + (i % 2 == 0) + "\"}").getEntity();
         }
 
-        Response r = this.indexResource.retrieveEntity("foo7", "xref",
+        Response r = this.indexResource.retrieveEntity(type, "xref",
                 "small eq \"1\"", null, null);
         Assert.assertEquals(
                 r.getEntity().toString(),
                 "{\"kind\":\"foo7\",\"index\":\"xref\",\"query\":\"small eq \\\"1\\\"\",\"results\":[{\"id\":\"@foo7:d53307ca898701db\"}],\"pageSize\":25,\"next\":null,\"prev\":null}");
+    }
+
+    public void testUniqueIntegerIndexes() throws Exception {
+        doUniqueIntegerTest("foo10", schema10, 0, "@foo10:e882c1cbac34a48b",
+                "@foo10:28aab6c4f2aeed54");
+    }
+
+    public void testUniqueStringIndexes() throws Exception {
+        doUniqueStringTest("foo8", schema8, "small", "small",
+                "@foo8:6c3b63e510ae10b3", "@foo8:02668c07cad2b4b7");
+        doUniqueStringTest("foo9", schema9, "sMall", "small",
+                "@foo9:0c9779abf62acd35", "@foo9:35690aaee888bd21");
+    }
+
+    public void testUniqueCompoundIndexes() throws Exception {
+        doUniqueCompoundTest("foo11", schema11, "sMall", "small",
+                "@foo11:55078e4057b0592b", "@foo11:d807404598cb174d",
+                "@foo11:4ec8cf2fb620dc54");
     }
 
     public void testSchemaMigrate() throws Exception {
@@ -247,5 +281,128 @@ public abstract class SecondaryIndexQueryTestBase {
 
         Assert.assertNull(result3.get("next"));
         Assert.assertNotNull(result3.get("prev"));
+    }
+
+    protected void doUniqueIntegerTest(String type, String schema,
+            Integer value, String found1, String found2) throws Exception {
+        this.schemaResource.createEntity(type, schema);
+
+        Assert.assertTrue(this.index.indexExists(database, type, "uniq"));
+
+        for (int i = 0; i < 74; i++) {
+            this.kvResource.createEntity(type, "{\"x\":" + value + "}")
+                    .getEntity();
+        }
+
+        Response r = this.indexResource.retrieveEntity(type, "uniq", "x eq "
+                + value, null, null);
+        Assert.assertEquals(r.getEntity().toString(), "{\"kind\":\"" + type
+                + "\",\"index\":\"uniq\",\"query\":\"x eq " + value
+                + "\",\"results\":[{\"id\":\"" + found1
+                + "\"}],\"pageSize\":25,\"next\":null,\"prev\":null}");
+
+        Response r2 = this.kvResource.createEntity(type, "{\"x\":" + value
+                + "}");
+
+        Assert.assertEquals(r2.getStatus(), Status.CONFLICT.getStatusCode());
+        Assert.assertEquals(r2.getEntity().toString(),
+                "unique index constraint violation");
+
+        Response r3 = this.kvResource.createEntity(type, "{\"x\":"
+                + (value + 1) + "}");
+
+        Assert.assertEquals(r3.getStatus(), Status.OK.getStatusCode());
+        Assert.assertEquals(r3.getEntity().toString(), "{\"id\":\"" + found2
+                + "\",\"kind\":\"" + type + "\",\"version\":\"1\",\"x\":"
+                + (value + 1) + "}");
+    }
+
+    protected void doUniqueStringTest(String type, String schema,
+            String prefix, String target, String found1, String found2)
+            throws Exception {
+        this.schemaResource.createEntity(type, schema);
+
+        Assert.assertTrue(this.index.indexExists(database, type, "uniq"));
+
+        for (int i = 0; i < 74; i++) {
+            this.kvResource.createEntity(
+                    type,
+                    "{\"small\":\"" + prefix + i + "\",\"text\":\"" + -i
+                            + " even? " + (i % 2 == 0) + "\"}").getEntity();
+        }
+
+        Response r = this.indexResource.retrieveEntity(type, "uniq",
+                "small eq \"" + prefix + "1\"", null, null);
+        Assert.assertEquals(r.getEntity().toString(), "{\"kind\":\"" + type
+                + "\",\"index\":\"uniq\",\"query\":\"small eq \\\"" + prefix
+                + "1\\\"\",\"results\":[{\"id\":\"" + found1
+                + "\"}],\"pageSize\":25,\"next\":null,\"prev\":null}");
+
+        Response r2 = this.kvResource.createEntity(type, "{\"small\":\""
+                + target + 1 + "\",\"text\":\"" + -1 + " even? false\"}");
+
+        Assert.assertEquals(r2.getStatus(), Status.CONFLICT.getStatusCode());
+        Assert.assertEquals(r2.getEntity().toString(),
+                "unique index constraint violation");
+
+        Response r3 = this.kvResource.createEntity(type, "{\"small\":\""
+                + prefix + 75 + "\",\"text\":\"" + -1 + " even? false\"}");
+
+        Assert.assertEquals(r3.getStatus(), Status.OK.getStatusCode());
+        Assert.assertEquals(r3.getEntity().toString(), "{\"id\":\"" + found2
+                + "\",\"kind\":\"" + type + "\",\"version\":\"1\",\"small\":\""
+                + prefix + "75\",\"text\":\"-1 even? false\"}");
+    }
+
+    protected void doUniqueCompoundTest(String type, String schema,
+            String prefix, String target, String found1, String found2,
+            String found3) throws Exception {
+        this.schemaResource.createEntity(type, schema);
+
+        Assert.assertTrue(this.index.indexExists(database, type,
+                "uniq_compound"));
+
+        for (int i = 0; i < 74; i++) {
+            this.kvResource.createEntity(
+                    type,
+                    "{\"small\":\"" + prefix + i + "\",\"x\":" + i
+                            + ",\"text\":\"" + -i + " even? " + (i % 2 == 0)
+                            + "\"}").getEntity();
+        }
+
+        Response r0 = this.indexResource.retrieveEntity(type, "uniq_compound",
+                "small eq \"" + prefix + "1\"", null, null);
+        Assert.assertEquals(r0.getEntity().toString(),
+                "unique index query must specify all fields");
+
+        Response r1 = this.indexResource.retrieveEntity(type, "uniq_compound",
+                "small eq \"" + prefix + "1\" and x eq 1", null, null);
+        Assert.assertEquals(r1.getEntity().toString(), "{\"kind\":\"" + type
+                + "\",\"index\":\"uniq_compound\",\"query\":\"small eq \\\""
+                + prefix + "1\\\" and x eq 1\",\"results\":[{\"id\":\""
+                + found1 + "\"}],\"pageSize\":25,\"next\":null,\"prev\":null}");
+
+        Response r2 = this.kvResource.createEntity(type, "{\"small\":\""
+                + prefix + 1 + "\",\"x\":" + 1 + ",\"text\":\"" + -1
+                + " even? false\"}");
+        Assert.assertEquals(r2.getStatus(), Status.CONFLICT.getStatusCode());
+        Assert.assertEquals(r2.getEntity().toString(),
+                "unique index constraint violation");
+
+        Response r3 = this.kvResource.createEntity(type, "{\"small\":\""
+                + prefix + 2 + "\",\"x\":" + 1 + ",\"text\":\"" + -1
+                + " even? false\"}");
+        Assert.assertEquals(r3.getStatus(), Status.OK.getStatusCode());
+        Assert.assertEquals(r3.getEntity().toString(), "{\"id\":\"" + found2
+                + "\",\"kind\":\"" + type + "\",\"version\":\"1\",\"small\":\""
+                + prefix + "2\",\"x\":" + 1 + ",\"text\":\"-1 even? false\"}");
+
+        Response r4 = this.kvResource.createEntity(type, "{\"small\":\""
+                + prefix + 1 + "\",\"x\":" + 2 + ",\"text\":\"" + -1
+                + " even? false\"}");
+        Assert.assertEquals(r4.getStatus(), Status.OK.getStatusCode());
+        Assert.assertEquals(r4.getEntity().toString(), "{\"id\":\"" + found3
+                + "\",\"kind\":\"" + type + "\",\"version\":\"1\",\"small\":\""
+                + prefix + "1\",\"x\":" + 2 + ",\"text\":\"-1 even? false\"}");
     }
 }

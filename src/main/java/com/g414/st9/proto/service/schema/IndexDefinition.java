@@ -16,9 +16,11 @@ public class IndexDefinition {
     private final String name;
     private final List<IndexAttribute> indexColumns;
     private final Set<String> attributeNames;
+    private final boolean unique;
 
     @JsonCreator
     public IndexDefinition(@JsonProperty("name") String name,
+            @JsonProperty("unique") Boolean unique,
             @JsonProperty("cols") List<IndexAttribute> cols) {
         if (name == null) {
             throw new IllegalArgumentException("'name' must not be null");
@@ -29,6 +31,7 @@ public class IndexDefinition {
         }
 
         this.name = name;
+        this.unique = (unique != null && unique);
 
         Set<String> newAttributeNames = new HashSet<String>();
         for (IndexAttribute attr : cols) {
@@ -41,6 +44,10 @@ public class IndexDefinition {
 
     public String getName() {
         return name;
+    }
+
+    public boolean isUnique() {
+        return unique;
     }
 
     @JsonProperty("cols")
