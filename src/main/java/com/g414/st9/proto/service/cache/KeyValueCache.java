@@ -25,4 +25,7 @@ public interface KeyValueCache {
 
     /** clear all entries from the cache (warning: for development only) */
     public void clear();
+
+    /** returns true if the implementation actually attempts to store values */
+    public boolean isPersistent();
 }

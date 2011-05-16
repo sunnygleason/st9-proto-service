@@ -45,4 +45,9 @@ public class MemcachedKeyValueCache implements KeyValueCache {
     public void clear() {
         memcachedClient.flush();
     }
+
+    @Override
+    public boolean isPersistent() {
+        return true;
+    }
 }

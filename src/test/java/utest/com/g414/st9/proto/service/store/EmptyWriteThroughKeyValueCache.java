@@ -42,6 +42,11 @@ public class EmptyWriteThroughKeyValueCache implements KeyValueCache {
         values.clear();
     }
 
+    @Override
+    public boolean isPersistent() {
+        return false;
+    }
+
     public Map<String, Map<String, Object>> getValues() {
         return Collections.unmodifiableMap(values);
     }

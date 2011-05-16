@@ -1,5 +1,9 @@
 group sql;
 
+mysql_ping() ::=<<
+  select 1
+>>
+
 mysql_init_key_types() ::=<<
   create table if not exists `_key_types` (
     `_key_type`     smallint unsigned not null,

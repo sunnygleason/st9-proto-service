@@ -6,6 +6,7 @@ import org.skife.jdbi.v2.DBI;
 import org.skife.jdbi.v2.IDBI;
 
 import com.g414.st9.proto.service.ImportExportResource;
+import com.g414.st9.proto.service.PingResource;
 import com.g414.st9.proto.service.SchemaResource;
 import com.g414.st9.proto.service.SecondaryIndexResource;
 import com.g414.st9.proto.service.index.JDBISecondaryIndex;
@@ -61,6 +62,7 @@ public class MySQLKeyValueStorage extends JDBIKeyValueStorage {
             bind(SchemaResource.class).asEagerSingleton();
             bind(SecondaryIndexResource.class).asEagerSingleton();
             bind(ImportExportResource.class).asEagerSingleton();
+            bind(PingResource.class).asEagerSingleton();
         }
     }
 }

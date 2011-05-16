@@ -96,6 +96,11 @@ public class RedisKeyValueCache implements KeyValueCache {
         });
     }
 
+    @Override
+    public boolean isPersistent() {
+        return true;
+    }
+
     private <T> T withJedisCallback(JedisCallback<T> jedisCallback) {
         Jedis jedis = null;
         try {

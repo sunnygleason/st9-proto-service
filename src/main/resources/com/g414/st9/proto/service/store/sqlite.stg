@@ -1,5 +1,9 @@
 group sql;
 
+sqlite_ping() ::=<<
+  select 1
+>>
+
 sqlite_init_key_types() ::=<<
   create table if not exists `_key_types` (`_key_type` INTEGER PRIMARY KEY, `_type_name` UNIQUE)
 >>

@@ -30,4 +30,9 @@ public class EmptyKeyValueCache implements KeyValueCache {
     @Override
     public void clear() {
     }
+
+    @Override
+    public boolean isPersistent() {
+        return false;
+    }
 }
