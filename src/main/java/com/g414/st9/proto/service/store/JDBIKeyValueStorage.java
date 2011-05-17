@@ -154,7 +154,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                     byte[] storeValueBytes = getStorableSmileLzf(toInsert);
 
                     Map<String, Object> cacheInsert = new LinkedHashMap<String, Object>();
-                    cacheInsert.put("version", realVersion);
+                    cacheInsert.put("version", realVersion.toString());
                     cacheInsert.putAll(toInsert);
 
                     byte[] cacheValueBytes = EncodingHelper
