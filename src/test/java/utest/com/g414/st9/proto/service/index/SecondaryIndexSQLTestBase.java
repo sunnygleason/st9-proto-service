@@ -8,8 +8,11 @@ import org.codehaus.jackson.map.ObjectMapper;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import com.g414.st9.proto.service.index.MySQLSecondaryIndex;
-import com.g414.st9.proto.service.index.OpaquePaginationHelper;
+import utest.com.g414.st9.proto.service.schema.SchemaLoader;
+
+import com.g414.st9.proto.service.helper.MySQLTypeHelper;
+import com.g414.st9.proto.service.helper.OpaquePaginationHelper;
+import com.g414.st9.proto.service.index.SecondaryIndexTableHelper;
 import com.g414.st9.proto.service.query.QueryOperator;
 import com.g414.st9.proto.service.query.QueryTerm;
 import com.g414.st9.proto.service.query.QueryValue;
@@ -20,30 +23,23 @@ import com.google.inject.internal.ImmutableList;
 
 @Test
 public abstract class SecondaryIndexSQLTestBase {
-    protected final String schema4 = "{\"attributes\":[{\"name\":\"x\",\"type\":\"I32\"},{\"name\":\"y\",\"type\":\"I32\"}],"
-            + "\"indexes\":[{\"name\":\"xy\",\"cols\":["
-            + "{\"name\":\"x\",\"sort\":\"ASC\"},{\"name\":\"y\",\"sort\":\"ASC\"},{\"name\":\"id\",\"sort\":\"ASC\"}]}]}";
-
-    protected final String schema5 = "{\"attributes\":[{\"name\":\"hotness\",\"type\":\"ENUM\",\"values\":[\"hot\",\"cold\"]}],"
-            + "\"indexes\":[{\"name\":\"hotness\",\"cols\":["
-            + "{\"name\":\"hotness\",\"sort\":\"ASC\"},{\"name\":\"id\",\"sort\":\"ASC\"}]}]}";
-
-    protected final String schema6 = "{\"attributes\":[{\"name\":\"hotness\",\"type\":\"ENUM\",\"values\":[\"hot\",\"cold\"]}],"
-            + "\"indexes\":[{\"name\":\"hotness\",\"unique\":true,\"cols\":["
-            + "{\"name\":\"hotness\",\"sort\":\"ASC\"},{\"name\":\"id\",\"sort\":\"ASC\"}]}]}";
+    protected final String schema15 = SchemaLoader.loadSchema("schema15");
+    protected final String schema16 = SchemaLoader.loadSchema("schema16");
+    protected final String schema17 = SchemaLoader.loadSchema("schema17");
 
     protected final ObjectMapper mapper = new ObjectMapper();
 
     public abstract void testSchemaSpecific() throws Exception;
 
     public void testSchemaGeneric() throws Exception {
-        SchemaDefinition def = mapper
-                .readValue(schema4, SchemaDefinition.class);
+        SchemaDefinition def = mapper.readValue(schema15,
+                SchemaDefinition.class);
 
         SchemaDefinitionValidator v = new SchemaDefinitionValidator();
         v.validate(def);
 
-        MySQLSecondaryIndex mysql = new MySQLSecondaryIndex();
+        SecondaryIndexTableHelper mysql = new SecondaryIndexTableHelper(MySQLTypeHelper.DATABASE_PREFIX,
+                new MySQLTypeHelper());
 
         Assert.assertEquals(
                 "create table if not exists `_i_schema4__xy` (`_id` BIGINT UNSIGNED PRIMARY KEY, `_x` INT, `_y` INT)",
@@ -117,13 +113,14 @@ public abstract class SecondaryIndexSQLTestBase {
     }
 
     public void testSchemaSpecialFeatures() throws Exception {
-        SchemaDefinition def = mapper
-                .readValue(schema5, SchemaDefinition.class);
+        SchemaDefinition def = mapper.readValue(schema16,
+                SchemaDefinition.class);
 
         SchemaDefinitionValidator v = new SchemaDefinitionValidator();
         v.validate(def);
 
-        MySQLSecondaryIndex mysql = new MySQLSecondaryIndex();
+        SecondaryIndexTableHelper mysql = new SecondaryIndexTableHelper(MySQLTypeHelper.DATABASE_PREFIX,
+                new MySQLTypeHelper());
 
         Assert.assertEquals(
                 "create table if not exists `_i_schema5__hotness` (`_id` BIGINT UNSIGNED PRIMARY KEY, `_hotness` SMALLINT)",
@@ -184,7 +181,7 @@ public abstract class SecondaryIndexSQLTestBase {
 
         Assert.assertEquals("{}", bindParams2.toString());
 
-        SchemaDefinition def2 = mapper.readValue(schema6,
+        SchemaDefinition def2 = mapper.readValue(schema17,
                 SchemaDefinition.class);
 
         SchemaDefinitionValidator v2 = new SchemaDefinitionValidator();

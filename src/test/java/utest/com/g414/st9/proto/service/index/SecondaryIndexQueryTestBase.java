@@ -12,6 +12,8 @@ import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
+import utest.com.g414.st9.proto.service.schema.SchemaLoader;
+
 import com.g414.guice.lifecycle.Lifecycle;
 import com.g414.guice.lifecycle.LifecycleModule;
 import com.g414.st9.proto.service.KeyValueResource;
@@ -20,9 +22,9 @@ import com.g414.st9.proto.service.SecondaryIndexResource;
 import com.g414.st9.proto.service.ServiceModule;
 import com.g414.st9.proto.service.cache.EmptyKeyValueCache;
 import com.g414.st9.proto.service.cache.KeyValueCache;
+import com.g414.st9.proto.service.helper.EncodingHelper;
+import com.g414.st9.proto.service.helper.OpaquePaginationHelper;
 import com.g414.st9.proto.service.index.JDBISecondaryIndex;
-import com.g414.st9.proto.service.index.OpaquePaginationHelper;
-import com.g414.st9.proto.service.store.EncodingHelper;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
@@ -30,41 +32,16 @@ import com.google.inject.Module;
 
 @Test
 public abstract class SecondaryIndexQueryTestBase {
-    protected final String schema4 = "{\"attributes\":[{\"name\":\"x\",\"type\":\"I32\"},{\"name\":\"y\",\"type\":\"I32\"}],"
-            + "\"indexes\":[{\"name\":\"xy\",\"cols\":["
-            + "{\"name\":\"x\",\"sort\":\"ASC\"},{\"name\":\"y\",\"sort\":\"ASC\"},{\"name\":\"id\",\"sort\":\"ASC\"}]}]}";
-
-    protected final String schema4_isAwesome = "{\"version\":\"1\",\"attributes\":[{\"name\":\"x\",\"type\":\"I32\"},{\"name\":\"y\",\"type\":\"I32\"},{\"name\":\"isAwesome\",\"type\":\"BOOLEAN\"}],"
-            + "\"indexes\":[{\"name\":\"xy\",\"cols\":["
-            + "{\"name\":\"isAwesome\",\"sort\":\"ASC\"},{\"name\":\"x\",\"sort\":\"ASC\"},{\"name\":\"y\",\"sort\":\"ASC\"},{\"name\":\"id\",\"sort\":\"ASC\"}]}]}";
-
-    protected final String schema5 = "{\"attributes\":[{\"name\":\"x\",\"type\":\"I32\"},{\"name\":\"y\",\"type\":\"I32\"}],"
-            + "\"indexes\":[{\"name\":\"xy\",\"cols\":["
-            + "{\"name\":\"x\",\"sort\":\"DESC\"},{\"name\":\"y\",\"sort\":\"ASC\"},{\"name\":\"id\",\"sort\":\"DESC\"}]}]}";
-
-    protected final String schema6 = "{\"attributes\":[{\"name\":\"x\",\"type\":\"I32\"},{\"name\":\"ref\",\"type\":\"REFERENCE\"}],"
-            + "\"indexes\":[{\"name\":\"xref\",\"cols\":["
-            + "{\"name\":\"x\",\"sort\":\"ASC\"},{\"name\":\"ref\",\"sort\":\"ASC\"},{\"name\":\"id\",\"sort\":\"ASC\"}]}]}";
-
-    protected final String schema7 = "{\"attributes\":[{\"name\":\"small\",\"type\":\"UTF8_SMALLSTRING\"},{\"name\":\"text\",\"type\":\"UTF8_TEXT\"}],"
-            + "\"indexes\":[{\"name\":\"xref\",\"cols\":["
-            + "{\"name\":\"small\",\"sort\":\"ASC\"},{\"name\":\"id\",\"sort\":\"ASC\"}]}]}";
-
-    protected final String schema8 = "{\"attributes\":[{\"name\":\"small\",\"type\":\"UTF8_SMALLSTRING\"},{\"name\":\"text\",\"type\":\"UTF8_TEXT\"}],"
-            + "\"indexes\":[{\"name\":\"uniq\",\"unique\":true,\"cols\":["
-            + "{\"name\":\"small\",\"sort\":\"ASC\"},{\"name\":\"id\",\"sort\":\"ASC\"}]}]}";
-
-    protected final String schema9 = "{\"attributes\":[{\"name\":\"small\",\"type\":\"UTF8_SMALLSTRING\"},{\"name\":\"text\",\"type\":\"UTF8_TEXT\"}],"
-            + "\"indexes\":[{\"name\":\"uniq\",\"unique\":true,\"cols\":["
-            + "{\"name\":\"small\",\"transform\":\"LOWERCASE\",\"sort\":\"ASC\"},{\"name\":\"id\",\"sort\":\"ASC\"}]}]}";
-
-    protected final String schema10 = "{\"attributes\":[{\"name\":\"x\",\"type\":\"I32\"}],"
-            + "\"indexes\":[{\"name\":\"uniq\",\"unique\":true,\"cols\":["
-            + "{\"name\":\"x\",\"sort\":\"ASC\"},{\"name\":\"id\",\"sort\":\"ASC\"}]}]}";
-
-    protected final String schema11 = "{\"attributes\":[{\"name\":\"small\",\"type\":\"UTF8_SMALLSTRING\"},{\"name\":\"x\",\"type\":\"I32\"}],"
-            + "\"indexes\":[{\"name\":\"uniq_compound\",\"unique\":true,\"cols\":["
-            + "{\"name\":\"small\",\"sort\":\"ASC\"},{\"name\":\"x\",\"sort\":\"ASC\"},{\"name\":\"id\",\"sort\":\"ASC\"}]}]}";
+    protected final String schema4 = SchemaLoader.loadSchema("schema07");
+    protected final String schema4_isAwesome = SchemaLoader
+            .loadSchema("schema07b");
+    protected final String schema5 = SchemaLoader.loadSchema("schema08");
+    protected final String schema6 = SchemaLoader.loadSchema("schema09");
+    protected final String schema7 = SchemaLoader.loadSchema("schema10");
+    protected final String schema8 = SchemaLoader.loadSchema("schema11");
+    protected final String schema9 = SchemaLoader.loadSchema("schema12");
+    protected final String schema10 = SchemaLoader.loadSchema("schema13");
+    protected final String schema11 = SchemaLoader.loadSchema("schema14");
 
     protected KeyValueResource kvResource;
     protected SecondaryIndexResource indexResource;
@@ -113,7 +90,7 @@ public abstract class SecondaryIndexQueryTestBase {
     }
 
     public void testIndexExists() throws Exception {
-        Assert.assertTrue(!this.index.indexExists(database, "foo3", "yy"));
+        Assert.assertTrue(!this.index.tableExists(database, "foo3", "yy"));
     }
 
     public void testMissingType() throws Exception {
@@ -154,7 +131,7 @@ public abstract class SecondaryIndexQueryTestBase {
         String type = "foo7";
         this.schemaResource.createEntity(type, schema7);
 
-        Assert.assertTrue(this.index.indexExists(database, type, "xref"));
+        Assert.assertTrue(this.index.tableExists(database, type, "xref"));
 
         for (int i = 0; i < 74; i++) {
             this.kvResource.createEntity(
@@ -236,7 +213,7 @@ public abstract class SecondaryIndexQueryTestBase {
             throws Exception {
         this.schemaResource.createEntity(type, schema);
 
-        Assert.assertTrue(this.index.indexExists(database, type, indexName));
+        Assert.assertTrue(this.index.tableExists(database, type, indexName));
 
         for (int i = 0; i < 74; i++) {
             this.kvResource.createEntity(
@@ -287,7 +264,7 @@ public abstract class SecondaryIndexQueryTestBase {
             Integer value, String found1, String found2) throws Exception {
         this.schemaResource.createEntity(type, schema);
 
-        Assert.assertTrue(this.index.indexExists(database, type, "uniq"));
+        Assert.assertTrue(this.index.tableExists(database, type, "uniq"));
 
         for (int i = 0; i < 74; i++) {
             this.kvResource.createEntity(type, "{\"x\":" + value + "}")
@@ -322,7 +299,7 @@ public abstract class SecondaryIndexQueryTestBase {
             throws Exception {
         this.schemaResource.createEntity(type, schema);
 
-        Assert.assertTrue(this.index.indexExists(database, type, "uniq"));
+        Assert.assertTrue(this.index.tableExists(database, type, "uniq"));
 
         for (int i = 0; i < 74; i++) {
             this.kvResource.createEntity(
@@ -359,7 +336,7 @@ public abstract class SecondaryIndexQueryTestBase {
             String found3) throws Exception {
         this.schemaResource.createEntity(type, schema);
 
-        Assert.assertTrue(this.index.indexExists(database, type,
+        Assert.assertTrue(this.index.tableExists(database, type,
                 "uniq_compound"));
 
         for (int i = 0; i < 74; i++) {

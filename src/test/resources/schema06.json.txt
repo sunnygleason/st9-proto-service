@@ -1,0 +1,1 @@
+{"attributes":[{"name":"x","type":"UTF8_TEXT"}],"indexes":[],"counters":[]}

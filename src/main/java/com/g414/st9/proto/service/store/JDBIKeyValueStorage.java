@@ -32,11 +32,15 @@ import com.g414.guice.lifecycle.Lifecycle;
 import com.g414.guice.lifecycle.LifecycleRegistration;
 import com.g414.guice.lifecycle.LifecycleSupportBase;
 import com.g414.st9.proto.service.cache.KeyValueCache;
+import com.g414.st9.proto.service.count.JDBICountService;
+import com.g414.st9.proto.service.helper.EncodingHelper;
 import com.g414.st9.proto.service.index.JDBISecondaryIndex;
+import com.g414.st9.proto.service.schema.CounterDefinition;
 import com.g414.st9.proto.service.schema.IndexDefinition;
 import com.g414.st9.proto.service.schema.SchemaDefinition;
 import com.g414.st9.proto.service.schema.SchemaHelper;
 import com.g414.st9.proto.service.schema.SchemaValidatorTransformer;
+import com.g414.st9.proto.service.sequence.SequenceService;
 import com.g414.st9.proto.service.validator.ValidationException;
 import com.google.inject.Inject;
 
@@ -55,7 +59,10 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
     protected JDBISecondaryIndex index;
 
     @Inject
-    protected CounterService counters;
+    protected JDBICountService counts;
+
+    @Inject
+    protected SequenceService sequences;
 
     protected abstract String getPrefix();
 
@@ -87,11 +94,11 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
     @Override
     public Integer getTypeId(final String type) throws Exception {
-        return counters.getTypeId(type);
+        return sequences.getTypeId(type);
     }
 
     public String getTypeName(final Integer id) throws Exception {
-        return counters.getTypeName(id);
+        return sequences.getTypeName(id);
     }
 
     /**
@@ -123,13 +130,13 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
         final Key newKey;
 
         try {
-            definition = loadOrCreateEmptySchemaOutsideTxn(counters
+            definition = loadOrCreateEmptySchemaOutsideTxn(sequences
                     .getTypeId(type));
             if (id != null) {
                 newKey = new Key(type, id);
-                counters.bumpKey(type, id);
+                sequences.bumpKey(type, id);
             } else {
-                newKey = counters.nextKey(type);
+                newKey = sequences.nextKey(type);
             }
         } catch (Exception e) {
             return getErrorResponse(e);
@@ -166,6 +173,13 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                     if (inserted > 0) {
                         cache.put(EncodingHelper.toKVCacheKey(newKey
                                 .getIdentifier()), cacheValueBytes);
+
+                        for (CounterDefinition counterDef : definition
+                                .getCounters()) {
+                            counts.insertEntity(handle, newKey.getId(),
+                                    toInsert, type, counterDef.getName(),
+                                    definition);
+                        }
                     }
 
                     return (inserted == 1) ? Response.status(Status.OK)
@@ -190,7 +204,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
             KeyHelper.validateKey(key);
             Key realKey = Key.valueOf(key);
 
-            byte[] objectBytes = getObjectBytes(realKey);
+            byte[] objectBytes = getObjectBytes(realKey, true);
             if (objectBytes == null) {
                 return Response.status(Status.NOT_FOUND).entity("").build();
             }
@@ -280,7 +294,8 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                         KeyHelper.validateKey(key);
                         Key realKey = Key.valueOf(key);
 
-                        final int typeId = counters.getTypeId(realKey.getType());
+                        final int typeId = sequences.getTypeId(realKey
+                                .getType());
                         final long keyId = realKey.getId();
 
                         Query<Map<String, Object>> select = handle
@@ -368,24 +383,30 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
             public Response inTransaction(Handle handle,
                     TransactionStatus status) throws Exception {
                 try {
-                    final int typeId = counters.getTypeId(realKey.getType());
+                    final int typeId = sequences.getTypeId(realKey.getType());
                     final long keyId = realKey.getId();
 
-                    Query<Map<String, Object>> select = handle
-                            .createQuery(getPrefix() + "get_version");
+                    String oldVersionString = null;
+                    Map<String, Object> original = null;
 
-                    select.bind("key_type", typeId);
-                    select.bind("key_id", keyId);
+                    if (!definition.getCounters().isEmpty()) {
+                        original = (Map<String, Object>) EncodingHelper
+                                .parseSmileLzf(getObjectBytes(realKey, false));
 
-                    List<Map<String, Object>> results = select.list();
+                        if (original != null) {
+                            oldVersionString = (String) original.get("version");
+                        } else {
+                            return Response.status(Status.NOT_FOUND).entity("")
+                                    .build();
+                        }
+                    } else {
+                        oldVersionString = getOldVersion(handle, typeId, keyId);
 
-                    if (results == null || results.isEmpty()) {
-                        return Response.status(Status.NOT_FOUND).entity("")
-                                .build();
+                        if (oldVersionString == null) {
+                            return Response.status(Status.NOT_FOUND).entity("")
+                                    .build();
+                        }
                     }
-
-                    String oldVersionString = results.get(0).get("_version")
-                            .toString();
 
                     if (!versionObject.toString().equals(oldVersionString)) {
                         return Response.status(Status.CONFLICT)
@@ -422,6 +443,13 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                     if (updated > 0) {
                         cache.put(EncodingHelper.toKVCacheKey(realKey
                                 .getIdentifier()), cacheValueBytes);
+
+                        for (CounterDefinition counterDef : definition
+                                .getCounters()) {
+                            counts.updateEntity(handle, keyId, original,
+                                    toUpdate, realKey.getType(),
+                                    counterDef.getName(), definition);
+                        }
                     }
 
                     return (updated == 0) ? Response.status(Status.NOT_FOUND)
@@ -432,6 +460,23 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                 } catch (Exception e) {
                     return getErrorResponse(e);
                 }
+            }
+
+            private String getOldVersion(Handle handle, final int typeId,
+                    final long keyId) {
+                Query<Map<String, Object>> select = handle
+                        .createQuery(getPrefix() + "get_version");
+
+                select.bind("key_type", typeId);
+                select.bind("key_id", keyId);
+
+                List<Map<String, Object>> results = select.list();
+
+                if (results == null || results.isEmpty()) {
+                    return null;
+                }
+
+                return results.get(0).get("_version").toString();
             }
         });
     }
@@ -454,11 +499,23 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
             public Response inTransaction(Handle handle,
                     TransactionStatus status) throws Exception {
                 try {
-                    final int typeId = counters.getTypeId(realKey.getType());
+                    final int typeId = sequences.getTypeId(realKey.getType());
                     final long keyId = realKey.getId();
 
                     SchemaDefinition definition = loadOrCreateEmptySchema(
                             handle, typeId);
+
+                    Map<String, Object> original = null;
+
+                    if (!definition.getCounters().isEmpty()) {
+                        original = (Map<String, Object>) EncodingHelper
+                                .parseSmileLzf(getObjectBytes(realKey, false));
+
+                        if (original == null) {
+                            return Response.status(Status.NOT_FOUND).entity("")
+                                    .build();
+                        }
+                    }
 
                     for (IndexDefinition indexDef : definition.getIndexes()) {
                         index.deleteEntity(handle, Long.valueOf(keyId),
@@ -476,6 +533,13 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                     if (deleted > 0) {
                         cache.delete(EncodingHelper.toKVCacheKey(realKey
                                 .getIdentifier()));
+
+                        for (CounterDefinition counterDef : definition
+                                .getCounters()) {
+                            counts.deleteEntity(handle, keyId,
+                                    realKey.getType(), original,
+                                    counterDef.getName(), definition);
+                        }
                     }
 
                     return (deleted == 0) ? Response.status(Status.NOT_FOUND)
@@ -504,6 +568,8 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                         TransactionStatus status) throws Exception {
                     try {
                         index.clear(handle, iterator("$schema"), preserveSchema);
+                        counts.clear(handle, iterator("$schema"),
+                                preserveSchema);
 
                         if (preserveSchema) {
                             handle.createStatement(
@@ -534,7 +600,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
             });
 
             cache.clear();
-            counters.clear();
+            sequences.clear();
         } finally {
             nukeLock.unlock();
         }
@@ -590,7 +656,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
                     KeyHelper.validateKey(nextKey);
                     realKey = Key.valueOf(nextKey);
-                    objectBytes = getObjectBytes(realKey);
+                    objectBytes = getObjectBytes(realKey, true);
 
                     Map<String, Object> object = null;
 
@@ -676,20 +742,23 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
         });
     }
 
-    private byte[] getObjectBytes(final Key key) throws Exception {
-        final String cacheKey = EncodingHelper
-                .toKVCacheKey(key.getIdentifier());
-        byte[] valueBytesLzf = cache.get(cacheKey);
+    private byte[] getObjectBytes(final Key key, boolean cacheOk)
+            throws Exception {
+        if (cacheOk) {
+            final String cacheKey = EncodingHelper.toKVCacheKey(key
+                    .getIdentifier());
+            byte[] valueBytesLzf = cache.get(cacheKey);
 
-        if (valueBytesLzf != null) {
-            return valueBytesLzf;
+            if (valueBytesLzf != null) {
+                return valueBytesLzf;
+            }
         }
 
         return database.inTransaction(new TransactionCallback<byte[]>() {
             @Override
             public byte[] inTransaction(Handle handle, TransactionStatus status)
                     throws Exception {
-                final int typeId = counters.getTypeId(key.getType());
+                final int typeId = sequences.getTypeId(key.getType());
                 final long keyId = key.getId();
 
                 Query<Map<String, Object>> select = handle
@@ -731,7 +800,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
         return database.withHandle(new HandleCallback<Iterator<String>>() {
             @Override
             public Iterator<String> withHandle(Handle handle) throws Exception {
-                final int typeId = counters.getTypeId(type);
+                final int typeId = sequences.getTypeId(type);
 
                 Query<Map<String, Object>> select = handle
                         .createQuery(getPrefix() + "key_ids_of_type");

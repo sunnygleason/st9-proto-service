@@ -13,7 +13,7 @@ import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
 import com.g414.st9.proto.service.cache.KeyValueCache;
-import com.g414.st9.proto.service.store.EncodingHelper;
+import com.g414.st9.proto.service.helper.EncodingHelper;
 
 @Test
 public abstract class KeyValueCacheTestBase {

@@ -11,6 +11,7 @@ import com.g414.guice.lifecycle.Lifecycle;
 import com.g414.guice.lifecycle.LifecycleModule;
 import com.g414.st9.proto.service.cache.EmptyKeyValueCache;
 import com.g414.st9.proto.service.cache.KeyValueCache;
+import com.g414.st9.proto.service.helper.EmptyServlet;
 import com.g414.st9.proto.service.store.SqliteKeyValueStorage.SqliteKeyValueStorageModule;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;

@@ -1,8 +1,10 @@
-package com.g414.st9.proto.service.index;
+package com.g414.st9.proto.service.helper;
 
 import com.g414.st9.proto.service.schema.AttributeType;
 
-public class SqliteSecondaryIndex extends JDBISecondaryIndex {
+public class SqliteTypeHelper implements SqlTypeHelper {
+    public static final String DATABASE_PREFIX = "sqlite:sqlite_";
+
     public String getSqlType(AttributeType type) {
         switch (type) {
         case BOOLEAN:
@@ -24,5 +26,15 @@ public class SqliteSecondaryIndex extends JDBISecondaryIndex {
             throw new IllegalArgumentException("Unsupported type in index: "
                     + type);
         }
+    }
+
+    @Override
+    public String getInsertIgnore() {
+        return "insert or ignore";
+    }
+
+    @Override
+    public String getPKConflictResolve() {
+        return "on conflict replace";
     }
 }

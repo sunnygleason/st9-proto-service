@@ -7,7 +7,7 @@ import java.util.Random;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import com.g414.st9.proto.service.store.EncodingHelper;
+import com.g414.st9.proto.service.helper.EncodingHelper;
 import com.g414.st9.proto.service.store.Key;
 
 @Test

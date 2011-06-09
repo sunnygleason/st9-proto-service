@@ -8,10 +8,11 @@ import com.g414.st9.proto.service.schema.SchemaDefinition;
 
 @Test
 public class SchemaTest {
-    private final String schema1 = "{\"attributes\":[{\"name\":\"isAwesome\",\"type\":\"BOOLEAN\"}],\"indexes\":[]}";
     private final ObjectMapper mapper = new ObjectMapper();
 
     public void testSchema1() throws Exception {
+        String schema1 = SchemaLoader.loadSchema("schema01");
+
         SchemaDefinition def = mapper
                 .readValue(schema1, SchemaDefinition.class);
 

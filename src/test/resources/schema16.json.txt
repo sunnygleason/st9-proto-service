@@ -1,0 +1,1 @@
+{"attributes":[{"name":"hotness","type":"ENUM","values":["hot","cold"]}],"indexes":[{"name":"hotness","cols":[{"name":"hotness","sort":"ASC"},{"name":"id","sort":"ASC"}]}],"counters":[]}

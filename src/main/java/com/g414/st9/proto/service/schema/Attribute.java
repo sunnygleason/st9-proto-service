@@ -16,13 +16,15 @@ public class Attribute {
     private final Integer minlength;
     private final Integer maxlength;
     private final List<String> values;
+    private final boolean nullable;
 
     @JsonCreator
     public Attribute(@JsonProperty("name") String name,
             @JsonProperty("type") AttributeType type,
             @JsonProperty("minlength") Integer minlength,
             @JsonProperty("maxlength") Integer maxlength,
-            @JsonProperty("values") List<String> values) {
+            @JsonProperty("values") List<String> values,
+            @JsonProperty("nullable") Boolean nullable) {
         if (name == null) {
             throw new IllegalArgumentException("'name' must not be null");
         }
@@ -35,6 +37,7 @@ public class Attribute {
         this.type = type;
         this.minlength = minlength;
         this.maxlength = maxlength;
+        this.nullable = (nullable == null) || nullable;
 
         if (values != null) {
             values = Collections.unmodifiableList(values);
@@ -64,5 +67,9 @@ public class Attribute {
     @JsonSerialize(include = JsonSerialize.Inclusion.NON_NULL)
     public List<String> getValues() {
         return values;
+    }
+
+    public boolean isNullable() {
+        return nullable;
     }
 }

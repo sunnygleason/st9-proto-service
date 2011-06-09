@@ -1,11 +1,10 @@
-package com.g414.st9.proto.service.index;
+package com.g414.st9.proto.service.helper;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.apache.commons.codec.binary.Hex;
 
-import com.g414.st9.proto.service.store.EncodingHelper;
 
 public class OpaquePaginationHelper {
     public static final Long DEFAULT_PAGE_SIZE = 25L;

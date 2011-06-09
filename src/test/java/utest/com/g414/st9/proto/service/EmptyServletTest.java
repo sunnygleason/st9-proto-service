@@ -2,7 +2,7 @@ package utest.com.g414.st9.proto.service;
 
 import org.testng.annotations.Test;
 
-import com.g414.st9.proto.service.EmptyServlet;
+import com.g414.st9.proto.service.helper.EmptyServlet;
 
 public class EmptyServletTest {
     /**

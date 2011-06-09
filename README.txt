@@ -52,6 +52,18 @@ $ curl -v -v -X GET "http://localhost:8080/1.0/i2/message.hotmsg?q=hotness+eq+\"
 $ curl -v -v -X GET "http://localhost:8080/1.0/i2/message.hotmsg?q=hotness+eq+\"HOT\"+and+msg+lt+\"he\""
 $ curl -v -v -X GET "http://localhost:8080/1.0/i2/message.hotmsg?q=hotness+eq+\"HOT\"+and+msg+gt+\"he\""
 
+Advanced counters usage:
+
+$ curl -v -v -X POST --data @src/test/resources/schema20.json.txt -H "Content-Type: application/json" -H "Accept: application/json" "http://localhost:8080/1.0/s/awesome"
+$ curl -v -v -X POST --data "{\"target\":\"foo:1\",\"isAwesome\":true,\"hotness\":\"COOL\",\"year\":1970}" -H "Content-Type: application/json" -H "Accept: application/json" "http://localhost:8080/1.0/e/awesome"
+$ curl -v -v -X POST --data "{\"target\":\"foo:2\",\"isAwesome\":false,\"hotness\":\"TEH_HOTNESS\",\"year\":1980}" -H "Content-Type: application/json" -H "Accept: application/json" "http://localhost:8080/1.0/e/awesome" 
+$ curl "http://localhost:8080/1.0/c/awesome.byTarget"
+$ curl "http://localhost:8080/1.0/c/awesome.byTarget/foo:1"
+$ curl "http://localhost:8080/1.0/c/awesome.byTarget/foo:2"
+$ curl "http://localhost:8080/1.0/c/awesome.byAwesome"
+$ curl "http://localhost:8080/1.0/c/awesome.byTargetHotnessYear"
+$ curl "http://localhost:8080/1.0/c/awesome.byTargetHotnessYear/@foo:ce4ad6a1cd6293d9/TEH_HOTNESS"
+$ curl "http://localhost:8080/1.0/c/awesome.byTargetHotnessYear/@foo:ce4ad6a1cd6293d9/TEH_HOTNESS/1980"
 
 That's all for now.
 

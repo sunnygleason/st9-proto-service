@@ -1,0 +1,1 @@
+{"attributes":[{"name":"x","type":"I32"},{"name":"y","type":"I32"}],"indexes":[],"counters":[]}

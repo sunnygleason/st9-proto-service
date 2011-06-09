@@ -1,0 +1,1 @@
+{"attributes":[{"name":"isAwesome","type":"BOOLEAN","nullable":true}],"indexes":[],"counters":[]}

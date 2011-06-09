@@ -1,5 +1,8 @@
 package com.g414.st9.proto.service;
 
+import java.util.Iterator;
+import java.util.Map;
+
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.GET;
@@ -18,10 +21,14 @@ import org.skife.jdbi.v2.Handle;
 import org.skife.jdbi.v2.IDBI;
 import org.skife.jdbi.v2.tweak.HandleCallback;
 
+import com.g414.st9.proto.service.count.JDBICountService;
 import com.g414.st9.proto.service.index.JDBISecondaryIndex;
+import com.g414.st9.proto.service.schema.CounterDefinition;
 import com.g414.st9.proto.service.schema.IndexDefinition;
 import com.g414.st9.proto.service.schema.SchemaDefinition;
 import com.g414.st9.proto.service.schema.SchemaDefinitionValidator;
+import com.g414.st9.proto.service.schema.SchemaValidatorTransformer;
+import com.g414.st9.proto.service.store.Key;
 import com.g414.st9.proto.service.store.KeyValueStorage;
 import com.google.inject.Inject;
 
@@ -38,6 +45,9 @@ public class SchemaResource {
 
     @Inject
     private JDBISecondaryIndex index;
+
+    @Inject
+    private JDBICountService counts;
 
     @Inject
     private IDBI database;
@@ -76,6 +86,13 @@ public class SchemaResource {
 
             index.createTable(database, type, indexName, schemaDefinition);
             index.createIndex(database, type, indexName, schemaDefinition);
+        }
+
+        for (CounterDefinition counterDefinition : schemaDefinition
+                .getCounters()) {
+            String counterName = counterDefinition.getName();
+
+            counts.createTable(database, type, counterName, schemaDefinition);
         }
 
         return store.create(SCHEMA_PREFIX, value, typeId.longValue(), null,
@@ -122,8 +139,16 @@ public class SchemaResource {
         for (IndexDefinition indexDefinition : original.getIndexes()) {
             String indexName = indexDefinition.getName();
 
-            if (index.indexExists(database, type, indexName)) {
-                index.dropTableAndIndex(database, type, indexName);
+            if (index.tableExists(database, type, indexName)) {
+                index.dropTable(database, type, indexName);
+            }
+        }
+
+        for (CounterDefinition counterDefinition : original.getCounters()) {
+            String counterName = counterDefinition.getName();
+
+            if (counts.tableExists(database, type, counterName)) {
+                counts.dropTable(database, type, counterName);
             }
         }
 
@@ -136,9 +161,19 @@ public class SchemaResource {
         for (IndexDefinition indexDefinition : schemaDefinition.getIndexes()) {
             String indexName = indexDefinition.getName();
 
-            if (!index.indexExists(database, type, indexName)) {
+            if (!index.tableExists(database, type, indexName)) {
                 index.createTable(database, type, indexName, schemaDefinition);
                 index.createIndex(database, type, indexName, schemaDefinition);
+            }
+        }
+
+        for (CounterDefinition counterDefinition : schemaDefinition
+                .getCounters()) {
+            String counterName = counterDefinition.getName();
+
+            if (!counts.tableExists(database, type, counterName)) {
+                counts.createTable(database, type, counterName,
+                        schemaDefinition);
             }
         }
 
@@ -146,7 +181,7 @@ public class SchemaResource {
             @Override
             public Void withHandle(Handle handle) throws Exception {
                 try {
-                    index.rebuildIndexes(handle, type, schemaDefinition,
+                    rebuildIndexesAndCounters(handle, type, schemaDefinition,
                             store.iterator(type, schemaDefinition));
                     return null;
                 } catch (WebApplicationException e) {
@@ -183,11 +218,65 @@ public class SchemaResource {
         for (IndexDefinition indexDefinition : original.getIndexes()) {
             String indexName = indexDefinition.getName();
 
-            if (index.indexExists(database, type, indexName)) {
-                index.dropTableAndIndex(database, type, indexName);
+            if (index.tableExists(database, type, indexName)) {
+                index.dropTable(database, type, indexName);
+            }
+        }
+
+        for (CounterDefinition counterDefinition : original.getCounters()) {
+            String counterName = counterDefinition.getName();
+
+            if (counts.tableExists(database, type, counterName)) {
+                counts.dropTable(database, type, counterName);
             }
         }
 
         return store.delete(SCHEMA_PREFIX + ":" + typeId);
+    }
+
+    public void rebuildIndexesAndCounters(Handle handle, String type,
+            SchemaDefinition schemaDefinition,
+            Iterator<Map<String, Object>> instances) throws Exception {
+        for (IndexDefinition index : schemaDefinition.getIndexes()) {
+            this.index.truncateTable(handle, type, index.getName());
+        }
+
+        for (CounterDefinition counterDefinition : schemaDefinition
+                .getCounters()) {
+            this.counts
+                    .truncateTable(handle, type, counterDefinition.getName());
+        }
+
+        SchemaValidatorTransformer transformer = new SchemaValidatorTransformer(
+                schemaDefinition);
+
+        while (instances.hasNext()) {
+            Map<String, Object> notTransformed = instances.next();
+            Map<String, Object> instance = transformer
+                    .validateTransform(notTransformed);
+
+            Key key = Key.valueOf((String) instance.get("id"));
+
+            Boolean deleted = (Boolean) instance.get("$deleted");
+
+            if (deleted != null && deleted.booleanValue()) {
+                continue;
+            }
+
+            for (IndexDefinition indexDef : schemaDefinition.getIndexes()) {
+                String indexName = indexDef.getName();
+
+                this.index.insertEntity(handle, key.getId(), instance, type,
+                        indexName, schemaDefinition);
+            }
+
+            for (CounterDefinition counterDefinition : schemaDefinition
+                    .getCounters()) {
+                String counterName = counterDefinition.getName();
+
+                this.counts.insertEntity(handle, key.getId(), instance, type,
+                        counterName, schemaDefinition);
+            }
+        }
     }
 }

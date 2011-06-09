@@ -17,19 +17,26 @@ import org.codehaus.jackson.annotate.JsonProperty;
 public class SchemaDefinition {
     private final List<Attribute> attributes;
     private final List<IndexDefinition> indexes;
+    private final List<CounterDefinition> counters;
     private final Map<String, Attribute> attributeMap;
     private final Map<String, IndexDefinition> indexMap;
+    private final Map<String, CounterDefinition> counterMap;
 
     @JsonCreator
     public SchemaDefinition(
             @JsonProperty("attributes") List<Attribute> attributes,
-            @JsonProperty("indexes") List<IndexDefinition> indexes) {
+            @JsonProperty("indexes") List<IndexDefinition> indexes,
+            @JsonProperty("counters") List<CounterDefinition> counters) {
         if (attributes == null) {
             throw new IllegalArgumentException("'attributes' must be present");
         }
 
         if (indexes == null) {
             throw new IllegalArgumentException("'indexes' must be present");
+        }
+
+        if (counters == null) {
+            throw new IllegalArgumentException("'counters' must be present");
         }
 
         boolean isFirst = true;
@@ -46,6 +53,7 @@ public class SchemaDefinition {
 
         this.attributes = Collections.unmodifiableList(attributes);
         this.indexes = Collections.unmodifiableList(indexes);
+        this.counters = Collections.unmodifiableList(counters);
 
         Map<String, Attribute> newAttributes = new LinkedHashMap<String, Attribute>();
         for (Attribute attr : attributes) {
@@ -60,6 +68,13 @@ public class SchemaDefinition {
         }
 
         this.indexMap = Collections.unmodifiableMap(newIndexes);
+
+        Map<String, CounterDefinition> newCounters = new LinkedHashMap<String, CounterDefinition>();
+        for (CounterDefinition counter : counters) {
+            newCounters.put(counter.getName(), counter);
+        }
+
+        this.counterMap = Collections.unmodifiableMap(newCounters);
     }
 
     public List<Attribute> getAttributes() {
@@ -70,6 +85,10 @@ public class SchemaDefinition {
         return indexes;
     }
 
+    public List<CounterDefinition> getCounters() {
+        return counters;
+    }
+
     @JsonIgnore
     public Map<String, Attribute> getAttributesMap() {
         return attributeMap;
@@ -78,5 +97,10 @@ public class SchemaDefinition {
     @JsonIgnore
     public Map<String, IndexDefinition> getIndexMap() {
         return indexMap;
+    }
+
+    @JsonIgnore
+    public Map<String, CounterDefinition> getCounterMap() {
+        return counterMap;
     }
 }

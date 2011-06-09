@@ -20,7 +20,7 @@ import com.g414.guice.lifecycle.LifecycleModule;
 import com.g414.st9.proto.service.KeyValueResource;
 import com.g414.st9.proto.service.ServiceModule;
 import com.g414.st9.proto.service.cache.KeyValueCache;
-import com.g414.st9.proto.service.store.EncodingHelper;
+import com.g414.st9.proto.service.helper.EncodingHelper;
 import com.g414.st9.proto.service.store.Key;
 import com.g414.st9.proto.service.store.KeyValueStorage;
 import com.google.common.collect.Lists;

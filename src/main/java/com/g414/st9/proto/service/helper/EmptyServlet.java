@@ -1,4 +1,4 @@
-package com.g414.st9.proto.service;
+package com.g414.st9.proto.service.helper;
 
 import java.io.IOException;
 

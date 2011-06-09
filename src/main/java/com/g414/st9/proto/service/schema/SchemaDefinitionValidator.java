@@ -33,6 +33,10 @@ public class SchemaDefinitionValidator {
         for (IndexDefinition index : schemaDefinition.getIndexes()) {
             validateIndex(theAtts, index);
         }
+
+        for (CounterDefinition counter : schemaDefinition.getCounters()) {
+            validateCounter(theAtts, counter);
+        }
     }
 
     private void validateAttribute(Attribute attribute) {
@@ -76,7 +80,8 @@ public class SchemaDefinitionValidator {
 
             Attribute att = theAtts.get(colName);
             if (att == null && "id".equals(colName)) {
-                att = new Attribute("id", AttributeType.I64, null, null, null);
+                att = new Attribute("id", AttributeType.I64, null, null, null,
+                        false);
             }
 
             if (!INDEX_SUPPORTED_ATTRIBUTE_TYPES.contains(att.getType())) {
@@ -95,6 +100,61 @@ public class SchemaDefinitionValidator {
 
         if (!included.contains("id")) {
             throw new ValidationException("Index must include 'id' attribute");
+        }
+    }
+
+    private void validateCounter(Map<String, Attribute> theAtts,
+            CounterDefinition counter) {
+        String counterName = counter.getName();
+
+        if ("id".equalsIgnoreCase(counterName)
+                || "kind".equalsIgnoreCase(counterName)) {
+            throw new ValidationException(
+                    "Counter may not be named 'id' or 'kind'");
+        }
+
+        if (!VALID_NAME_PATTERN.matcher(counterName).matches()) {
+            throw new ValidationException("Invalid counter name : "
+                    + counterName);
+        }
+
+        Set<String> included = new HashSet<String>();
+
+        for (CounterAttribute column : counter.getCounterAttributes()) {
+            String colName = column.getName();
+
+            if ("id".equals(colName) || "type".equals(colName)
+                    || "kind".equals(colName)) {
+                throw new ValidationException("Attribute '" + colName
+                        + "' not allowed in counter");
+            }
+
+            if (!theAtts.containsKey(colName)) {
+                throw new ValidationException("Unknown attribute name: "
+                        + colName);
+            }
+
+            Attribute att = theAtts.get(colName);
+
+            if (!INDEX_SUPPORTED_ATTRIBUTE_TYPES.contains(att.getType())) {
+                throw new ValidationException(
+                        "Attribute type not supported in counter: "
+                                + att.getType());
+            }
+
+            if (att.isNullable()) {
+                throw new ValidationException(
+                        "Nullable attribute not supported in counter: "
+                                + att.getName());
+            }
+
+            if (included.contains(colName)) {
+                throw new ValidationException(
+                        "Attribute appears more than once in counter: "
+                                + colName);
+            }
+
+            included.add(colName);
         }
     }
 }

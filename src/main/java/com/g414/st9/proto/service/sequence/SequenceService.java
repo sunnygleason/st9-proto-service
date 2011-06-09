@@ -1,4 +1,4 @@
-package com.g414.st9.proto.service.store;
+package com.g414.st9.proto.service.sequence;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -14,6 +14,8 @@ import org.skife.jdbi.v2.TransactionCallback;
 import org.skife.jdbi.v2.TransactionStatus;
 import org.skife.jdbi.v2.tweak.HandleCallback;
 
+import com.g414.st9.proto.service.store.Key;
+
 /**
  * CounterService takes on the role of key generator in st9, effectively making
  * it so that inserts are just 'insert', not 'select and update to get the id'
@@ -21,7 +23,7 @@ import org.skife.jdbi.v2.tweak.HandleCallback;
  * result in sequences that do not necessarily match creation order. A future
  * version should probably use interleaved sequences to address this issue.
  */
-public class CounterService {
+public class SequenceService {
     protected static final long DEFAULT_INCREMENT = 100000L;
     protected final Map<String, Counter> counters = new ConcurrentHashMap<String, Counter>();
     protected final Map<String, Integer> typeCodes = new ConcurrentHashMap<String, Integer>();
@@ -30,11 +32,11 @@ public class CounterService {
     protected final String prefix;
     protected final long increment;
 
-    public CounterService(IDBI database, String prefix) {
+    public SequenceService(IDBI database, String prefix) {
         this(database, prefix, DEFAULT_INCREMENT);
     }
 
-    public CounterService(IDBI database, String prefix, long increment) {
+    public SequenceService(IDBI database, String prefix, long increment) {
         this.database = database;
         this.prefix = prefix;
         this.increment = increment;

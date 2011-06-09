@@ -5,12 +5,17 @@ import javax.ws.rs.core.Response;
 import org.skife.jdbi.v2.DBI;
 import org.skife.jdbi.v2.IDBI;
 
+import com.g414.st9.proto.service.CounterResource;
 import com.g414.st9.proto.service.ImportExportResource;
 import com.g414.st9.proto.service.PingResource;
 import com.g414.st9.proto.service.SchemaResource;
 import com.g414.st9.proto.service.SecondaryIndexResource;
+import com.g414.st9.proto.service.helper.JDBIHelper;
+import com.g414.st9.proto.service.helper.MySQLTypeHelper;
+import com.g414.st9.proto.service.helper.SqlTypeHelper;
 import com.g414.st9.proto.service.index.JDBISecondaryIndex;
-import com.g414.st9.proto.service.index.MySQLSecondaryIndex;
+import com.g414.st9.proto.service.index.SecondaryIndexTableHelper;
+import com.g414.st9.proto.service.sequence.SequenceService;
 import com.google.inject.AbstractModule;
 import com.google.inject.Binder;
 import com.google.inject.name.Names;
@@ -21,10 +26,8 @@ import com.mysql.jdbc.Driver;
  * MySQL implementation of key-value storage using JDBI.
  */
 public class MySQLKeyValueStorage extends JDBIKeyValueStorage {
-    private static final String DATABASE_PREFIX = "mysql:mysql_";
-
     protected String getPrefix() {
-        return DATABASE_PREFIX;
+        return MySQLTypeHelper.DATABASE_PREFIX;
     }
 
     @Override
@@ -49,17 +52,20 @@ public class MySQLKeyValueStorage extends JDBIKeyValueStorage {
             binder.bind(IDBI.class).toInstance(dbi);
 
             binder.bind(String.class).annotatedWith(Names.named("db.prefix"))
-                    .toInstance(DATABASE_PREFIX);
+                    .toInstance(MySQLTypeHelper.DATABASE_PREFIX);
 
-            binder.bind(CounterService.class).toInstance(
-                    new CounterService(dbi, DATABASE_PREFIX));
+            binder.bind(SequenceService.class).toInstance(
+                    new SequenceService(dbi, MySQLTypeHelper.DATABASE_PREFIX));
 
             binder.bind(KeyValueStorage.class).to(MySQLKeyValueStorage.class)
                     .asEagerSingleton();
-            binder.bind(JDBISecondaryIndex.class).to(MySQLSecondaryIndex.class)
+            binder.bind(SqlTypeHelper.class).to(MySQLTypeHelper.class)
                     .asEagerSingleton();
+            binder.bind(SecondaryIndexTableHelper.class).asEagerSingleton();
+            binder.bind(JDBISecondaryIndex.class).asEagerSingleton();
 
             bind(SchemaResource.class).asEagerSingleton();
+            bind(CounterResource.class).asEagerSingleton();
             bind(SecondaryIndexResource.class).asEagerSingleton();
             bind(ImportExportResource.class).asEagerSingleton();
             bind(PingResource.class).asEagerSingleton();

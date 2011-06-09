@@ -22,13 +22,13 @@ import org.skife.jdbi.v2.Handle;
 import org.skife.jdbi.v2.IDBI;
 import org.skife.jdbi.v2.tweak.HandleCallback;
 
+import com.g414.st9.proto.service.helper.EncodingHelper;
+import com.g414.st9.proto.service.helper.OpaquePaginationHelper;
 import com.g414.st9.proto.service.index.JDBISecondaryIndex;
-import com.g414.st9.proto.service.index.OpaquePaginationHelper;
 import com.g414.st9.proto.service.query.QueryLexer;
 import com.g414.st9.proto.service.query.QueryParser;
 import com.g414.st9.proto.service.query.QueryTerm;
 import com.g414.st9.proto.service.schema.SchemaDefinition;
-import com.g414.st9.proto.service.store.EncodingHelper;
 import com.g414.st9.proto.service.store.Key;
 import com.g414.st9.proto.service.store.KeyValueStorage;
 import com.g414.st9.proto.service.validator.ValidationException;
@@ -78,7 +78,7 @@ public class SecondaryIndexResource {
      * index name and query string.
      * 
      * @param type
-     * @param index
+     * @param counts
      * @param query
      * @return
      * @throws Exception

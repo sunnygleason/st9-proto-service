@@ -6,7 +6,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 import com.g414.st9.proto.service.cache.KeyValueCache;
-import com.g414.st9.proto.service.store.EncodingHelper;
+import com.g414.st9.proto.service.helper.EncodingHelper;
 
 /**
  * This is the Tiniest Cache Ever(TM).

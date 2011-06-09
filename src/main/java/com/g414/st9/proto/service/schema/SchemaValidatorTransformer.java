@@ -62,8 +62,13 @@ public class SchemaValidatorTransformer implements
             Object inbound = e.getValue();
 
             if (inbound == null) {
-                mindlessClone.put(attrName, null);
-                continue;
+                if (attribute.isNullable()) {
+                    mindlessClone.put(attrName, null);
+                    continue;
+                }
+
+                throw new ValidationException("attribute must not be null: "
+                        + attrName);
             }
 
             ValidatorTransformer validator = attributeValidators.get(attrName);
@@ -98,8 +103,13 @@ public class SchemaValidatorTransformer implements
             Object inbound = e.getValue();
 
             if (inbound == null) {
-                mindlessClone.put(attrName, null);
-                continue;
+                if (attribute.isNullable()) {
+                    mindlessClone.put(attrName, null);
+                    continue;
+                }
+
+                throw new ValidationException("attribute must not be null: "
+                        + attrName);
             }
 
             ValidatorTransformer validator = attributeValidators.get(attrName);

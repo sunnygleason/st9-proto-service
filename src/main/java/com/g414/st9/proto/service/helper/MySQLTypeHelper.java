@@ -1,8 +1,10 @@
-package com.g414.st9.proto.service.index;
+package com.g414.st9.proto.service.helper;
 
 import com.g414.st9.proto.service.schema.AttributeType;
 
-public class MySQLSecondaryIndex extends JDBISecondaryIndex {
+public class MySQLTypeHelper implements SqlTypeHelper {
+    public static final String DATABASE_PREFIX = "mysql:mysql_";
+
     public String getSqlType(AttributeType type) {
         switch (type) {
         case BOOLEAN:
@@ -34,5 +36,15 @@ public class MySQLSecondaryIndex extends JDBISecondaryIndex {
             throw new IllegalArgumentException("Unsupported type in index: "
                     + type);
         }
+    }
+
+    @Override
+    public String getInsertIgnore() {
+        return "insert ignore";
+    }
+
+    @Override
+    public String getPKConflictResolve() {
+        return "";
     }
 }

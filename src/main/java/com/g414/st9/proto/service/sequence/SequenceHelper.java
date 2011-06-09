@@ -1,4 +1,4 @@
-package com.g414.st9.proto.service.store;
+package com.g414.st9.proto.service.sequence;
 
 import java.util.List;
 import java.util.Map;

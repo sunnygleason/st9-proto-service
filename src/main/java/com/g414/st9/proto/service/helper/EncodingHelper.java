@@ -1,4 +1,4 @@
-package com.g414.st9.proto.service.store;
+package com.g414.st9.proto.service.helper;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -20,12 +20,16 @@ import org.codehaus.jackson.smile.SmileGenerator;
 import org.codehaus.jackson.smile.SmileParser;
 
 import com.g414.codec.lzf.LZFCodec;
+import com.g414.hash.LongHash;
+import com.g414.hash.impl.MurmurHash;
 
 public class EncodingHelper {
     private static final SmileFactory smileFactory = new SmileFactory();
     private static final ObjectMapper mapper = new ObjectMapper();
     private static final LZFCodec compressCodec = new LZFCodec();
     private static final URLCodec cacheKeyCodec = new URLCodec();
+    private static final LongHash hash = new MurmurHash();
+
     private static final String KV_CACHE_PREFIX = "kv:";
     private static final String UNIQUE_IDX_CACHE_PREFIX = "idx:";
 
@@ -113,5 +117,15 @@ public class EncodingHelper {
         }
 
         return Collections.unmodifiableList(toReturn);
+    }
+
+    public static long getKeyHash(Map<String, Object> key) throws Exception {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        SmileGenerator smile = smileFactory.createJsonGenerator(out);
+        mapper.writeValue(smile, key);
+
+        byte[] smileBytes = out.toByteArray();
+
+        return hash.getLongHashCode(smileBytes);
     }
 }

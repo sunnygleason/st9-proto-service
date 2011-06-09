@@ -14,7 +14,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
-import com.g414.st9.proto.service.store.EncodingHelper;
+import com.g414.st9.proto.service.helper.EncodingHelper;
 import com.g414.st9.proto.service.store.Key;
 import com.g414.st9.proto.service.store.KeyValueStorage;
 import com.google.inject.Inject;

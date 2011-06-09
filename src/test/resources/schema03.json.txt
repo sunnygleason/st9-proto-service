@@ -1,0 +1,1 @@
+{"attributes":[{"name":"when","type":"UTC_DATE_SECS"},{"name":"lname","type":"UTF8_SMALLSTRING"},{"name":"data","type":"ANY"}],"indexes":[],"counters":[]}

@@ -1,0 +1,1 @@
+{"attributes":[{"name":"x","type":"I32","nullable":false},{"name":"y","type":"I32","nullable":false}],"indexes":[],"counters":[{"name":"xc","cols":[{"name":"x","sort":"ASC"}]},{"name":"yc","cols":[{"name":"y","sort":"ASC"}]}]}
