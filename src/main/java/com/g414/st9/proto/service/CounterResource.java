@@ -109,16 +109,19 @@ public class CounterResource {
 
         List<Map<String, Object>> resultIds = new ArrayList<Map<String, Object>>();
 
-        Map<String, String> queryMap = new LinkedHashMap<String, String>();
+        Map<String, Object> queryMap = new LinkedHashMap<String, Object>();
 
         if (schemaResponse.getStatus() == 200) {
             try {
                 SchemaDefinition definition = mapper.readValue(schemaResponse
                         .getEntity().toString(), SchemaDefinition.class);
 
-                queryMap = parseQuery(definition, type, counterName, theUri);
+                List<QueryTerm> queryTerms = parseQuery(definition, type,
+                        counterName, theUri);
 
-                List<QueryTerm> queryTerms = parseQueryMap(definition, queryMap);
+                for (QueryTerm term : queryTerms) {
+                    queryMap.put(term.getField(), term.getValue().getValue());
+                }
 
                 List<Map<String, Object>> allIds = counts.doCounterQuery(
                         database, type, counterName, queryTerms, token,
@@ -170,7 +173,7 @@ public class CounterResource {
         return Response.status(Status.OK).entity(valueJson).build();
     }
 
-    private Map<String, String> parseQuery(SchemaDefinition definition,
+    private List<QueryTerm> parseQuery(SchemaDefinition definition,
             String type, String counterName, UriInfo theUri)
             throws ValidationException {
         CounterDefinition counterDefinition = definition.getCounterMap().get(
@@ -197,7 +200,7 @@ public class CounterResource {
                             + " or less)");
         }
 
-        Map<String, String> queryMap = new LinkedHashMap<String, String>();
+        List<QueryTerm> terms = new ArrayList<QueryTerm>();
 
         for (int i = 0; i < params.size(); i++) {
             PathSegment param = params.get(i);
@@ -210,26 +213,8 @@ public class CounterResource {
                         + counterAttr.getName());
             }
 
-            queryMap.put(counterAttr.getName(), param.getPath());
-        }
-
-        return queryMap;
-    }
-
-    private List<QueryTerm> parseQueryMap(SchemaDefinition definition,
-            Map<String, String> queryMap) {
-        List<QueryTerm> terms = new ArrayList<QueryTerm>();
-
-        for (Map.Entry<String, String> entry : queryMap.entrySet()) {
-            Attribute attr = definition.getAttributesMap().get(entry.getKey());
-
-            if (attr == null) {
-                throw new ValidationException("unknown counter attribute: "
-                        + entry.getKey());
-            }
-
-            terms.add(new QueryTerm(QueryOperator.EQ, entry.getKey(),
-                    getQueryValue(attr, entry.getValue())));
+            terms.add(new QueryTerm(QueryOperator.EQ, attr.getName(),
+                    getQueryValue(attr, param.getPath())));
         }
 
         return terms;
