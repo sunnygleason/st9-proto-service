@@ -19,16 +19,12 @@ import com.g414.st9.proto.service.query.QueryValue;
 import com.g414.st9.proto.service.query.ValueType;
 import com.g414.st9.proto.service.schema.SchemaDefinition;
 import com.g414.st9.proto.service.schema.SchemaDefinitionValidator;
-import com.g414.st9.proto.service.validator.ValidationException;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
 @Test
 public abstract class CountServiceSQLTestBase {
     protected final String schema15 = SchemaLoader.loadSchema("schema18");
-    // protected final String schema16 = SchemaLoader.loadSchema("schema16");
-    // protected final String schema17 = SchemaLoader.loadSchema("schema17");
-
     protected final ObjectMapper mapper = new ObjectMapper();
 
     public abstract void testSchemaSpecific() throws Exception;
@@ -44,21 +40,21 @@ public abstract class CountServiceSQLTestBase {
                 MySQLTypeHelper.DATABASE_PREFIX, new MySQLTypeHelper());
 
         Assert.assertEquals(
-                "create table if not exists `_c_schema4__xc` (`_x` INT, `hashcode` BIGINT UNSIGNED not null,`count` BIGINT UNSIGNED, PRIMARY KEY(`_x`), UNIQUE(`hashcode`))",
+                "create table if not exists `_c_schema4__01848a41d2c44a4b` (`_x` INT, `hashcode` BIGINT UNSIGNED not null,`count` BIGINT UNSIGNED, PRIMARY KEY(`_x`), UNIQUE(`hashcode`))",
                 mysql.getTableDefinition("schema4", "xc", def));
 
         Assert.assertEquals(
-                "insert ignore into `_c_schema4__xc` (`_x`, `hashcode`, `count`) values (:x, :__hashcode, 0)",
+                "insert ignore into `_c_schema4__01848a41d2c44a4b` (`_x`, `hashcode`, `count`) values (:x, :__hashcode, 0)",
                 mysql.getInsertStatement("schema4", "xc", def,
                         ImmutableMap.<String, Object> of("x", 1)));
 
         Assert.assertEquals(
-                "update `_c_schema4__xc` set `count` = `count` + :__delta where `hashcode` = :__hashcode and `_x` = :x",
+                "update `_c_schema4__01848a41d2c44a4b` set `count` = `count` + :__delta where `hashcode` = :__hashcode and `_x` = :x",
                 mysql.getUpdateStatement("schema4", "xc", def,
                         ImmutableMap.<String, Object> of("x", 1)));
 
         Assert.assertEquals(
-                "delete from `_c_schema4__xc` where `hashcode` = :__hashcode and `_x` = :x and `count` = 0",
+                "delete from `_c_schema4__01848a41d2c44a4b` where `hashcode` = :__hashcode and `_x` = :x and `count` = 0",
                 mysql.getDeleteStatement("schema4", "xc", def,
                         ImmutableMap.<String, Object> of("x", 1)));
 
@@ -67,7 +63,7 @@ public abstract class CountServiceSQLTestBase {
 
         Map<String, Object> bindParams0 = new LinkedHashMap<String, Object>();
         Assert.assertEquals(
-                "select `count` from `_c_schema4__xc` where `_x` = :p0 order by `_x` ASC limit 26 offset 0",
+                "select `count` from `_c_schema4__01848a41d2c44a4b` where `_x` = :p0 order by `_x` ASC limit 26 offset 0",
                 mysql.getCounterQuery("schema4", "xc", query0, null,
                         OpaquePaginationHelper.DEFAULT_PAGE_SIZE, def,
                         bindParams0));
@@ -79,7 +75,7 @@ public abstract class CountServiceSQLTestBase {
         Map<String, Object> bindParams1 = new LinkedHashMap<String, Object>();
 
         Assert.assertEquals(
-                "select `_x`, `count` from `_c_schema4__xc` order by `_x` ASC limit 26 offset 0",
+                "select `_x`, `count` from `_c_schema4__01848a41d2c44a4b` order by `_x` ASC limit 26 offset 0",
                 mysql.getCounterQuery("schema4", "xc", query1, null,
                         OpaquePaginationHelper.DEFAULT_PAGE_SIZE, def,
                         bindParams1));

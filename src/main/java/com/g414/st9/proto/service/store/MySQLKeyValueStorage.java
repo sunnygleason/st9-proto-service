@@ -1,6 +1,7 @@
 package com.g414.st9.proto.service.store;
 
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
 
 import org.skife.jdbi.v2.DBI;
 import org.skife.jdbi.v2.IDBI;
@@ -32,7 +33,9 @@ public class MySQLKeyValueStorage extends JDBIKeyValueStorage {
 
     @Override
     public Response clearRequested(boolean preserveSchema) throws Exception {
-        throw new UnsupportedOperationException();
+        super.clear(preserveSchema);
+
+        return Response.status(Status.NO_CONTENT).entity("").build();
     }
 
     public static class MySQLKeyValueStorageModule extends AbstractModule {

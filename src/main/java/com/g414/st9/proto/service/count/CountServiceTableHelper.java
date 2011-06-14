@@ -19,6 +19,8 @@ import org.skife.jdbi.v2.TransactionCallback;
 import org.skife.jdbi.v2.TransactionStatus;
 import org.skife.jdbi.v2.exceptions.UnableToExecuteStatementException;
 
+import com.g414.hash.LongHash;
+import com.g414.hash.impl.MurmurHash;
 import com.g414.st9.proto.service.helper.OpaquePaginationHelper;
 import com.g414.st9.proto.service.helper.SqlTypeHelper;
 import com.g414.st9.proto.service.helper.StringHelper;
@@ -39,12 +41,14 @@ import com.google.inject.name.Named;
 public class CountServiceTableHelper {
     private String prefix;
     private SqlTypeHelper typeHelper;
+    private LongHash longHash;
 
     @Inject
     public CountServiceTableHelper(@Named("db.prefix") String prefix,
             SqlTypeHelper typeHelper) {
         this.prefix = prefix;
         this.typeHelper = typeHelper;
+        this.longHash = new MurmurHash();
     }
 
     public String getPrefix() {
@@ -192,7 +196,11 @@ public class CountServiceTableHelper {
     }
 
     public String getTableName(String type, String index) {
-        return "`_c_" + type + "__" + index + "`";
+        return "`_c_" + type + "__" + getCounterHexId(index) + "`";
+    }
+
+    private String getCounterHexId(String index) {
+        return String.format("%016x", longHash.getLongHashCode(index));
     }
 
     public String getTableDrop(String type, String indexName) {

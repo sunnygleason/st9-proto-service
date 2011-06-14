@@ -21,11 +21,11 @@ public class MySQLSecondaryIndexSQLTest extends SecondaryIndexSQLTestBase {
                 new MySQLTypeHelper());
 
         Assert.assertEquals(
-                "create table if not exists `_i_schema4__xy` (`_id` BIGINT UNSIGNED PRIMARY KEY, `_x` INT, `_y` INT)",
+                "create table if not exists `_i_schema4__0c6ca14baa3cd7d1` (`_id` BIGINT UNSIGNED PRIMARY KEY, `_x` INT, `_y` INT)",
                 mysql.getTableDefinition("schema4", "xy", def));
 
         Assert.assertEquals(
-                "create index `_idx_schema4__xy` on `_i_schema4__xy` (`_x` ASC, `_y` ASC, `_id` ASC)",
+                "create index `_idx_schema4__0c6ca14baa3cd7d1` on `_i_schema4__0c6ca14baa3cd7d1` (`_x` ASC, `_y` ASC, `_id` ASC)",
                 mysql.getIndexDefinition("schema4", "xy", def));
     }
 }

@@ -42,22 +42,22 @@ public abstract class SecondaryIndexSQLTestBase {
                 new MySQLTypeHelper());
 
         Assert.assertEquals(
-                "create table if not exists `_i_schema4__xy` (`_id` BIGINT UNSIGNED PRIMARY KEY, `_x` INT, `_y` INT)",
+                "create table if not exists `_i_schema4__0c6ca14baa3cd7d1` (`_id` BIGINT UNSIGNED PRIMARY KEY, `_x` INT, `_y` INT)",
                 mysql.getTableDefinition("schema4", "xy", def));
 
         Assert.assertEquals(
-                "create index `_idx_schema4__xy` on `_i_schema4__xy` (`_x` ASC, `_y` ASC, `_id` ASC)",
+                "create index `_idx_schema4__0c6ca14baa3cd7d1` on `_i_schema4__0c6ca14baa3cd7d1` (`_x` ASC, `_y` ASC, `_id` ASC)",
                 mysql.getIndexDefinition("schema4", "xy", def));
 
         Assert.assertEquals(
-                "insert into `_i_schema4__xy` (`_x`, `_y`, `_id`) values (:x, :y, :id)",
+                "insert into `_i_schema4__0c6ca14baa3cd7d1` (`_x`, `_y`, `_id`) values (:x, :y, :id)",
                 mysql.getInsertStatement("schema4", "xy", def));
 
         Assert.assertEquals(
-                "update `_i_schema4__xy` set `_x` = :x, `_y` = :y where `_id` = :id",
+                "update `_i_schema4__0c6ca14baa3cd7d1` set `_x` = :x, `_y` = :y where `_id` = :id",
                 mysql.getUpdateStatement("schema4", "xy", def));
 
-        Assert.assertEquals("delete from `_i_schema4__xy` where `_id` = :id",
+        Assert.assertEquals("delete from `_i_schema4__0c6ca14baa3cd7d1` where `_id` = :id",
                 mysql.getDeleteStatement("schema4", "xy"));
 
         List<QueryTerm> query0 = ImmutableList.<QueryTerm> of(
@@ -72,7 +72,7 @@ public abstract class SecondaryIndexSQLTestBase {
 
         Map<String, Object> bindParams0 = new LinkedHashMap<String, Object>();
         Assert.assertEquals(
-                "select `_id` from `_i_schema4__xy` where `_x` > :p0 AND `_y` > :p1 AND `_y` < :p2 AND `_id` = :p3 order by `_x` ASC, `_y` ASC, `_id` ASC limit 26 offset 0",
+                "select `_id` from `_i_schema4__0c6ca14baa3cd7d1` where `_x` > :p0 AND `_y` > :p1 AND `_y` < :p2 AND `_id` = :p3 order by `_x` ASC, `_y` ASC, `_id` ASC limit 26 offset 0",
                 mysql.getIndexQuery("schema4", "xy", query0, null,
                         OpaquePaginationHelper.DEFAULT_PAGE_SIZE, def,
                         bindParams0));
@@ -90,7 +90,7 @@ public abstract class SecondaryIndexSQLTestBase {
 
         Map<String, Object> bindParams1 = new LinkedHashMap<String, Object>();
         Assert.assertEquals(
-                "select `_id` from `_i_schema4__xy` where `_x` > :p0 AND `_y` > :p1 AND `_y` < :p2 order by `_x` ASC, `_y` ASC, `_id` ASC limit 26 offset 0",
+                "select `_id` from `_i_schema4__0c6ca14baa3cd7d1` where `_x` > :p0 AND `_y` > :p1 AND `_y` < :p2 order by `_x` ASC, `_y` ASC, `_id` ASC limit 26 offset 0",
                 mysql.getIndexQuery("schema4", "xy", query1, null,
                         OpaquePaginationHelper.DEFAULT_PAGE_SIZE, def,
                         bindParams1));
@@ -104,7 +104,7 @@ public abstract class SecondaryIndexSQLTestBase {
 
         Map<String, Object> bindParams2 = new LinkedHashMap<String, Object>();
         Assert.assertEquals(
-                "select `_id` from `_i_schema4__xy` where `_x` is null AND `_y` is not null order by `_x` ASC, `_y` ASC, `_id` ASC limit 26 offset 0",
+                "select `_id` from `_i_schema4__0c6ca14baa3cd7d1` where `_x` is null AND `_y` is not null order by `_x` ASC, `_y` ASC, `_id` ASC limit 26 offset 0",
                 mysql.getIndexQuery("schema4", "xy", query2, null,
                         OpaquePaginationHelper.DEFAULT_PAGE_SIZE, def,
                         bindParams2));
@@ -123,23 +123,23 @@ public abstract class SecondaryIndexSQLTestBase {
                 new MySQLTypeHelper());
 
         Assert.assertEquals(
-                "create table if not exists `_i_schema5__hotness` (`_id` BIGINT UNSIGNED PRIMARY KEY, `_hotness` SMALLINT)",
+                "create table if not exists `_i_schema5__57dbd25de1659c0f` (`_id` BIGINT UNSIGNED PRIMARY KEY, `_hotness` SMALLINT)",
                 mysql.getTableDefinition("schema5", "hotness", def));
 
         Assert.assertEquals(
-                "create index `_idx_schema5__hotness` on `_i_schema5__hotness` (`_hotness` ASC, `_id` ASC)",
+                "create index `_idx_schema5__57dbd25de1659c0f` on `_i_schema5__57dbd25de1659c0f` (`_hotness` ASC, `_id` ASC)",
                 mysql.getIndexDefinition("schema5", "hotness", def));
 
         Assert.assertEquals(
-                "insert into `_i_schema5__hotness` (`_hotness`, `_id`) values (:hotness, :id)",
+                "insert into `_i_schema5__57dbd25de1659c0f` (`_hotness`, `_id`) values (:hotness, :id)",
                 mysql.getInsertStatement("schema5", "hotness", def));
 
         Assert.assertEquals(
-                "update `_i_schema5__hotness` set `_hotness` = :hotness where `_id` = :id",
+                "update `_i_schema5__57dbd25de1659c0f` set `_hotness` = :hotness where `_id` = :id",
                 mysql.getUpdateStatement("schema5", "hotness", def));
 
         Assert.assertEquals(
-                "delete from `_i_schema5__hotness` where `_id` = :id",
+                "delete from `_i_schema5__57dbd25de1659c0f` where `_id` = :id",
                 mysql.getDeleteStatement("schema5", "hotness"));
 
         List<QueryTerm> query0 = ImmutableList.<QueryTerm> of(new QueryTerm(
@@ -148,7 +148,7 @@ public abstract class SecondaryIndexSQLTestBase {
 
         Map<String, Object> bindParams0 = new LinkedHashMap<String, Object>();
         Assert.assertEquals(
-                "select `_id` from `_i_schema5__hotness` where `_hotness` = :p0 order by `_hotness` ASC, `_id` ASC limit 26 offset 0",
+                "select `_id` from `_i_schema5__57dbd25de1659c0f` where `_hotness` = :p0 order by `_hotness` ASC, `_id` ASC limit 26 offset 0",
                 mysql.getIndexQuery("schema5", "hotness", query0, null,
                         OpaquePaginationHelper.DEFAULT_PAGE_SIZE, def,
                         bindParams0));
@@ -161,7 +161,7 @@ public abstract class SecondaryIndexSQLTestBase {
 
         Map<String, Object> bindParams1 = new LinkedHashMap<String, Object>();
         Assert.assertEquals(
-                "select `_id` from `_i_schema5__hotness` where `_hotness` = :p0 order by `_hotness` ASC, `_id` ASC limit 26 offset 0",
+                "select `_id` from `_i_schema5__57dbd25de1659c0f` where `_hotness` = :p0 order by `_hotness` ASC, `_id` ASC limit 26 offset 0",
                 mysql.getIndexQuery("schema5", "hotness", query1, null,
                         OpaquePaginationHelper.DEFAULT_PAGE_SIZE, def,
                         bindParams1));
@@ -174,7 +174,7 @@ public abstract class SecondaryIndexSQLTestBase {
 
         Map<String, Object> bindParams2 = new LinkedHashMap<String, Object>();
         Assert.assertEquals(
-                "select `_id` from `_i_schema5__hotness` where `_hotness` is not null order by `_hotness` ASC, `_id` ASC limit 26 offset 0",
+                "select `_id` from `_i_schema5__57dbd25de1659c0f` where `_hotness` is not null order by `_hotness` ASC, `_id` ASC limit 26 offset 0",
                 mysql.getIndexQuery("schema5", "hotness", query2, null,
                         OpaquePaginationHelper.DEFAULT_PAGE_SIZE, def,
                         bindParams2));
@@ -188,11 +188,11 @@ public abstract class SecondaryIndexSQLTestBase {
         v2.validate(def2);
 
         Assert.assertEquals(
-                "create table if not exists `_i_schema6__hotness` (`_id` BIGINT UNSIGNED PRIMARY KEY, `_hotness` SMALLINT)",
+                "create table if not exists `_i_schema6__57dbd25de1659c0f` (`_id` BIGINT UNSIGNED PRIMARY KEY, `_hotness` SMALLINT)",
                 mysql.getTableDefinition("schema6", "hotness", def2));
 
         Assert.assertEquals(
-                "create unique index `_idx_schema6__hotness` on `_i_schema6__hotness` (`_hotness` ASC)",
+                "create unique index `_idx_schema6__57dbd25de1659c0f` on `_i_schema6__57dbd25de1659c0f` (`_hotness` ASC)",
                 mysql.getIndexDefinition("schema6", "hotness", def2));
 
     }
