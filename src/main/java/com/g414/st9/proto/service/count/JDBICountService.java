@@ -73,15 +73,17 @@ public class JDBICountService {
         CounterDefinition counterDefinition = schemaDefinition.getCounterMap()
                 .get(counterName);
 
-        updateCounter(handle, type, original, counterName, schemaDefinition,
-                counterDefinition, -1);
-        possiblyDeleteCounter(handle, type, original, counterName,
-                schemaDefinition, counterDefinition);
+        if (!areCounterKeysEqual(original, value, counterDefinition)) {
+            updateCounter(handle, type, original, counterName,
+                    schemaDefinition, counterDefinition, -1);
+            possiblyDeleteCounter(handle, type, original, counterName,
+                    schemaDefinition, counterDefinition);
 
-        possiblyInsertCounter(handle, value, type, counterName,
-                schemaDefinition, counterDefinition);
-        updateCounter(handle, type, value, counterName, schemaDefinition,
-                counterDefinition, 1);
+            possiblyInsertCounter(handle, value, type, counterName,
+                    schemaDefinition, counterDefinition);
+            updateCounter(handle, type, value, counterName, schemaDefinition,
+                    counterDefinition, 1);
+        }
     }
 
     public void deleteEntity(Handle handle, final Long id, final String type,
@@ -251,6 +253,28 @@ public class JDBICountService {
         }
 
         update.bind("__hashcode", Long.valueOf(EncodingHelper.getKeyHash(key)));
+    }
+
+    private boolean areCounterKeysEqual(final Map<String, Object> original,
+            final Map<String, Object> value, CounterDefinition counterDefinition)
+            throws Exception {
+        boolean areEqual = true;
+
+        for (CounterAttribute attr : counterDefinition.getCounterAttributes()) {
+            String attrName = attr.getName();
+
+            Object v1 = tableHelper.transformAttributeValue(
+                    original.get(attrName), attr);
+            Object v2 = tableHelper.transformAttributeValue(
+                    value.get(attrName), attr);
+
+            if (!v1.equals(v2)) {
+                areEqual = false;
+                break;
+            }
+        }
+
+        return areEqual;
     }
 
     private Object getRowValue(Attribute attribute, Object rowValue)
