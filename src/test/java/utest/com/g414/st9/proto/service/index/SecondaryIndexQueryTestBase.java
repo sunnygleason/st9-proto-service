@@ -23,7 +23,6 @@ import com.g414.st9.proto.service.ServiceModule;
 import com.g414.st9.proto.service.cache.EmptyKeyValueCache;
 import com.g414.st9.proto.service.cache.KeyValueCache;
 import com.g414.st9.proto.service.helper.EncodingHelper;
-import com.g414.st9.proto.service.helper.OpaquePaginationHelper;
 import com.g414.st9.proto.service.index.JDBISecondaryIndex;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
@@ -141,7 +140,7 @@ public abstract class SecondaryIndexQueryTestBase {
         }
 
         Response r = this.indexResource.retrieveEntity(type, "xref",
-                "small eq \"1\"", null, null);
+                "small eq \"1\"", null, 25L);
         Assert.assertEquals(
                 r.getEntity().toString(),
                 "{\"kind\":\"foo7\",\"index\":\"xref\",\"query\":\"small eq \\\"1\\\"\",\"results\":[{\"id\":\"@foo7:d53307ca898701db\"}],\"pageSize\":25,\"next\":null,\"prev\":null}");
@@ -169,7 +168,7 @@ public abstract class SecondaryIndexQueryTestBase {
         runSchemaTest("foo1", "xy", schema4);
 
         Response r1 = this.indexResource.retrieveEntity("foo1", "xy",
-                "isAwesome eq true and x gt -1", null, null);
+                "isAwesome eq true and x gt -1", null, 25L);
 
         Assert.assertEquals(Status.BAD_REQUEST.getStatusCode(), r1.getStatus());
         Assert.assertEquals("'isAwesome' not in index", r1.getEntity());
@@ -193,18 +192,18 @@ public abstract class SecondaryIndexQueryTestBase {
         Map<String, Object> result1 = EncodingHelper
                 .parseJsonString(this.indexResource
                         .retrieveEntity("foo1", "xy",
-                                "isAwesome eq true and x gt -1", null, null)
+                                "isAwesome eq true and x gt -1", null, 25L)
                         .getEntity().toString());
-        Assert.assertTrue(((List<?>) result1.get("results")).size() == OpaquePaginationHelper.DEFAULT_PAGE_SIZE);
+        Assert.assertTrue(((List<?>) result1.get("results")).size() == 25L);
         Assert.assertNotNull(result1.get("next"));
         Assert.assertNull(result1.get("prev"));
 
         Map<String, Object> result2 = EncodingHelper
                 .parseJsonString(this.indexResource
                         .retrieveEntity("foo1", "xy",
-                                "isAwesome eq false and x gt -1", null, null)
+                                "isAwesome eq false and x gt -1", null, 25L)
                         .getEntity().toString());
-        Assert.assertTrue(((List<?>) result2.get("results")).size() == OpaquePaginationHelper.DEFAULT_PAGE_SIZE);
+        Assert.assertTrue(((List<?>) result2.get("results")).size() == 25L);
         Assert.assertNotNull(result2.get("next"));
         Assert.assertNull(result2.get("prev"));
     }
@@ -224,7 +223,7 @@ public abstract class SecondaryIndexQueryTestBase {
 
         Map<String, Object> result0 = EncodingHelper
                 .parseJsonString(this.indexResource
-                        .retrieveEntity(type, "xy", "x gt 1000", null, null)
+                        .retrieveEntity(type, "xy", "x gt 1000", null, 25L)
                         .getEntity().toString());
         Assert.assertTrue(((List<?>) result0.get("results")).size() == 0);
         Assert.assertNull(result0.get("next"));
@@ -232,18 +231,18 @@ public abstract class SecondaryIndexQueryTestBase {
 
         Map<String, Object> result1 = EncodingHelper
                 .parseJsonString(this.indexResource
-                        .retrieveEntity(type, "xy", "x gt -1", null, null)
+                        .retrieveEntity(type, "xy", "x gt -1", null, 25L)
                         .getEntity().toString());
-        Assert.assertTrue(((List<?>) result1.get("results")).size() == OpaquePaginationHelper.DEFAULT_PAGE_SIZE);
+        Assert.assertTrue(((List<?>) result1.get("results")).size() == 25L);
         Assert.assertNotNull(result1.get("next"));
         Assert.assertNull(result1.get("prev"));
 
         Map<String, Object> result2 = EncodingHelper
                 .parseJsonString(this.indexResource
                         .retrieveEntity(type, "xy", "x gt -1",
-                                (String) result1.get("next"), null).getEntity()
+                                (String) result1.get("next"), 25L).getEntity()
                         .toString());
-        Assert.assertTrue(((List<?>) result2.get("results")).size() == OpaquePaginationHelper.DEFAULT_PAGE_SIZE);
+        Assert.assertTrue(((List<?>) result2.get("results")).size() == 25L);
 
         Assert.assertNotNull(result2.get("next"));
         Assert.assertNotNull(result2.get("prev"));
@@ -251,10 +250,10 @@ public abstract class SecondaryIndexQueryTestBase {
         Map<String, Object> result3 = EncodingHelper
                 .parseJsonString(this.indexResource
                         .retrieveEntity(type, "xy", "x gt -1",
-                                (String) result2.get("next"), null).getEntity()
+                                (String) result2.get("next"), 25L).getEntity()
                         .toString());
 
-        Assert.assertTrue(((List<?>) result3.get("results")).size() == OpaquePaginationHelper.DEFAULT_PAGE_SIZE - 1L);
+        Assert.assertTrue(((List<?>) result3.get("results")).size() == 24L);
 
         Assert.assertNull(result3.get("next"));
         Assert.assertNotNull(result3.get("prev"));
@@ -272,7 +271,7 @@ public abstract class SecondaryIndexQueryTestBase {
         }
 
         Response r = this.indexResource.retrieveEntity(type, "uniq", "x eq "
-                + value, null, null);
+                + value, null, 25L);
         Assert.assertEquals(r.getEntity().toString(), "{\"kind\":\"" + type
                 + "\",\"index\":\"uniq\",\"query\":\"x eq " + value
                 + "\",\"results\":[{\"id\":\"" + found1
@@ -309,7 +308,7 @@ public abstract class SecondaryIndexQueryTestBase {
         }
 
         Response r = this.indexResource.retrieveEntity(type, "uniq",
-                "small eq \"" + prefix + "1\"", null, null);
+                "small eq \"" + prefix + "1\"", null, 25L);
         Assert.assertEquals(r.getEntity().toString(), "{\"kind\":\"" + type
                 + "\",\"index\":\"uniq\",\"query\":\"small eq \\\"" + prefix
                 + "1\\\"\",\"results\":[{\"id\":\"" + found1
@@ -348,12 +347,12 @@ public abstract class SecondaryIndexQueryTestBase {
         }
 
         Response r0 = this.indexResource.retrieveEntity(type, "uniq_compound",
-                "small eq \"" + prefix + "1\"", null, null);
+                "small eq \"" + prefix + "1\"", null, 25L);
         Assert.assertEquals(r0.getEntity().toString(),
                 "unique index query must specify all fields");
 
         Response r1 = this.indexResource.retrieveEntity(type, "uniq_compound",
-                "small eq \"" + prefix + "1\" and x eq 1", null, null);
+                "small eq \"" + prefix + "1\" and x eq 1", null, 25L);
         Assert.assertEquals(r1.getEntity().toString(), "{\"kind\":\"" + type
                 + "\",\"index\":\"uniq_compound\",\"query\":\"small eq \\\""
                 + prefix + "1\\\" and x eq 1\",\"results\":[{\"id\":\""

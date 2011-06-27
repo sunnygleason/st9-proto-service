@@ -10,9 +10,9 @@ import org.testng.annotations.Test;
 
 import utest.com.g414.st9.proto.service.schema.SchemaLoader;
 
+import com.g414.st9.proto.service.CounterResource;
 import com.g414.st9.proto.service.count.CountServiceTableHelper;
 import com.g414.st9.proto.service.helper.MySQLTypeHelper;
-import com.g414.st9.proto.service.helper.OpaquePaginationHelper;
 import com.g414.st9.proto.service.query.QueryOperator;
 import com.g414.st9.proto.service.query.QueryTerm;
 import com.g414.st9.proto.service.query.QueryValue;
@@ -63,10 +63,9 @@ public abstract class CountServiceSQLTestBase {
 
         Map<String, Object> bindParams0 = new LinkedHashMap<String, Object>();
         Assert.assertEquals(
-                "select `count` from `_c_schema4__01848a41d2c44a4b` where `_x` = :p0 order by `_x` ASC limit 26 offset 0",
+                "select `count` from `_c_schema4__01848a41d2c44a4b` where `_x` = :p0 order by `_x` ASC limit 1001 offset 0",
                 mysql.getCounterQuery("schema4", "xc", query0, null,
-                        OpaquePaginationHelper.DEFAULT_PAGE_SIZE, def,
-                        bindParams0));
+                        CounterResource.DEFAULT_PAGE_SIZE, def, bindParams0));
 
         Assert.assertEquals("{p0=1}", bindParams0.toString());
 
@@ -75,10 +74,9 @@ public abstract class CountServiceSQLTestBase {
         Map<String, Object> bindParams1 = new LinkedHashMap<String, Object>();
 
         Assert.assertEquals(
-                "select `_x`, `count` from `_c_schema4__01848a41d2c44a4b` order by `_x` ASC limit 26 offset 0",
+                "select `_x`, `count` from `_c_schema4__01848a41d2c44a4b` order by `_x` ASC limit 1001 offset 0",
                 mysql.getCounterQuery("schema4", "xc", query1, null,
-                        OpaquePaginationHelper.DEFAULT_PAGE_SIZE, def,
-                        bindParams1));
+                        CounterResource.DEFAULT_PAGE_SIZE, def, bindParams1));
 
         Assert.assertEquals("{}", bindParams1.toString());
     }

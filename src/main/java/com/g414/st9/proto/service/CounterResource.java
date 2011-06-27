@@ -44,6 +44,8 @@ import com.google.inject.Inject;
  */
 @Path("/1.0/c")
 public class CounterResource {
+    public static final Long DEFAULT_PAGE_SIZE = 1000L;
+
     @Inject
     private IDBI database;
 
@@ -99,8 +101,8 @@ public class CounterResource {
      */
     private Response doSearch(String type, String counterName, UriInfo theUri,
             String token, Long pageSize) throws Exception {
-        if (pageSize == null || pageSize > 100 || pageSize < 1) {
-            pageSize = OpaquePaginationHelper.DEFAULT_PAGE_SIZE;
+        if (pageSize == null || pageSize > 1000 || pageSize < 1) {
+            pageSize = DEFAULT_PAGE_SIZE;
         }
 
         Integer typeId = storage.getTypeId(type);

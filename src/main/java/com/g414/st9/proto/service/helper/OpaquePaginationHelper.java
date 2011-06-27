@@ -7,8 +7,6 @@ import org.apache.commons.codec.binary.Hex;
 
 
 public class OpaquePaginationHelper {
-    public static final Long DEFAULT_PAGE_SIZE = 25L;
-
     public static String createOpaqueCursor(Long offset) throws Exception {
         Map<String, Object> enc = new LinkedHashMap<String, Object>();
         enc.put("o", offset);

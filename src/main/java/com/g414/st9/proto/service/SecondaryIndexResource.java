@@ -40,6 +40,8 @@ import com.google.inject.Inject;
  */
 @Path("/1.0/i")
 public class SecondaryIndexResource {
+    public static final Long DEFAULT_PAGE_SIZE = 100L;
+
     @Inject
     private IDBI database;
 
@@ -94,7 +96,7 @@ public class SecondaryIndexResource {
         }
 
         if (pageSize == null || pageSize > 100 || pageSize < 1) {
-            pageSize = OpaquePaginationHelper.DEFAULT_PAGE_SIZE;
+            pageSize = DEFAULT_PAGE_SIZE;
         }
 
         Integer typeId = storage.getTypeId(type);
