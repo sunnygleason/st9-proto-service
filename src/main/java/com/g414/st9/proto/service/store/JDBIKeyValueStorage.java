@@ -49,6 +49,8 @@ import com.google.inject.Inject;
  */
 public abstract class JDBIKeyValueStorage implements KeyValueStorage,
         LifecycleRegistration {
+    public static int MULTIGET_MAX_KEYS = 100;
+
     @Inject
     protected IDBI database;
 
@@ -232,7 +234,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                             .<String, Object> emptyMap())).build();
         }
 
-        if (keys.size() > 100) {
+        if (keys.size() > MULTIGET_MAX_KEYS) {
             return Response.status(Status.BAD_REQUEST)
                     .entity("Multiget max is 100 keys").build();
         }
