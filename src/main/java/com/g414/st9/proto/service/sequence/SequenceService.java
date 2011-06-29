@@ -24,19 +24,18 @@ import com.g414.st9.proto.service.store.Key;
  * version should probably use interleaved sequences to address this issue.
  */
 public class SequenceService {
-    protected static final long DEFAULT_INCREMENT = 100000L;
+    public static final long DEFAULT_INCREMENT = 100000L;
     protected final Map<String, Counter> counters = new ConcurrentHashMap<String, Counter>();
     protected final Map<String, Integer> typeCodes = new ConcurrentHashMap<String, Integer>();
     protected final Map<Integer, String> typeNames = new ConcurrentHashMap<Integer, String>();
+    protected final SequenceHelper sequenceHelper;
     protected final IDBI database;
     protected final String prefix;
     protected final long increment;
 
-    public SequenceService(IDBI database, String prefix) {
-        this(database, prefix, DEFAULT_INCREMENT);
-    }
-
-    public SequenceService(IDBI database, String prefix, long increment) {
+    public SequenceService(SequenceHelper sequenceHelper, IDBI database,
+            String prefix, long increment) {
+        this.sequenceHelper = sequenceHelper;
         this.database = database;
         this.prefix = prefix;
         this.increment = increment;
@@ -88,7 +87,8 @@ public class SequenceService {
         return counter.peekNext();
     }
 
-    public Integer getTypeId(final String type) throws Exception {
+    public Integer getTypeId(final String type, final boolean create)
+            throws Exception {
         if (type == null) {
             throw new WebApplicationException(Response
                     .status(Status.BAD_REQUEST).entity("Invalid entity 'type'")
@@ -99,14 +99,27 @@ public class SequenceService {
             return typeCodes.get(type);
         }
 
-        return database.inTransaction(new TransactionCallback<Integer>() {
-            @Override
-            public Integer inTransaction(Handle handle, TransactionStatus status)
-                    throws Exception {
-                return SequenceHelper.validateType(handle, prefix, typeCodes,
-                        typeNames, type, true);
-            }
-        });
+        Integer result = database
+                .inTransaction(new TransactionCallback<Integer>() {
+                    @Override
+                    public Integer inTransaction(Handle handle,
+                            TransactionStatus status) throws Exception {
+                        try {
+                            return sequenceHelper.validateType(handle, prefix,
+                                    typeCodes, typeNames, type, create);
+                        } catch (WebApplicationException e) {
+                            return null;
+                        }
+                    }
+                });
+
+        if (result == null) {
+            throw new WebApplicationException(Response
+                    .status(Status.BAD_REQUEST)
+                    .entity("Invalid entity 'type': " + type).build());
+        }
+
+        return result;
     }
 
     public String getTypeName(final Integer id) throws Exception {
@@ -122,8 +135,6 @@ public class SequenceService {
                     return SequenceHelper.getTypeName(handle, prefix,
                             typeNames, id);
                 } catch (WebApplicationException e) {
-                    e.printStackTrace();
-
                     return null;
                 }
             }
@@ -141,7 +152,7 @@ public class SequenceService {
                 .withHandle(new HandleCallback<Integer>() {
                     @Override
                     public Integer withHandle(Handle handle) throws Exception {
-                        return SequenceHelper.validateType(handle, prefix,
+                        return sequenceHelper.validateType(handle, prefix,
                                 typeCodes, typeNames, type, true);
                     }
                 });

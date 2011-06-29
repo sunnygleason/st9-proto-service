@@ -94,15 +94,6 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
         });
     }
 
-    @Override
-    public Integer getTypeId(final String type) throws Exception {
-        return sequences.getTypeId(type);
-    }
-
-    public String getTypeName(final Integer id) throws Exception {
-        return sequences.getTypeName(id);
-    }
-
     /**
      * @see com.g414.st9.proto.service.store.KeyValueStorage#create(java.lang.String,
      *      java.lang.String)
@@ -132,8 +123,8 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
         final Key newKey;
 
         try {
-            definition = loadOrCreateEmptySchemaOutsideTxn(sequences
-                    .getTypeId(type));
+            definition = loadOrCreateEmptySchemaOutsideTxn(sequences.getTypeId(
+                    type, false));
             if (id != null) {
                 newKey = new Key(type, id);
                 sequences.bumpKey(type, id);
@@ -169,8 +160,9 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                     byte[] cacheValueBytes = EncodingHelper
                             .convertToSmileLzf(cacheInsert);
 
-                    int inserted = doInsert(handle, getTypeId(type),
-                            newKey.getId(), storeValueBytes);
+                    int inserted = doInsert(handle,
+                            sequences.getTypeId(type, false), newKey.getId(),
+                            storeValueBytes);
 
                     if (inserted > 0) {
                         cache.put(EncodingHelper.toKVCacheKey(newKey
@@ -213,8 +205,8 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
             return makeRetrieveResponse((String) realKey.getType(), key,
                     objectBytes,
-                    loadOrCreateEmptySchemaOutsideTxn(getTypeId(realKey
-                            .getType())));
+                    loadOrCreateEmptySchemaOutsideTxn(sequences.getTypeId(
+                            realKey.getType(), false)));
         } catch (WebApplicationException e) {
             return e.getResponse();
         } catch (Exception e) {
@@ -249,8 +241,8 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
                 if (!schemaDefinitions.containsKey(realKey.getType())) {
                     schemaDefinitions.put(realKey.getType(),
-                            loadOrCreateEmptySchemaOutsideTxn(getTypeId(realKey
-                                    .getType())));
+                            loadOrCreateEmptySchemaOutsideTxn(sequences
+                                    .getTypeId(realKey.getType(), false)));
                 }
             }
         } catch (WebApplicationException e) {
@@ -296,8 +288,8 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                         KeyHelper.validateKey(key);
                         Key realKey = Key.valueOf(key);
 
-                        final int typeId = sequences.getTypeId(realKey
-                                .getType());
+                        final int typeId = sequences.getTypeId(
+                                realKey.getType(), false);
                         final long keyId = realKey.getId();
 
                         Query<Map<String, Object>> select = handle
@@ -377,15 +369,16 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                     .entity("missing 'version'").build();
         }
 
-        final SchemaDefinition definition = loadOrCreateEmptySchemaOutsideTxn(getTypeId(realKey
-                .getType()));
+        final SchemaDefinition definition = loadOrCreateEmptySchemaOutsideTxn(sequences
+                .getTypeId(realKey.getType(), false));
 
         return database.inTransaction(new TransactionCallback<Response>() {
             @Override
             public Response inTransaction(Handle handle,
                     TransactionStatus status) throws Exception {
                 try {
-                    final int typeId = sequences.getTypeId(realKey.getType());
+                    final int typeId = sequences.getTypeId(realKey.getType(),
+                            false);
                     final long keyId = realKey.getId();
 
                     String oldVersionString = null;
@@ -501,7 +494,8 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
             public Response inTransaction(Handle handle,
                     TransactionStatus status) throws Exception {
                 try {
-                    final int typeId = sequences.getTypeId(realKey.getType());
+                    final int typeId = sequences.getTypeId(realKey.getType(),
+                            false);
                     final long keyId = realKey.getId();
 
                     SchemaDefinition definition = loadOrCreateEmptySchema(
@@ -611,7 +605,8 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
     @Override
     public Iterator<Map<String, Object>> iterator(String type) throws Exception {
         return iterator(type,
-                loadOrCreateEmptySchemaOutsideTxn(getTypeId(type)));
+                loadOrCreateEmptySchemaOutsideTxn(sequences.getTypeId(type,
+                        false)));
     }
 
     @Override
@@ -678,7 +673,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                     result.put("kind", realKey.getType());
 
                     if (type.equals("$schema")) {
-                        String typeName = getTypeName(realKey.getId()
+                        String typeName = sequences.getTypeName(realKey.getId()
                                 .intValue());
                         if (typeName != null) {
                             result.put("$type", typeName);
@@ -710,7 +705,8 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
     public Response exportAll() throws Exception {
         StringBuilder json = new StringBuilder();
         for (String type : this.getTypes()) {
-            SchemaDefinition schema = loadOrCreateEmptySchemaOutsideTxn(getTypeId(type));
+            SchemaDefinition schema = loadOrCreateEmptySchemaOutsideTxn(sequences
+                    .getTypeId(type, false));
 
             Iterator<Map<String, Object>> entities = this
                     .iterator(type, schema);
@@ -760,7 +756,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
             @Override
             public byte[] inTransaction(Handle handle, TransactionStatus status)
                     throws Exception {
-                final int typeId = sequences.getTypeId(key.getType());
+                final int typeId = sequences.getTypeId(key.getType(), false);
                 final long keyId = key.getId();
 
                 Query<Map<String, Object>> select = handle
@@ -802,7 +798,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
         return database.withHandle(new HandleCallback<Iterator<String>>() {
             @Override
             public Iterator<String> withHandle(Handle handle) throws Exception {
-                final int typeId = sequences.getTypeId(type);
+                final int typeId = sequences.getTypeId(type, false);
 
                 Query<Map<String, Object>> select = handle
                         .createQuery(getPrefix() + "key_ids_of_type");

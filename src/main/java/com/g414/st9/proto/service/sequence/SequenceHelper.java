@@ -12,9 +12,17 @@ import org.skife.jdbi.v2.Query;
 import org.skife.jdbi.v2.Update;
 
 public class SequenceHelper {
-    public static Integer validateType(Handle handle, String prefix,
+    private final boolean useStrictTypeCreation;
+
+    public SequenceHelper(boolean useStrictTypeCreation) {
+        this.useStrictTypeCreation = useStrictTypeCreation;
+    }
+
+    public Integer validateType(Handle handle, String prefix,
             Map<String, Integer> typeCodes, Map<Integer, String> typeNames,
             final String type, boolean doCreate) {
+        doCreate |= !useStrictTypeCreation;
+
         if (type == null || type.length() == 0 || type.indexOf(":") != -1) {
             throw new WebApplicationException(Response
                     .status(Status.BAD_REQUEST).entity("Invalid entity 'type'")

@@ -57,7 +57,7 @@ public abstract class CounterServiceTestBase {
 
     public void testCounterService() throws Exception {
         assertEquals(counters.nextKey("foo"), Key.valueOf("foo:1"));
-        assertEquals(counters.getTypeId("foo"), Integer.valueOf(2));
+        assertEquals(counters.getTypeId("foo", true), Integer.valueOf(2));
 
         for (int i = 2; i < 100000; i++) {
             assertEquals(counters.peekKey("foo"), Key.valueOf("foo:" + i));
@@ -68,6 +68,6 @@ public abstract class CounterServiceTestBase {
         assertEquals(counters.nextKey("foo"), Key.valueOf("foo:100001"));
 
         assertEquals(counters.nextKey("bar"), Key.valueOf("bar:1"));
-        assertEquals(counters.getTypeId("bar"), Integer.valueOf(3));
+        assertEquals(counters.getTypeId("bar", true), Integer.valueOf(3));
     }
 }

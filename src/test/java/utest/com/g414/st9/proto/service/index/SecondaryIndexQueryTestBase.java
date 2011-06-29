@@ -95,10 +95,15 @@ public abstract class SecondaryIndexQueryTestBase {
     public void testMissingType() throws Exception {
         this.schemaResource.createEntity("foo4", schema4);
 
-        Response r = this.indexResource.retrieveEntity("bar", "xy", "x eq 1",
+        Response r1 = this.indexResource.retrieveEntity("bar", "xy", "x eq 1",
                 null, null);
-        Assert.assertEquals(r.getEntity().toString(),
-                "schema or index not found bar.xy");
+        Assert.assertEquals(r1.getEntity().toString(),
+                "Invalid entity 'type': bar");
+
+        Response r2 = this.indexResource.retrieveEntity("foo4", "xyz",
+                "x eq 1", null, null);
+        Assert.assertEquals(r2.getEntity().toString(),
+                "schema or index not found foo4.xyz");
     }
 
     public void testMissingIndex() throws Exception {

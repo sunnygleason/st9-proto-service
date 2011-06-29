@@ -16,6 +16,7 @@ import com.g414.st9.proto.service.helper.MySQLTypeHelper;
 import com.g414.st9.proto.service.helper.SqlTypeHelper;
 import com.g414.st9.proto.service.index.JDBISecondaryIndex;
 import com.g414.st9.proto.service.index.SecondaryIndexTableHelper;
+import com.g414.st9.proto.service.sequence.SequenceHelper;
 import com.g414.st9.proto.service.sequence.SequenceService;
 import com.google.inject.AbstractModule;
 import com.google.inject.Binder;
@@ -58,7 +59,11 @@ public class MySQLKeyValueStorage extends JDBIKeyValueStorage {
                     .toInstance(MySQLTypeHelper.DATABASE_PREFIX);
 
             binder.bind(SequenceService.class).toInstance(
-                    new SequenceService(dbi, MySQLTypeHelper.DATABASE_PREFIX));
+                    new SequenceService(new SequenceHelper(Boolean
+                            .valueOf(System.getProperty("strict.type.creation",
+                                    "true"))), dbi,
+                            MySQLTypeHelper.DATABASE_PREFIX,
+                            SequenceService.DEFAULT_INCREMENT));
 
             binder.bind(KeyValueStorage.class).to(MySQLKeyValueStorage.class)
                     .asEagerSingleton();

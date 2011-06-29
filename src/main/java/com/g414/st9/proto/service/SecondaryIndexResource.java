@@ -29,6 +29,7 @@ import com.g414.st9.proto.service.query.QueryLexer;
 import com.g414.st9.proto.service.query.QueryParser;
 import com.g414.st9.proto.service.query.QueryTerm;
 import com.g414.st9.proto.service.schema.SchemaDefinition;
+import com.g414.st9.proto.service.sequence.SequenceService;
 import com.g414.st9.proto.service.store.Key;
 import com.g414.st9.proto.service.store.KeyValueStorage;
 import com.g414.st9.proto.service.validator.ValidationException;
@@ -47,6 +48,9 @@ public class SecondaryIndexResource {
 
     @Inject
     private KeyValueStorage storage;
+
+    @Inject
+    protected SequenceService sequences;
 
     @Inject
     private JDBISecondaryIndex index;
@@ -87,6 +91,13 @@ public class SecondaryIndexResource {
      */
     private Response doSearch(String type, String indexName, String query,
             String token, Long pageSize) throws Exception {
+        Integer typeId = null;
+        try {
+            typeId = sequences.getTypeId(type, false);
+        } catch (WebApplicationException e) {
+            return e.getResponse();
+        }
+
         List<QueryTerm> queryTerms = null;
         try {
             queryTerms = parseQuery(query);
@@ -98,8 +109,6 @@ public class SecondaryIndexResource {
         if (pageSize == null || pageSize > 100 || pageSize < 1) {
             pageSize = DEFAULT_PAGE_SIZE;
         }
-
-        Integer typeId = storage.getTypeId(type);
 
         Response schemaResponse = storage.retrieve("$schema:" + typeId);
 

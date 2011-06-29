@@ -34,6 +34,7 @@ import com.g414.st9.proto.service.schema.Attribute;
 import com.g414.st9.proto.service.schema.CounterAttribute;
 import com.g414.st9.proto.service.schema.CounterDefinition;
 import com.g414.st9.proto.service.schema.SchemaDefinition;
+import com.g414.st9.proto.service.sequence.SequenceService;
 import com.g414.st9.proto.service.store.KeyValueStorage;
 import com.g414.st9.proto.service.validator.ValidationException;
 import com.google.inject.Inject;
@@ -51,6 +52,9 @@ public class CounterResource {
 
     @Inject
     private KeyValueStorage storage;
+
+    @Inject
+    protected SequenceService sequences;
 
     @Inject
     private JDBICountService counts;
@@ -105,7 +109,7 @@ public class CounterResource {
             pageSize = DEFAULT_PAGE_SIZE;
         }
 
-        Integer typeId = storage.getTypeId(type);
+        Integer typeId = sequences.getTypeId(type, false);
 
         Response schemaResponse = storage.retrieve("$schema:" + typeId);
 

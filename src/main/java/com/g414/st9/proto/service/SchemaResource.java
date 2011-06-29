@@ -27,7 +27,9 @@ import com.g414.st9.proto.service.schema.CounterDefinition;
 import com.g414.st9.proto.service.schema.IndexDefinition;
 import com.g414.st9.proto.service.schema.SchemaDefinition;
 import com.g414.st9.proto.service.schema.SchemaDefinitionValidator;
+import com.g414.st9.proto.service.schema.SchemaHelper;
 import com.g414.st9.proto.service.schema.SchemaValidatorTransformer;
+import com.g414.st9.proto.service.sequence.SequenceService;
 import com.g414.st9.proto.service.store.Key;
 import com.g414.st9.proto.service.store.KeyValueStorage;
 import com.google.inject.Inject;
@@ -42,6 +44,9 @@ public class SchemaResource {
 
     @Inject
     private KeyValueStorage store;
+
+    @Inject
+    protected SequenceService sequences;
 
     @Inject
     private JDBISecondaryIndex index;
@@ -62,7 +67,7 @@ public class SchemaResource {
     // automagical jackson configuration
     public Response createEntity(@PathParam("type") String type, String value)
             throws Exception {
-        Integer typeId = store.getTypeId(type);
+        Integer typeId = sequences.getTypeId(type, true);
 
         if (typeId == null) {
             return Response.status(Status.NOT_FOUND).entity("type not found")
@@ -75,8 +80,12 @@ public class SchemaResource {
                     .entity("schema already exists").build();
         }
 
-        SchemaDefinition schemaDefinition = mapper.readValue(value,
-                SchemaDefinition.class);
+        SchemaDefinition schemaDefinition = null;
+        if (value != null && value.length() > 0) {
+            schemaDefinition = mapper.readValue(value, SchemaDefinition.class);
+        } else {
+            schemaDefinition = SchemaHelper.getEmptySchema();
+        }
 
         SchemaDefinitionValidator validator = new SchemaDefinitionValidator();
         validator.validate(schemaDefinition);
@@ -104,7 +113,7 @@ public class SchemaResource {
     @Produces(MediaType.APPLICATION_JSON)
     public Response retrieveEntity(@PathParam("type") String type)
             throws Exception {
-        Integer typeId = store.getTypeId(type);
+        Integer typeId = sequences.getTypeId(type, false);
 
         if (typeId == null) {
             return Response.status(Status.NOT_FOUND).entity("type not found")
@@ -121,7 +130,7 @@ public class SchemaResource {
     // automagical jackson configuration
     public Response updateEntity(@PathParam("type") final String type,
             final String value) throws Exception {
-        Integer typeId = store.getTypeId(type);
+        Integer typeId = sequences.getTypeId(type, false);
 
         if (typeId == null) {
             return Response.status(Status.NOT_FOUND).entity("type not found")
@@ -199,7 +208,7 @@ public class SchemaResource {
     @Path("{type}")
     public Response deleteEntity(@PathParam("type") String type)
             throws Exception {
-        Integer typeId = store.getTypeId(type);
+        Integer typeId = sequences.getTypeId(type, false);
 
         if (typeId == null) {
             return Response.status(Status.NOT_FOUND).entity("type not found")

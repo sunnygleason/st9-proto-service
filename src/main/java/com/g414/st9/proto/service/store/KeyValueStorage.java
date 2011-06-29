@@ -9,8 +9,6 @@ import javax.ws.rs.core.Response;
 import com.g414.st9.proto.service.schema.SchemaDefinition;
 
 public interface KeyValueStorage {
-    public abstract Integer getTypeId(String type) throws Exception;
-
     public abstract Response create(String type, String inValue, Long id,
             Long version, boolean strictType) throws Exception;
 

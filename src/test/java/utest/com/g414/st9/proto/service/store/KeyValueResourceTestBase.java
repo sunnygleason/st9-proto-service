@@ -10,6 +10,7 @@ import java.util.Map;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import org.codehaus.jackson.map.ObjectMapper;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
 import org.testng.annotations.BeforeMethod;
@@ -18,9 +19,11 @@ import org.testng.annotations.Test;
 import com.g414.guice.lifecycle.Lifecycle;
 import com.g414.guice.lifecycle.LifecycleModule;
 import com.g414.st9.proto.service.KeyValueResource;
+import com.g414.st9.proto.service.SchemaResource;
 import com.g414.st9.proto.service.ServiceModule;
 import com.g414.st9.proto.service.cache.KeyValueCache;
 import com.g414.st9.proto.service.helper.EncodingHelper;
+import com.g414.st9.proto.service.schema.SchemaHelper;
 import com.g414.st9.proto.service.store.Key;
 import com.g414.st9.proto.service.store.KeyValueStorage;
 import com.google.common.collect.Lists;
@@ -31,9 +34,11 @@ import com.google.inject.Module;
 
 @Test
 public abstract class KeyValueResourceTestBase {
+    private SchemaResource schemaResource;
     private KeyValueResource kvResource;
     private KeyValueStorage store;
     private EmptyWriteThroughKeyValueCache cache;
+    private ObjectMapper mapper = new ObjectMapper();
 
     public abstract Module getKeyValueStorageModule();
 
@@ -47,6 +52,7 @@ public abstract class KeyValueResourceTestBase {
                     }
                 }, new ServiceModule());
 
+        this.schemaResource = injector.getInstance(SchemaResource.class);
         this.kvResource = injector.getInstance(KeyValueResource.class);
         this.store = injector.getInstance(KeyValueStorage.class);
         this.cache = (EmptyWriteThroughKeyValueCache) injector
@@ -57,8 +63,12 @@ public abstract class KeyValueResourceTestBase {
     }
 
     @BeforeMethod(alwaysRun = true)
-    public void setUp() {
+    public void setUp() throws Exception {
         this.kvResource.clear();
+        this.schemaResource.createEntity("foo",
+                mapper.writeValueAsString(SchemaHelper.getEmptySchema()));
+        this.schemaResource.createEntity("bar",
+                mapper.writeValueAsString(SchemaHelper.getEmptySchema()));
     }
 
     @AfterMethod(alwaysRun = true)
@@ -251,7 +261,7 @@ public abstract class KeyValueResourceTestBase {
 
     public void testCreateFailureBadKeyWithId() throws Exception {
         assertResponseMatches(kvResource.createEntity("foo:1", "{}"),
-                Status.BAD_REQUEST, "Invalid entity 'type'");
+                Status.BAD_REQUEST, "Invalid entity 'type': foo:1");
     }
 
     public void testCreateFailureBadKeyNull() throws Exception {
@@ -261,7 +271,7 @@ public abstract class KeyValueResourceTestBase {
 
     public void testCreateFailureBadKeyEmpty() throws Exception {
         assertResponseMatches(kvResource.createEntity("", "{}"),
-                Status.BAD_REQUEST, "Invalid entity 'type'");
+                Status.BAD_REQUEST, "Invalid entity 'type': ");
     }
 
     public void testCreateFailureBadValueNull() throws Exception {
