@@ -19,7 +19,6 @@ import com.g414.st9.proto.service.PingResource;
 import com.g414.st9.proto.service.SchemaResource;
 import com.g414.st9.proto.service.SecondaryIndexResource;
 import com.g414.st9.proto.service.helper.JDBIHelper;
-import com.g414.st9.proto.service.helper.MySQLTypeHelper;
 import com.g414.st9.proto.service.helper.SqlTypeHelper;
 import com.g414.st9.proto.service.helper.SqliteTypeHelper;
 import com.g414.st9.proto.service.index.JDBISecondaryIndex;
@@ -78,10 +77,9 @@ public class SqliteKeyValueStorage extends JDBIKeyValueStorage {
     }
 
     @Override
-    public Response clearRequested(boolean preserveSchema) throws Exception {
-        super.clear(preserveSchema);
-
-        return Response.status(Status.NO_CONTENT).entity("").build();
+    public synchronized Response clearRequested(boolean preserveSchema)
+            throws Exception {
+        return super.clearRequested(preserveSchema);
     }
 
     public static class SqliteKeyValueStorageModule extends AbstractModule {
@@ -132,6 +130,12 @@ public class SqliteKeyValueStorage extends JDBIKeyValueStorage {
 
             binder.bind(String.class).annotatedWith(Names.named("db.prefix"))
                     .toInstance(SqliteTypeHelper.DATABASE_PREFIX);
+
+            binder.bind(Boolean.class)
+                    .annotatedWith(Names.named("nuke.allowed"))
+                    .toInstance(
+                            Boolean.valueOf(System.getProperty(
+                                    "strict.type.creation", "false")));
 
             binder.bind(SequenceService.class).toInstance(
                     new SequenceService(new SequenceHelper(Boolean

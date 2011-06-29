@@ -43,6 +43,7 @@ import com.g414.st9.proto.service.schema.SchemaValidatorTransformer;
 import com.g414.st9.proto.service.sequence.SequenceService;
 import com.g414.st9.proto.service.validator.ValidationException;
 import com.google.inject.Inject;
+import com.google.inject.name.Named;
 
 /**
  * Abstract implementation of key-value storage based on JDBI.
@@ -65,6 +66,10 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
     @Inject
     protected SequenceService sequences;
+
+    @Inject
+    protected @Named("nuke.allowed")
+    boolean allowNuke;
 
     protected abstract String getPrefix();
 
@@ -548,6 +553,18 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                 }
             }
         });
+    }
+
+    @Override
+    public Response clearRequested(boolean preserveSchema) throws Exception {
+        if (!allowNuke) {
+            return Response.status(Status.FORBIDDEN)
+                    .entity("'nuke' operation not allowed").build();
+        }
+
+        clear(preserveSchema);
+
+        return Response.status(Status.NO_CONTENT).entity("").build();
     }
 
     /**

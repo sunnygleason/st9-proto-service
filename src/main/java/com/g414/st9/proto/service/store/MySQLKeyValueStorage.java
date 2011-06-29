@@ -32,13 +32,6 @@ public class MySQLKeyValueStorage extends JDBIKeyValueStorage {
         return MySQLTypeHelper.DATABASE_PREFIX;
     }
 
-    @Override
-    public Response clearRequested(boolean preserveSchema) throws Exception {
-        super.clear(preserveSchema);
-
-        return Response.status(Status.NO_CONTENT).entity("").build();
-    }
-
     public static class MySQLKeyValueStorageModule extends AbstractModule {
         @Override
         public void configure() {
@@ -57,6 +50,12 @@ public class MySQLKeyValueStorage extends JDBIKeyValueStorage {
 
             binder.bind(String.class).annotatedWith(Names.named("db.prefix"))
                     .toInstance(MySQLTypeHelper.DATABASE_PREFIX);
+
+            binder.bind(Boolean.class)
+                    .annotatedWith(Names.named("nuke.allowed"))
+                    .toInstance(
+                            Boolean.valueOf(System.getProperty(
+                                    "strict.type.creation", "false")));
 
             binder.bind(SequenceService.class).toInstance(
                     new SequenceService(new SequenceHelper(Boolean
