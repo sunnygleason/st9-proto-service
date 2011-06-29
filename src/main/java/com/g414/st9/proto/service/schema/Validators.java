@@ -4,8 +4,11 @@ import com.g414.st9.proto.service.validator.AnyValidator;
 import com.g414.st9.proto.service.validator.BooleanValidator;
 import com.g414.st9.proto.service.validator.EnumValidator;
 import com.g414.st9.proto.service.validator.IntegerValidator;
+import com.g414.st9.proto.service.validator.ArrayValidator;
+import com.g414.st9.proto.service.validator.MapValidator;
 import com.g414.st9.proto.service.validator.ReferenceValidator;
-import com.g414.st9.proto.service.validator.StringValidator;
+import com.g414.st9.proto.service.validator.SmallStringValidator;
+import com.g414.st9.proto.service.validator.TextValidator;
 import com.g414.st9.proto.service.validator.UTCDateValidator;
 import com.g414.st9.proto.service.validator.ValidatorTransformer;
 
@@ -56,9 +59,16 @@ public class Validators {
         case UTC_DATE_SECS:
             return new UTCDateValidator(attribute.getName());
         case UTF8_SMALLSTRING:
-        case UTF8_TEXT:
-            return new StringValidator(attribute.getName(),
+            return new SmallStringValidator(attribute.getName(),
                     attribute.getMinlength(), attribute.getMaxlength());
+        case UTF8_TEXT:
+            return new TextValidator(attribute.getName(),
+                    attribute.getMinlength(), attribute.getMaxlength());
+        case ARRAY:
+            return new ArrayValidator(attribute.getName());
+        case MAP:
+            return new MapValidator(attribute.getName());
+
         default:
             throw new IllegalArgumentException("Unknown type "
                     + attribute.getType());

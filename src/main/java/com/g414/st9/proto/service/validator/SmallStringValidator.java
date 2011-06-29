@@ -3,16 +3,19 @@ package com.g414.st9.proto.service.validator;
 /**
  * Validates / transforms String values.
  */
-public class StringValidator implements ValidatorTransformer<Object, String> {
+public class SmallStringValidator implements
+        ValidatorTransformer<Object, String> {
+    public static final int SMALLSTRING_MAX_LENGTH = 255;
     private final String attribute;
     private final Integer minLength;
     private final Integer maxLength;
 
-    public StringValidator(String attribute, Integer minLength,
+    public SmallStringValidator(String attribute, Integer minLength,
             Integer maxLength) {
         this.attribute = attribute;
         this.minLength = minLength;
-        this.maxLength = maxLength;
+        this.maxLength = (maxLength == null) ? SMALLSTRING_MAX_LENGTH : Math
+                .min(SMALLSTRING_MAX_LENGTH, maxLength);
     }
 
     public String validateTransform(Object instance) throws ValidationException {
@@ -29,7 +32,7 @@ public class StringValidator implements ValidatorTransformer<Object, String> {
                     + "' length be greater than or equal to " + minLength);
         }
 
-        if (maxLength != null && length > maxLength) {
+        if (length > maxLength) {
             throw new ValidationException("'" + attribute
                     + "' length be less than or equal to " + minLength);
         }
