@@ -262,6 +262,15 @@ public abstract class SecondaryIndexQueryTestBase {
 
         Assert.assertNull(result3.get("next"));
         Assert.assertNotNull(result3.get("prev"));
+
+        Map<String, Object> result4 = EncodingHelper
+                .parseJsonString(this.indexResource
+                        .retrieveEntity(type, "xy",
+                                "x in (1, 2, 3, 4, -1) and y lt 0", null, 25L)
+                        .getEntity().toString());
+        Assert.assertTrue(((List<?>) result4.get("results")).size() == 4);
+        Assert.assertNull(result4.get("next"));
+        Assert.assertNull(result4.get("prev"));
     }
 
     protected void doUniqueIntegerTest(String type, String schema,

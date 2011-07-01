@@ -13,9 +13,13 @@ tokens {
   LE   = 'le' ;
   GT   = 'gt' ;
   GE   = 'ge' ;
+  IN   = 'in' ;
   TRUE = 'true' ;
   FALSE = 'false' ;
-  NULL = 'null' ;
+  NULL  = 'null' ;
+  COMMA = ',' ;
+  LPAREN = '(' ;
+  RPAREN = ')' ; 
 }
 
 @parser::header { package com.g414.st9.proto.service.query; }
@@ -37,7 +41,9 @@ term_list [List<QueryTerm> inList] :
         term[$inList] (AND term[$inList])* -> (term)+;
 
 term [List<QueryTerm> inList] :
-        (f=field o=op^ v=value)            { inList.add(new QueryTerm(o.value, f.value, v.value)); };
+        (f=field o=op^ v=value)             { inList.add(new QueryTerm(o.value, f.value, v.value)); }
+        | (f=field IN vl=value_list[new ArrayList<QueryValue>()])    { inList.add(new QueryTerm(QueryOperator.IN, f.value, vl.outList)); }
+        ;
 
 field returns [String value] :
         i=IDENT                            { $value = i.getText(); }
@@ -61,6 +67,14 @@ value returns [QueryValue value] :
         | NULL                             { $value = new QueryValue(ValueType.NULL, "null"); }
         ;
 
+value_in_list [List<QueryValue> valueList] :
+        v=value                            { valueList.add(v.value); }
+        ;
+
+value_list [List<QueryValue> valueList] returns [QueryValueList outList] :
+        LPAREN value_in_list[$valueList] (COMMA value_in_list[$valueList])* RPAREN
+        { $outList = new QueryValueList($valueList); }
+        ;
 
 /*------------------------------------------------------------------
  * LEXER RULES
@@ -85,4 +99,3 @@ STRING_LITERAL
     | // nothing -- write error message
     )
    ;
- 

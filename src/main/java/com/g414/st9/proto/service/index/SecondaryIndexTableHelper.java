@@ -189,6 +189,8 @@ public class SecondaryIndexTableHelper {
             return "<";
         case LE:
             return "<=";
+        case IN:
+            return "in";
         default:
             throw new IllegalArgumentException("Unknown operator: " + operator);
         }
@@ -439,22 +441,49 @@ public class SecondaryIndexTableHelper {
 
             for (QueryTerm term : termList) {
                 String maybeParam = "";
+                QueryOperator op = term.getOperator();
 
-                if (!term.getValue().getValueType().equals(ValueType.NULL)) {
-                    Object instance = term.getValue().getValue();
-                    Object transformed = transformer.transformValue(attrName,
-                            instance);
+                if (op.equals(QueryOperator.IN)) {
+                    List<QueryValue> valueList = term.getValueList()
+                            .getValueList();
 
-                    bindParams.put("p" + param,
-                            transformAttributeValue(transformed, attribute));
+                    String sqlOperator = getSqlOperator(term.getOperator(),
+                            valueList.get(0));
 
-                    maybeParam = " :p" + param;
-                    param += 1;
+                    List<String> paramNames = new ArrayList<String>();
+
+                    for (QueryValue value : valueList) {
+                        boolean boundParam = bindParam(attribute, transformer,
+                                bindParams, param, attrName,
+                                term.getOperator(), value);
+
+                        if (boundParam) {
+                            maybeParam = " :p" + param;
+                            paramNames.add(maybeParam);
+                            param += 1;
+                        } else {
+                            maybeParam = "";
+                        }
+                    }
+
+                    clauses.add(getColumnName(term.getField()) + " "
+                            + sqlOperator + "("
+                            + StringHelper.join(", ", paramNames) + ")");
+                } else {
+                    boolean boundParam = bindParam(attribute, transformer,
+                            bindParams, param, attrName, term.getOperator(),
+                            term.getValue());
+
+                    if (boundParam) {
+                        maybeParam = " :p" + param;
+                        param += 1;
+                    }
+
+                    clauses.add(getColumnName(term.getField())
+                            + " "
+                            + getSqlOperator(term.getOperator(),
+                                    term.getValue()) + maybeParam);
                 }
-
-                clauses.add(getColumnName(term.getField()) + " "
-                        + getSqlOperator(term.getOperator(), term.getValue())
-                        + maybeParam);
             }
         }
 
@@ -478,6 +507,23 @@ public class SecondaryIndexTableHelper {
         sqlBuilder.append(OpaquePaginationHelper.decodeOpaqueCursor(token));
 
         return sqlBuilder.toString();
+    }
+
+    private boolean bindParam(IndexAttribute attribute,
+            SchemaValidatorTransformer transformer,
+            Map<String, Object> bindParams, int param, String attrName,
+            QueryOperator operator, QueryValue value) {
+        if (!value.getValueType().equals(ValueType.NULL)) {
+            Object instance = value.getValue();
+            Object transformed = transformer.transformValue(attrName, instance);
+
+            bindParams.put("p" + param,
+                    transformAttributeValue(transformed, attribute));
+
+            return true;
+        }
+
+        return false;
     }
 
     private static Map<String, List<QueryTerm>> sortTerms(

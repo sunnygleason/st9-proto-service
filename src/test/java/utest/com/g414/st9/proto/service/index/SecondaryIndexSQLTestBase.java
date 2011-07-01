@@ -16,6 +16,7 @@ import com.g414.st9.proto.service.index.SecondaryIndexTableHelper;
 import com.g414.st9.proto.service.query.QueryOperator;
 import com.g414.st9.proto.service.query.QueryTerm;
 import com.g414.st9.proto.service.query.QueryValue;
+import com.g414.st9.proto.service.query.QueryValueList;
 import com.g414.st9.proto.service.query.ValueType;
 import com.g414.st9.proto.service.schema.SchemaDefinition;
 import com.g414.st9.proto.service.schema.SchemaDefinitionValidator;
@@ -111,6 +112,25 @@ public abstract class SecondaryIndexSQLTestBase {
                         bindParams2));
 
         Assert.assertEquals("{}", bindParams2.toString());
+
+        List<QueryTerm> query3 = ImmutableList.<QueryTerm> of(
+                new QueryTerm(QueryOperator.IN, "x", new QueryValueList(
+                        ImmutableList.of(
+                                new QueryValue(ValueType.INTEGER, "1"),
+                                new QueryValue(ValueType.INTEGER, "2"),
+                                new QueryValue(ValueType.INTEGER, "3")))),
+                new QueryTerm(QueryOperator.LT, "y", new QueryValue(
+                        ValueType.INTEGER, "0")));
+
+        Map<String, Object> bindParams3 = new LinkedHashMap<String, Object>();
+        Assert.assertEquals(
+                "select `_id` from `_i_schema4__0c6ca14baa3cd7d1` where `_x` in( :p0,  :p1,  :p2) AND `_y` < :p3 order by `_x` ASC, `_y` ASC, `_id` ASC limit 101 offset 0",
+                mysql.getIndexQuery("schema4", "xy", query3, null,
+                        SecondaryIndexResource.DEFAULT_PAGE_SIZE, def,
+                        bindParams3));
+
+        Assert.assertEquals("{p0=1, p1=2, p2=3, p3=0}", bindParams3.toString());
+
     }
 
     public void testSchemaSpecialFeatures() throws Exception {

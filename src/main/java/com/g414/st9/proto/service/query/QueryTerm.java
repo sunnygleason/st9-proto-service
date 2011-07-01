@@ -8,11 +8,21 @@ public class QueryTerm {
     private final QueryOperator operator;
     private final String field;
     private final QueryValue value;
+    private final QueryValueList valueList;
 
     public QueryTerm(QueryOperator operator, String field, QueryValue value) {
         this.operator = operator;
         this.field = field;
         this.value = value;
+        this.valueList = null;
+    }
+
+    public QueryTerm(QueryOperator operator, String field,
+            QueryValueList valueList) {
+        this.operator = operator;
+        this.field = field;
+        this.value = null;
+        this.valueList = valueList;
     }
 
     public QueryOperator getOperator() {
@@ -24,7 +34,21 @@ public class QueryTerm {
     }
 
     public QueryValue getValue() {
+        if (valueList != null) {
+            throw new IllegalStateException(
+                    "value() not present in this term, use valueList() instead");
+        }
+
         return value;
+    }
+
+    public QueryValueList getValueList() {
+        if (value != null) {
+            throw new IllegalStateException(
+                    "valueList() not present in this term, use value() instead");
+        }
+
+        return valueList;
     }
 
     @Override
