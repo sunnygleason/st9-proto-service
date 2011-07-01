@@ -1,5 +1,6 @@
 package utest.com.g414.st9.proto.service.index;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -24,6 +25,7 @@ import com.g414.st9.proto.service.cache.EmptyKeyValueCache;
 import com.g414.st9.proto.service.cache.KeyValueCache;
 import com.g414.st9.proto.service.helper.EncodingHelper;
 import com.g414.st9.proto.service.index.JDBISecondaryIndex;
+import com.g414.st9.proto.service.store.Key;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
@@ -219,11 +221,15 @@ public abstract class SecondaryIndexQueryTestBase {
 
         Assert.assertTrue(this.index.tableExists(database, type, indexName));
 
+        List<String> ids = new ArrayList<String>();
+
         for (int i = 0; i < 74; i++) {
-            this.kvResource.createEntity(
+            String ent = (String) this.kvResource.createEntity(
                     type,
                     "{\"x\":" + i + ",\"y\":" + -i + ",\"isAwesome\":"
                             + (i % 2 == 0) + "}").getEntity();
+
+            ids.add((String) EncodingHelper.parseJsonString(ent).get("id"));
         }
 
         Map<String, Object> result0 = EncodingHelper
@@ -271,6 +277,31 @@ public abstract class SecondaryIndexQueryTestBase {
         Assert.assertTrue(((List<?>) result4.get("results")).size() == 4);
         Assert.assertNull(result4.get("next"));
         Assert.assertNull(result4.get("prev"));
+
+        for (String id : ids) {
+            Key k = Key.valueOf(id);
+
+            Response r = this.kvResource.updateEntity(id,
+                    "{\"version\":\"1\",\"x\":" + (-1 * k.getId()) + ",\"y\":"
+                            + k.getId() + ",\"isAwesome\":"
+                            + (k.getId() % 2 == 0) + "}");
+
+            Assert.assertEquals(r.getStatus(), Status.OK.getStatusCode());
+        }
+
+        for (String id : ids) {
+            Response r = this.kvResource.deleteEntity(id);
+
+            Assert.assertEquals(r.getStatus(),
+                    Status.NO_CONTENT.getStatusCode());
+        }
+
+        for (int i = 0; i < 74; i++) {
+            this.kvResource.createEntity(
+                    type,
+                    "{\"x\":" + i + ",\"y\":" + -i + ",\"isAwesome\":"
+                            + (i % 2 == 0) + "}").getEntity();
+        }
     }
 
     protected void doUniqueIntegerTest(String type, String schema,

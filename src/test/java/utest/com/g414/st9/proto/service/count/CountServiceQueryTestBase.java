@@ -1,6 +1,7 @@
 package utest.com.g414.st9.proto.service.count;
 
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -28,6 +29,7 @@ import com.g414.st9.proto.service.query.QueryTerm;
 import com.g414.st9.proto.service.query.QueryValue;
 import com.g414.st9.proto.service.query.ValueType;
 import com.g414.st9.proto.service.schema.SchemaDefinition;
+import com.g414.st9.proto.service.store.Key;
 import com.google.common.collect.ImmutableMap;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
@@ -272,6 +274,24 @@ public abstract class CountServiceQueryTestBase {
 
         assertions.assertCounters(mapper.readValue(schema,
                 SchemaDefinition.class));
+
+        for (int i = 0; i < 74; i++) {
+            Map<String, Object> entity = provider.getData(i);
+            Map<String, Object> actual = new LinkedHashMap<String, Object>();
+            actual.put("version", "1");
+            actual.putAll(entity);
+
+            String entityJson = EncodingHelper.convertToJson(actual);
+
+            this.kvResource.updateEntity(
+                    new Key(type, (long) i).getEncryptedIdentifier(),
+                    entityJson);
+        }
+
+        for (int i = 0; i < 74; i++) {
+            this.kvResource.deleteEntity(new Key(type, (long) i)
+                    .getEncryptedIdentifier());
+        }
     }
 
     protected void jsoneq(Object a, Object b) throws Exception {

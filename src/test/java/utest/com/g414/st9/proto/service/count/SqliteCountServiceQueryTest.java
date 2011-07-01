@@ -6,7 +6,7 @@ import com.g414.st9.proto.service.store.SqliteKeyValueStorage.SqliteKeyValueStor
 import com.google.inject.Module;
 
 @Test
-public class SqliteSecondaryIndexQueryTest extends CountServiceQueryTestBase {
+public class SqliteCountServiceQueryTest extends CountServiceQueryTestBase {
     public Module getKeyValueStorageModule() {
         return new SqliteKeyValueStorageModule();
     }
