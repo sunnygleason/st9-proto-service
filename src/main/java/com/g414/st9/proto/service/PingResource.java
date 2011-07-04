@@ -52,9 +52,10 @@ public class PingResource {
 
         if (isDeep) {
             if (cache.isPersistent()) {
+                String cacheKey = PING_CACHE_PREFIX
+                        + UUID.randomUUID().toString();
+
                 try {
-                    String cacheKey = PING_CACHE_PREFIX
-                            + UUID.randomUUID().toString();
                     String nowString = formatter.print(new DateTime())
                             .toString();
 
@@ -75,6 +76,12 @@ public class PingResource {
                     e.printStackTrace();
                     return Response.status(Status.INTERNAL_SERVER_ERROR)
                             .entity(e.getMessage()).build();
+                } finally {
+                    try {
+                        cache.delete(cacheKey);
+                    } catch (Exception ignored) {
+                        ignored.printStackTrace();
+                    }
                 }
             }
 
