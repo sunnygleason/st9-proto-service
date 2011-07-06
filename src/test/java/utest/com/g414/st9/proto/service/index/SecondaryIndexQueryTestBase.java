@@ -278,6 +278,19 @@ public abstract class SecondaryIndexQueryTestBase {
         Assert.assertNull(result4.get("next"));
         Assert.assertNull(result4.get("prev"));
 
+        Response result5 = this.indexResource.retrieveEntity(type, "xy",
+                "x gt -1", "", 25L);
+        Assert.assertEquals(result5.getStatus(), Status.OK.getStatusCode());
+        Assert.assertEquals(
+                EncodingHelper.parseJsonString((String) result5.getEntity())
+                        .get("pageSize"), 25);
+
+        Response result6 = this.indexResource.retrieveEntity(type, "xy",
+                "x gt -1", "-1", 25L);
+        Assert.assertEquals(result6.getStatus(),
+                Status.BAD_REQUEST.getStatusCode());
+        Assert.assertEquals(result6.getEntity(), "invalid page token: -1");
+
         for (String id : ids) {
             Key k = Key.valueOf(id);
 
