@@ -55,7 +55,7 @@ public class MySQLKeyValueStorage extends JDBIKeyValueStorage {
                     .annotatedWith(Names.named("nuke.allowed"))
                     .toInstance(
                             Boolean.valueOf(System.getProperty(
-                                    "strict.type.creation", "false")));
+                                    "nuke.allowed", "false")));
 
             binder.bind(SequenceService.class).toInstance(
                     new SequenceService(new SequenceHelper(Boolean

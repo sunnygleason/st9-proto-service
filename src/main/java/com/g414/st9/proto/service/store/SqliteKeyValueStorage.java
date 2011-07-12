@@ -134,8 +134,8 @@ public class SqliteKeyValueStorage extends JDBIKeyValueStorage {
             binder.bind(Boolean.class)
                     .annotatedWith(Names.named("nuke.allowed"))
                     .toInstance(
-                            Boolean.valueOf(System.getProperty(
-                                    "strict.type.creation", "false")));
+                            Boolean.valueOf(System.getProperty("nuke.allowed",
+                                    "false")));
 
             binder.bind(SequenceService.class).toInstance(
                     new SequenceService(new SequenceHelper(Boolean
