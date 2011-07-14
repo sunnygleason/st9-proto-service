@@ -160,7 +160,7 @@ public class CounterResource {
         }
 
         result.put("kind", type);
-        result.put("index", counterName);
+        result.put("counter", counterName);
         result.put("query", queryMap);
         result.put("results", resultIds);
 
