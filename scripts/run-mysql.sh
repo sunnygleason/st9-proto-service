@@ -1,6 +1,7 @@
 #!/bin/sh
 
 java -cp target/dependency/"*":target/"*" -Dhttp.port=7331 \
+  -Dnuke.allowed=true \
   -Dst9.storageModule="com.g414.st9.proto.service.store.MySQLKeyValueStorage\$MySQLKeyValueStorageModule" \
   -Djdbc.url=jdbc:mysql://127.0.0.1:3306/thedb \
   -Djdbc.user=root \
