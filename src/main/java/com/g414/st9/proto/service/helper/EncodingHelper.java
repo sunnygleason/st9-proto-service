@@ -39,15 +39,22 @@ public class EncodingHelper {
     }
 
     public static Map<String, Object> parseJsonString(String value) {
-        if (value == null || value.length() == 0) {
+        if (value == null || value.length() == 0 || value.equals("null")) {
             throw new WebApplicationException(Response
                     .status(Status.BAD_REQUEST)
                     .entity("Invalid entity 'value'").build());
         }
 
         try {
-            return (Map<String, Object>) mapper.readValue(value,
-                    LinkedHashMap.class);
+            Object parsed = mapper.readValue(value, LinkedHashMap.class);
+
+            if (!(parsed instanceof Map)) {
+                throw new WebApplicationException(Response
+                        .status(Status.BAD_REQUEST)
+                        .entity("Invalid entity 'value'").build());
+            }
+
+            return (Map<String, Object>) parsed;
         } catch (Exception e) {
             throw new WebApplicationException(Response
                     .status(Status.BAD_REQUEST)

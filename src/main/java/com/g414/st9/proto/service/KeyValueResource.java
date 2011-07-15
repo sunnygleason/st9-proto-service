@@ -15,6 +15,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
 
 import com.g414.st9.proto.service.store.KeyValueStorage;
 import com.google.inject.Inject;
@@ -28,6 +29,30 @@ import com.google.inject.Inject;
 public class KeyValueResource {
     @Inject
     private KeyValueStorage store;
+
+    @GET
+    public Response badGetRequest() {
+        return Response.status(Status.BAD_REQUEST)
+                .entity("Missing entity 'id' in path").build();
+    }
+
+    @POST
+    public Response badPostRequest() {
+        return Response.status(Status.BAD_REQUEST)
+                .entity("Missing entity 'type' in path").build();
+    }
+
+    @PUT
+    public Response badPutRequest() {
+        return Response.status(Status.BAD_REQUEST)
+                .entity("Missing entity 'id' in path").build();
+    }
+
+    @DELETE
+    public Response badDeleteRequest() {
+        return Response.status(Status.BAD_REQUEST)
+                .entity("Missing entity 'id' in path").build();
+    }
 
     @POST
     @Path("{type}")

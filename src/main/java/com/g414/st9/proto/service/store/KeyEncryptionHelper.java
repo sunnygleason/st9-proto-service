@@ -11,6 +11,9 @@ import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
+import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
 
 import org.apache.commons.codec.binary.Hex;
 
@@ -49,12 +52,25 @@ public class KeyEncryptionHelper {
     }
 
     public static Key decrypt(String encryptedText) throws Exception {
+        if (encryptedText == null || encryptedText.length() == 0
+                || !encryptedText.contains(":")) {
+            throw new WebApplicationException(Response
+                    .status(Status.BAD_REQUEST).entity("Invalid key").build());
+        }
+
         if (!encryptedText.startsWith("@")) {
             return Key.valueOf(encryptedText);
         }
 
         String[] parts = encryptedText.substring(1).split(":");
+
+        if (parts.length != 2 || parts[1].length() != 16) {
+            throw new WebApplicationException(Response
+                    .status(Status.BAD_REQUEST).entity("Invalid key").build());
+        }
+
         String type = parts[0];
+
         byte[] encrypted = Hex.decodeHex(parts[1].toCharArray());
         byte[] decrypted = getCipher(type, Cipher.DECRYPT_MODE).doFinal(
                 encrypted);

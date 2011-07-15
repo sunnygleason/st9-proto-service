@@ -1,5 +1,9 @@
 package com.g414.st9.proto.service.store;
 
+import javax.ws.rs.WebApplicationException;
+import javax.ws.rs.core.Response;
+import javax.ws.rs.core.Response.Status;
+
 /**
  * Putting the "Key" in Key-Value storage.
  */
@@ -18,7 +22,8 @@ public class Key {
 
     public static Key valueOf(String key) throws Exception {
         if (key == null || key.length() == 0) {
-            throw new IllegalArgumentException("Invalid key");
+            throw new WebApplicationException(Response
+                    .status(Status.BAD_REQUEST).entity("Invalid key").build());
         }
 
         if (key.startsWith("@")) {
@@ -27,7 +32,8 @@ public class Key {
 
         String[] parts = key.split(":");
         if (parts.length != 2) {
-            throw new IllegalArgumentException("Invalid key");
+            throw new WebApplicationException(Response
+                    .status(Status.BAD_REQUEST).entity("Invalid key").build());
         }
 
         Long id = Long.parseLong(parts[1]);
