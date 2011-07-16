@@ -1,10 +1,10 @@
 package com.g414.st9.proto.service.schema;
 
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import com.g414.st9.proto.service.validator.ReferenceValidator;
 import com.g414.st9.proto.service.validator.ValidationException;
 import com.g414.st9.proto.service.validator.ValidatorTransformer;
 
@@ -20,7 +20,10 @@ public class SchemaValidatorTransformer implements
     public SchemaValidatorTransformer(SchemaDefinition schemaDefinition) {
         Validators validators = new Validators();
 
-        Map<String, Attribute> newAttributesByName = new HashMap<String, Attribute>();
+        Map<String, Attribute> newAttributesByName = new LinkedHashMap<String, Attribute>();
+
+        newAttributesByName.put("id", new Attribute("id",
+                AttributeType.REFERENCE, null, null, null, Boolean.TRUE));
 
         for (Attribute attribute : schemaDefinition.getAttributes()) {
             newAttributesByName.put(attribute.getName(), attribute);
@@ -29,7 +32,9 @@ public class SchemaValidatorTransformer implements
         this.attributesByName = Collections
                 .unmodifiableMap(newAttributesByName);
 
-        Map<String, ValidatorTransformer<?, ?>> newAttributeValidators = new HashMap<String, ValidatorTransformer<?, ?>>();
+        Map<String, ValidatorTransformer<?, ?>> newAttributeValidators = new LinkedHashMap<String, ValidatorTransformer<?, ?>>();
+
+        newAttributeValidators.put("id", new ReferenceValidator("id"));
 
         for (Attribute attribute : schemaDefinition.getAttributes()) {
             newAttributeValidators.put(attribute.getName(),
@@ -49,17 +54,13 @@ public class SchemaValidatorTransformer implements
 
         Map<String, Object> mindlessClone = new LinkedHashMap<String, Object>();
 
-        for (Map.Entry<String, Object> e : instance.entrySet()) {
+        for (Map.Entry<String, ValidatorTransformer<?, ?>> e : attributeValidators
+                .entrySet()) {
             String attrName = e.getKey();
+            ValidatorTransformer validator = e.getValue();
 
             Attribute attribute = attributesByName.get(attrName);
-
-            if (attribute == null) {
-                mindlessClone.put(attrName, e.getValue());
-                continue;
-            }
-
-            Object inbound = e.getValue();
+            Object inbound = instance.get(attrName);
 
             if (inbound == null) {
                 if (attribute.isNullable()) {
@@ -71,14 +72,29 @@ public class SchemaValidatorTransformer implements
                         + attrName);
             }
 
-            ValidatorTransformer validator = attributeValidators.get(attrName);
+            try {
+                Object transformed = validator.validateTransform(inbound);
 
-            Object transformed = validator.validateTransform(inbound);
-
-            mindlessClone.put(attribute.getName(), transformed);
+                mindlessClone.put(attrName, transformed);
+            } catch (ClassCastException ex) {
+                throw new ValidationException("invalid attribute value for '"
+                        + attrName + "'");
+            }
         }
 
-        return mindlessClone;
+        Map<String, Object> mindlessCloneInOrder = new LinkedHashMap<String, Object>();
+
+        for (Map.Entry<String, Object> e : instance.entrySet()) {
+            String attrName = e.getKey();
+
+            if (mindlessClone.containsKey(attrName)) {
+                mindlessCloneInOrder.put(attrName, mindlessClone.get(attrName));
+            } else {
+                mindlessCloneInOrder.put(attrName, instance.get(attrName));
+            }
+        }
+
+        return mindlessCloneInOrder;
     }
 
     @Override
@@ -121,9 +137,16 @@ public class SchemaValidatorTransformer implements
         return mindlessClone;
     }
 
-    public Object transformValue(String attrName, Object value) {
-        ValidatorTransformer validator = attributeValidators.get(attrName);
+    public Object transformValue(String attrName, Object value)
+            throws ValidationException {
+        try {
+            ValidatorTransformer validator = attributeValidators.get(attrName);
 
-        return validator != null ? validator.validateTransform(value) : value;
+            return validator != null ? validator.validateTransform(value)
+                    : value;
+        } catch (ClassCastException e) {
+            throw new ValidationException("invalid attribute value for '"
+                    + attrName + "'");
+        }
     }
 }

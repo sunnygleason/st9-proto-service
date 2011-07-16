@@ -70,7 +70,7 @@ public abstract class SecondaryIndexSQLTestBase {
                         QueryOperator.LT, "y", new QueryValue(
                                 ValueType.INTEGER, "20")), new QueryTerm(
                         QueryOperator.EQ, "id", new QueryValue(
-                                ValueType.INTEGER, "3")));
+                                ValueType.STRING, "\"foo:3\"")));
 
         Map<String, Object> bindParams0 = new LinkedHashMap<String, Object>();
         Assert.assertEquals(

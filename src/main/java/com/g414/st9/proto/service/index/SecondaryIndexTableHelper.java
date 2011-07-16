@@ -35,6 +35,7 @@ import com.g414.st9.proto.service.schema.IndexAttribute;
 import com.g414.st9.proto.service.schema.IndexDefinition;
 import com.g414.st9.proto.service.schema.SchemaDefinition;
 import com.g414.st9.proto.service.schema.SchemaValidatorTransformer;
+import com.g414.st9.proto.service.store.Key;
 import com.g414.st9.proto.service.validator.ValidationException;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
@@ -516,6 +517,15 @@ public class SecondaryIndexTableHelper {
         if (!value.getValueType().equals(ValueType.NULL)) {
             Object instance = value.getValue();
             Object transformed = transformer.transformValue(attrName, instance);
+
+            if (attrName.equals("id")) {
+                try {
+                    transformed = Key.valueOf(transformed.toString()).getId();
+                } catch (Exception e) {
+                    throw new ValidationException("invalid id: '"
+                            + instance.toString() + "'");
+                }
+            }
 
             bindParams.put("p" + param,
                     transformAttributeValue(transformed, attribute));
