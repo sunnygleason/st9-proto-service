@@ -42,15 +42,19 @@ $ ./scripts/run-sqlite.sh
 A cook's tour of the Schema API, used to define entity types (think: tables but not tables):
 
 \# creates a schema for a new entity type
+
 $ curl -v -v -X POST --binary-data @src/test/resources/schema07.json.txt -H "Content-Type: application/json" -H "Accept: application/json" "http://localhost:7331/1.0/s/point"
 
 \# retrieves a schema for the given entity type
+
 $ curl -v -v -X GET "http://localhost:7331/1.0/s/point"
 
 \# updates a schema for the given entity type (including migrating counters and indexes as necessary)
+
 $ curl -v -v -X PUT --binary-data @src/test/resources/schema07b.json.txt -H "Content-Type: application/json" -H "Accept: application/json" "http://localhost:7331/1.0/s/point"
 
 \# removes a data type (caution: do not use)
+
 $ curl -v -v -X DELETE "http://localhost:7331/1.0/s/point"
 
 
@@ -59,12 +63,15 @@ $ curl -v -v -X DELETE "http://localhost:7331/1.0/s/point"
 Creating, retrieving, updating and deleting entities (think: rows but more like documents):
 
 \# creating a new entity
+
 $ curl -v -v -X POST --data "{\"x\":1,\"y\":-1}" -H "Content-Type: application/json" -H "Accept: application/json" "http://localhost:7331/1.0/e/point"
 
 \# example of GET a newly-created entity
+
 $ curl -v -v -X GET "http://localhost:7331/1.0/e/@point:5eae81437e481933"
 
 \# example of POST invalid data (type mismatch)
+
 $ curl -v -v -X POST --data "{\"x\":1,\"y\":true}" -H "Content-Type: application/json" -H "Accept: application/json" "http://localhost:7331/1.0/e/point"
 
 
