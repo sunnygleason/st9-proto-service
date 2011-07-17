@@ -62,17 +62,25 @@ $ curl -v -v -X DELETE "http://localhost:7331/1.0/s/point"
 
 Creating, retrieving, updating and deleting entities (think: rows but more like documents):
 
-\# creating a new entity
+\# using POST to create a new entity
 
 $ curl -v -v -X POST --data "{\"x\":1,\"y\":-1}" -H "Content-Type: application/json" -H "Accept: application/json" "http://localhost:7331/1.0/e/point"
+
+\# example of POST invalid data (type mismatch)
+
+$ curl -v -v -X POST --data "{\"x\":1,\"y\":true}" -H "Content-Type: application/json" -H "Accept: application/json" "http://localhost:7331/1.0/e/point"
 
 \# example of GET a newly-created entity
 
 $ curl -v -v -X GET "http://localhost:7331/1.0/e/@point:5eae81437e481933"
 
-\# example of POST invalid data (type mismatch)
+\# updating an entity with PUT
 
-$ curl -v -v -X POST --data "{\"x\":1,\"y\":true}" -H "Content-Type: application/json" -H "Accept: application/json" "http://localhost:7331/1.0/e/point"
+$ curl -v -v -X PUT --data "{\"x\":7,\"y\":-3}" -H "Content-Type: application/json" -H "Accept: application/json" "http://localhost:7331/1.0/e/@point:5eae81437e481933"
+
+\# using DELETE to remove an entity
+
+$ curl -v -v -X DELETE "http://localhost:7331/1.0/e/@point:5eae81437e481933"
 
 
 # Under construction - this documentation still being updated
