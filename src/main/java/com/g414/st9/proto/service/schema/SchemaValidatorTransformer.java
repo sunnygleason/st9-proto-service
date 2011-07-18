@@ -18,6 +18,11 @@ public class SchemaValidatorTransformer implements
     private final Map<String, Attribute> attributesByName;
 
     public SchemaValidatorTransformer(SchemaDefinition schemaDefinition) {
+        if (schemaDefinition == null) {
+            throw new IllegalArgumentException(
+                    "schema definition must not be null");
+        }
+
         Validators validators = new Validators();
 
         Map<String, Attribute> newAttributesByName = new LinkedHashMap<String, Attribute>();

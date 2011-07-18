@@ -278,8 +278,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
         if (notFound.isEmpty()) {
             return makeMultiRetrieveResponse(keys, cacheFound,
-                    Collections.<String, Object> emptyMap(),
-                    Collections.<String, SchemaDefinition> emptyMap());
+                    Collections.<String, Object> emptyMap(), schemaDefinitions);
         }
 
         return database.inTransaction(new TransactionCallback<Response>() {
@@ -879,6 +878,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
             if (cacheFound.containsKey(key)) {
                 Map<String, Object> cached = (Map<String, Object>) EncodingHelper
                         .parseSmileLzf(cacheFound.get(key));
+
                 cached.remove("id");
                 cached.remove("kind");
 
@@ -889,7 +889,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                 newResult.put("kind", realKey.getType());
                 newResult.putAll(cached);
 
-                result.put(key, cached);
+                result.put(key, newResult);
             } else if (dbFound.containsKey(key) && dbFound.get(key) != null) {
                 result.put(
                         key,
@@ -949,8 +949,12 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
         if (definition == null) {
             final SchemaDefinition newDefinition = SchemaHelper
                     .getEmptySchema();
-            final byte[] definitionBytes = EncodingHelper
-                    .convertToSmileLzf(newDefinition);
+
+            final Map<String, Object> newDefinitionWithVersion = new LinkedHashMap<String, Object>();
+            newDefinitionWithVersion.put("version", "1");
+            newDefinitionWithVersion.putAll(mapper.readValue(
+                    mapper.writeValueAsString(newDefinition),
+                    LinkedHashMap.class));
 
             try {
                 int inserted = database
@@ -958,8 +962,12 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                             @Override
                             public Integer withHandle(Handle handle)
                                     throws Exception {
-                                return doInsert(handle, 1, typeId,
-                                        definitionBytes);
+                                return doInsert(
+                                        handle,
+                                        1,
+                                        typeId,
+                                        EncodingHelper
+                                                .convertToSmileLzf(newDefinition));
                             }
                         });
 
@@ -970,7 +978,8 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                 }
 
                 cache.put(EncodingHelper.toKVCacheKey("$schema:" + typeId),
-                        definitionBytes);
+                        EncodingHelper
+                                .convertToSmileLzf(newDefinitionWithVersion));
             } catch (Exception e) {
                 e.printStackTrace();
             }
