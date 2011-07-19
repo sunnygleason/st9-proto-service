@@ -43,7 +43,7 @@ public class Validators {
                     Integer.toString(Byte.MAX_VALUE));
         case I16:
             return new IntegerValidator(attribute.getName(),
-                    Integer.toString(Character.MIN_VALUE),
+                    Integer.toString(-1 * (2 << 16)),
                     Integer.toString(Character.MAX_VALUE));
         case I32:
             return new IntegerValidator(attribute.getName(),
