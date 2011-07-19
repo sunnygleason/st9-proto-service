@@ -1,7 +1,6 @@
 package com.g414.st9.proto.service;
 
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.Map;
 
 import javax.ws.rs.Consumes;
@@ -17,6 +16,7 @@ import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.skife.jdbi.v2.Handle;
 import org.skife.jdbi.v2.IDBI;
@@ -82,10 +82,17 @@ public class SchemaResource {
         }
 
         SchemaDefinition schemaDefinition = null;
-        if (value != null && value.length() > 0) {
-            schemaDefinition = mapper.readValue(value, SchemaDefinition.class);
-        } else {
-            schemaDefinition = SchemaHelper.getEmptySchema();
+
+        try {
+            if (value != null && value.length() > 0) {
+                schemaDefinition = mapper.readValue(value,
+                        SchemaDefinition.class);
+            } else {
+                schemaDefinition = SchemaHelper.getEmptySchema();
+            }
+        } catch (JsonMappingException e) {
+            return Response.status(Status.BAD_REQUEST)
+                    .entity("invalid schema definition json").build();
         }
 
         SchemaDefinitionValidator validator = new SchemaDefinitionValidator();
@@ -144,8 +151,16 @@ public class SchemaResource {
                     .build();
         }
 
-        final SchemaDefinition original = mapper.readValue(
-                (String) existing.getEntity(), SchemaDefinition.class);
+        final SchemaDefinition original;
+
+        try {
+            original = mapper.readValue((String) existing.getEntity(),
+                    SchemaDefinition.class);
+        } catch (JsonMappingException e) {
+            return Response.status(Status.BAD_REQUEST)
+                    .entity("invalid schema definition json").build();
+        }
+
         for (IndexDefinition indexDefinition : original.getIndexes()) {
             String indexName = indexDefinition.getName();
 

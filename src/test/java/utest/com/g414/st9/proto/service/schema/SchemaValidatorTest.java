@@ -233,6 +233,13 @@ public class SchemaValidatorTest {
             throw new RuntimeException("should have thrown!");
         } catch (ValidationException expected) {
         }
+
+        try {
+            v.untransform(null);
+
+            throw new RuntimeException("should have thrown!");
+        } catch (ValidationException expected) {
+        }
     }
 
     private void validateInstance(SchemaValidatorTransformer validator,
