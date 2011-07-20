@@ -29,12 +29,12 @@ public class SmallStringValidator implements
 
         if (minLength != null && length < minLength) {
             throw new ValidationException("'" + attribute
-                    + "' length be greater than or equal to " + minLength);
+                    + "' length must be greater than or equal to " + minLength);
         }
 
         if (length > maxLength) {
             throw new ValidationException("'" + attribute
-                    + "' length be less than or equal to " + minLength);
+                    + "' length must be less than or equal to " + maxLength);
         }
 
         return instanceString;
