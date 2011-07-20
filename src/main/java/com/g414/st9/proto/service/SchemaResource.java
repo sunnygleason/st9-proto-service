@@ -277,16 +277,16 @@ public class SchemaResource {
 
         while (instances.hasNext()) {
             Map<String, Object> notTransformed = instances.next();
-            Map<String, Object> instance = transformer
-                    .validateTransform(notTransformed);
 
-            Key key = Key.valueOf((String) instance.get("id"));
-
-            Boolean deleted = (Boolean) instance.get("$deleted");
+            Key key = Key.valueOf((String) notTransformed.get("id"));
+            Boolean deleted = (Boolean) notTransformed.get("$deleted");
 
             if (deleted != null && deleted.booleanValue()) {
                 continue;
             }
+
+            Map<String, Object> instance = transformer
+                    .validateTransform(notTransformed);
 
             for (IndexDefinition indexDef : schemaDefinition.getIndexes()) {
                 String indexName = indexDef.getName();
