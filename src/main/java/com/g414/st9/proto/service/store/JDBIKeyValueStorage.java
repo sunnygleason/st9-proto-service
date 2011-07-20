@@ -42,6 +42,7 @@ import com.g414.st9.proto.service.schema.SchemaHelper;
 import com.g414.st9.proto.service.schema.SchemaValidatorTransformer;
 import com.g414.st9.proto.service.sequence.SequenceService;
 import com.g414.st9.proto.service.validator.ValidationException;
+import com.google.common.collect.ImmutableMap;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 
@@ -167,7 +168,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
                     int inserted = doInsert(handle,
                             sequences.getTypeId(type, false), newKey.getId(),
-                            storeValueBytes);
+                            realVersion.longValue(), storeValueBytes);
 
                     if (inserted > 0) {
                         cache.put(EncodingHelper.toKVCacheKey(newKey
@@ -192,6 +193,73 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                 }
             }
         });
+    }
+
+    /**
+     * @see com.g414.st9.proto.service.store.KeyValueStorage#createDeleted(String,
+     *      Long)
+     */
+    @Override
+    public Response createDeleted(final String type, final Long id)
+            throws Exception {
+        if (type == null || ((type.contains("@") || type.contains("$")))) {
+            return Response.status(Status.BAD_REQUEST)
+                    .entity("Invalid entity 'type'").build();
+        }
+
+        if (id == null) {
+            return Response.status(Status.BAD_REQUEST)
+                    .entity("Invalid entity 'id'").build();
+        }
+
+        try {
+            sequences.bumpKey(type, id);
+        } catch (Exception e) {
+            return getErrorResponse(e);
+        }
+
+        Response insert = database
+                .inTransaction(new TransactionCallback<Response>() {
+                    @Override
+                    public Response inTransaction(Handle handle,
+                            TransactionStatus status) throws Exception {
+                        int result = doInsert(handle,
+                                sequences.getTypeId(type, false).intValue(),
+                                id, 1L, EncodingHelper
+                                        .convertToSmileLzf(Collections
+                                                .emptyMap()));
+
+                        if (result == 1) {
+                            return null;
+                        } else {
+                            return Response
+                                    .status(Status.INTERNAL_SERVER_ERROR)
+                                    .entity("Unexpected number of rows inserted: "
+                                            + result).build();
+                        }
+                    }
+                });
+
+        if (insert != null) {
+            return insert;
+        }
+
+        Response delete = this.delete(new Key(type, id)
+                .getEncryptedIdentifier());
+
+        if (delete.getStatus() != Response.Status.NO_CONTENT.getStatusCode()) {
+            return Response
+                    .status(Status.INTERNAL_SERVER_ERROR)
+                    .entity("Unexpected delete result: (" + delete.getStatus()
+                            + ") " + delete.getEntity()).build();
+        }
+
+        return Response
+                .status(Status.OK)
+                .entity(EncodingHelper.convertToJson(ImmutableMap
+                        .<String, Object> of("id",
+                                new Key(type, id).getEncryptedIdentifier(),
+                                "kind", type, "$deleted", true))).build();
     }
 
     /**
@@ -918,7 +986,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
         if (definition == null) {
             definition = SchemaHelper.getEmptySchema();
 
-            int inserted = doInsert(handle, 1, typeId,
+            int inserted = doInsert(handle, 1, typeId, 1L,
                     EncodingHelper.convertToSmileLzf(SchemaHelper
                             .getEmptySchema()));
 
@@ -966,6 +1034,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                                         handle,
                                         1,
                                         typeId,
+                                        1L,
                                         EncodingHelper
                                                 .convertToSmileLzf(newDefinition));
                             }
@@ -1034,12 +1103,12 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
     }
 
     private int doInsert(Handle handle, final int typeId, final long nextId,
-            byte[] valueBytes) {
+            final long version, byte[] valueBytes) {
         Update update = handle.createStatement(getPrefix() + "create");
         update.bind("key_type", typeId);
         update.bind("key_id", nextId);
         update.bind("created_dt", getEpochSecondsNow());
-        update.bind("version", 1L);
+        update.bind("version", version);
         update.bind("value", valueBytes);
         int inserted = update.execute();
 

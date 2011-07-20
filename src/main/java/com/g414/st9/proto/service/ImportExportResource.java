@@ -83,24 +83,26 @@ public class ImportExportResource {
                     success.add(key.getEncryptedIdentifier());
                 } else if (!key.getType().startsWith("$")) {
                     String jsonValue = EncodingHelper.convertToJson(object);
-                    r = store.create(key.getType(), jsonValue, key.getId(),
-                            version, true);
+
+                    if (deleted != null && deleted) {
+                        r = store.createDeleted(key.getType(), key.getId());
+                        jsonValue = instance;
+                    } else {
+                        r = store.create(key.getType(), jsonValue, key.getId(),
+                                version, true);
+                    }
 
                     if (r.getStatus() != Status.OK.getStatusCode()) {
                         failed.add(instance);
                         continue;
                     }
 
-                    if (deleted != null && deleted) {
-                        store.delete(key.getIdentifier());
-                    } else if (r.getEntity().equals(jsonValue)) {
-                        // perfect!
+                    if (r.getEntity().equals(jsonValue)) {
+                        success.add(key.getEncryptedIdentifier());
                     } else {
                         throw new RuntimeException("mismatched entity : "
                                 + key.getEncryptedIdentifier());
                     }
-
-                    success.add(key.getEncryptedIdentifier());
                 } else {
                     skipped.add(key.getEncryptedIdentifier());
 

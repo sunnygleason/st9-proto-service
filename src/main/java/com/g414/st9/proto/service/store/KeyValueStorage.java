@@ -12,6 +12,9 @@ public interface KeyValueStorage {
     public abstract Response create(String type, String inValue, Long id,
             Long version, boolean strictType) throws Exception;
 
+    public abstract Response createDeleted(String type, Long id)
+            throws Exception;
+
     public abstract Response retrieve(String key) throws Exception;
 
     public abstract Response multiRetrieve(List<String> keys) throws Exception;
