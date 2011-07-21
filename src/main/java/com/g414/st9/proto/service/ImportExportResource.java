@@ -120,7 +120,9 @@ public class ImportExportResource {
         result.put("skipped", skipped);
         result.put("failed", failed);
 
-        return Response.status(Status.OK)
+        return Response
+                .status((skipped.isEmpty() && failed.isEmpty()) ? Status.OK
+                        : Status.BAD_REQUEST)
                 .entity(EncodingHelper.convertToJson(result)).build();
     }
 }
