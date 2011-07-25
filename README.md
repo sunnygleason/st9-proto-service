@@ -204,5 +204,21 @@ $ curl -v -v -X GET "http://localhost:7331/1.0/x"
 $ curl -v -v -X POST -H "Content-Type: application/json" --data-binary @the-file.json.txt "http://localhost:7331/1.0/x"
 
 
+## System Configuration Properties
+
+* `http.port` : port to listen on (default 8080)
+* `st9.storageModule` : module name of storage module (default "com.g414.st9.proto.service.store.SqliteKeyValueStorage\$SqliteKeyValueStorageModule", "com.g414.st9.proto.service.store.MySQLKeyValueStorage\$MySQLKeyValueStorageModule")
+* `st9.cacheClass` : class name of cache module (default none, "com.g414.st9.proto.service.cache.RedisKeyValueCache",  "com.g414.st9.proto.service.cache.MemcachedKeyValueCache")
+* `log.dir` : log directory (default "logs")
+* `jdbc.url` : url for jdbc data store (default "jdbc:sqlite:thedb.db")
+* `jdbc.user` : username for jdbc data store
+* `jdbc.password` : password for jdbc data store
+* `redis.host` : hostname of redis service (default "localhost")
+* `redis.port` : port of redis service (default "")
+* `memcached.host` : hostname and port of memcached service in "host:port" form (default "localhost:11211")
+* `nuke.allowed` : whether nukes are allowed on the data store (default "false")
+* `strict.type.creation` : whether types must be created via the schema endpoint before use (default "true")
+
+
 That's all for now.
 
