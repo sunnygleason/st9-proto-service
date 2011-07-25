@@ -33,6 +33,7 @@ import com.g414.st9.proto.service.schema.SchemaValidatorTransformer;
 import com.g414.st9.proto.service.sequence.SequenceService;
 import com.g414.st9.proto.service.store.Key;
 import com.g414.st9.proto.service.store.KeyValueStorage;
+import com.g414.st9.proto.service.validator.ValidationException;
 import com.google.inject.Inject;
 
 /**
@@ -96,7 +97,12 @@ public class SchemaResource {
         }
 
         SchemaDefinitionValidator validator = new SchemaDefinitionValidator();
-        validator.validate(schemaDefinition);
+        try {
+            validator.validate(schemaDefinition);
+        } catch (ValidationException e) {
+            return Response.status(Status.BAD_REQUEST).entity(e.getMessage())
+                    .build();
+        }
 
         for (IndexDefinition indexDefinition : schemaDefinition.getIndexes()) {
             String indexName = indexDefinition.getName();
