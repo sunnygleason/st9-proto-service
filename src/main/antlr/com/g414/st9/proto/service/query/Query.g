@@ -90,12 +90,22 @@ fragment DIGIT : '0'..'9' ;
 INTEGER : '-'? (DIGIT)+ ;
 DECIMAL : '-'? (DIGIT)+ ('.' (DIGIT)+ )? ;
 
+
 STRING_LITERAL
-  : '"'!
-    ( '"' '"'!
-    | ~('"'|'\n'|'\r')
-    )*
-    ( '"'!
-    | // nothing -- write error message
-    )
-   ;
+@init{StringLiteral sl = new StringLiteral();}
+  :
+  '"'
+  ( escaped=ESC {sl.appendEscaped(escaped.getText());} | 
+    normal= ~('"'|'\\'|'\n'|'\r') {sl.append(normal);} )* 
+  '"'    
+  {setText("\"" + sl.toString() + "\"");}
+  ;
+
+ESC
+  : '\\'
+  ( 'n'    {setText("\n");}
+  | 't'    {setText("\t");}
+  | '"'    {setText("\"");}
+  | '\\'   {setText("\\");}
+  )
+  ;

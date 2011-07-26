@@ -26,6 +26,22 @@ public class QueryTest {
         parseQuery(query);
     }
 
+    public void testDoubleQuotes() throws Exception {
+        String query = "_x eq \"\\\"\"";
+
+        QueryLexer lex = new QueryLexer(new ANTLRStringStream(query));
+        CommonTokenStream tokens = new CommonTokenStream(lex);
+
+        QueryParser parser = new QueryParser(tokens);
+        parser.setTreeAdaptor(adaptor);
+
+        List<QueryTerm> foo = new ArrayList<QueryTerm>();
+        parser.term_list(foo);
+
+        Assert.assertEquals(foo.toString(), "[_x EQ \"\"\"]");
+        Assert.assertTrue(foo.size() == 1);
+    }
+
     static final TreeAdaptor adaptor = new CommonTreeAdaptor() {
         public Object create(Token payload) {
             return new CommonTree(payload);
