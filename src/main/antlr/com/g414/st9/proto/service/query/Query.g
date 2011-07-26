@@ -101,11 +101,6 @@ STRING_LITERAL
   {setText("\"" + sl.toString() + "\"");}
   ;
 
-ESC
-  : '\\'
-  ( 'n'    {setText("\n");}
-  | 't'    {setText("\t");}
-  | '"'    {setText("\"");}
-  | '\\'   {setText("\\");}
-  )
-  ;
+fragment
+ESC : '\\' ( 'n' | 't' | '"' | '\\' ) ;
+
