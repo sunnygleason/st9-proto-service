@@ -69,7 +69,7 @@ public class SchemaResource {
     // automagical jackson configuration
     public Response createEntity(@PathParam("type") String type, String value)
             throws Exception {
-        Integer typeId = sequences.getTypeId(type, true);
+        Integer typeId = getTypeIdPossiblyNull(type, true);
 
         if (typeId == null) {
             return Response.status(Status.NOT_FOUND).entity("type not found")
@@ -127,7 +127,7 @@ public class SchemaResource {
     @Produces(MediaType.APPLICATION_JSON)
     public Response retrieveEntity(@PathParam("type") String type)
             throws Exception {
-        Integer typeId = sequences.getTypeId(type, false);
+        Integer typeId = getTypeIdPossiblyNull(type, false);
 
         if (typeId == null) {
             return Response.status(Status.NOT_FOUND).entity("type not found")
@@ -144,7 +144,7 @@ public class SchemaResource {
     // automagical jackson configuration
     public Response updateEntity(@PathParam("type") final String type,
             final String value) throws Exception {
-        Integer typeId = sequences.getTypeId(type, false);
+        Integer typeId = getTypeIdPossiblyNull(type, false);
 
         if (typeId == null) {
             return Response.status(Status.NOT_FOUND).entity("type not found")
@@ -230,7 +230,7 @@ public class SchemaResource {
     @Path("{type}")
     public Response deleteEntity(@PathParam("type") String type)
             throws Exception {
-        Integer typeId = sequences.getTypeId(type, false);
+        Integer typeId = getTypeIdPossiblyNull(type, true);
 
         if (typeId == null) {
             return Response.status(Status.NOT_FOUND).entity("type not found")
@@ -308,6 +308,20 @@ public class SchemaResource {
                 this.counts.insertEntity(handle, key.getId(), instance, type,
                         counterName, schemaDefinition);
             }
+        }
+    }
+
+    private Integer getTypeIdPossiblyNull(String type, boolean val)
+            throws Exception {
+        try {
+            return sequences.getTypeId(type, val);
+        } catch (WebApplicationException e) {
+            if (e.getResponse().getStatus() == Response.Status.BAD_REQUEST
+                    .getStatusCode()) {
+                return null;
+            }
+
+            throw e;
         }
     }
 }
