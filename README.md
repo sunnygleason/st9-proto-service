@@ -44,7 +44,7 @@ A cook's tour of the Schema API, used to define entity types (think: tables but 
 
 \# creates a schema for a new entity type
 
-$ curl -v -v -X POST --binary-data @src/test/resources/schema07.json.txt -H "Content-Type: application/json" -H "Accept: application/json" "http://localhost:7331/1.0/s/point"
+$ curl -v -v -X POST --data-binary @src/test/resources/schema07.json.txt -H "Content-Type: application/json" -H "Accept: application/json" "http://localhost:7331/1.0/s/point"
 
 \# retrieves a schema for the given entity type
 
@@ -52,7 +52,7 @@ $ curl -v -v -X GET "http://localhost:7331/1.0/s/point"
 
 \# updates a schema for the given entity type (including migrating counters and indexes as necessary)
 
-$ curl -v -v -X PUT --binary-data @src/test/resources/schema07b.json.txt -H "Content-Type: application/json" -H "Accept: application/json" "http://localhost:7331/1.0/s/point"
+$ curl -v -v -X PUT --data-binary @src/test/resources/schema07b.json.txt -H "Content-Type: application/json" -H "Accept: application/json" "http://localhost:7331/1.0/s/point"
 
 \# removes a data type (caution: do not use)
 
