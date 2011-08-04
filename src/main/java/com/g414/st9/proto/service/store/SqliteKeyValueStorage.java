@@ -5,7 +5,6 @@ import java.sql.SQLException;
 import java.util.List;
 
 import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
 
 import org.skife.jdbi.v2.DBI;
 import org.skife.jdbi.v2.IDBI;

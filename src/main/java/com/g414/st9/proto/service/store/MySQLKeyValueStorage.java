@@ -1,8 +1,5 @@
 package com.g414.st9.proto.service.store;
 
-import javax.ws.rs.core.Response;
-import javax.ws.rs.core.Response.Status;
-
 import org.skife.jdbi.v2.DBI;
 import org.skife.jdbi.v2.IDBI;
 

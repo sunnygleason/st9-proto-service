@@ -1,0 +1,175 @@
+group sql;
+
+h2_ping() ::=<<
+  select 1
+>>
+
+h2_init_key_types() ::=<<
+  create table if not exists "_key_types" (
+    "_key_type"     smallint unsigned not null PRIMARY KEY,
+    "_type_name"    varchar(100) not null UNIQUE
+  )
+>>
+
+h2_init_sequences() ::=<<
+  create table if not exists "_sequences" (
+    "_key_type"     smallint unsigned not null PRIMARY KEY,
+    "_next_id"      bigint unsigned not null
+  )
+>>
+
+h2_init_key_values() ::=<<
+  create table if not exists "_key_values" (
+    "_key_type"     smallint unsigned not null,
+    "_key_id"       bigint unsigned not null,
+    "_created_dt"   int unsigned not null,
+    "_updated_dt"   int unsigned not null,
+    "_version"      bigint unsigned not null,
+    "_is_deleted"   char(1) not null default 'N',
+    "_format"       char(1) not null default 'S',
+    "_compression"  char(1) not null default 'F',
+    "_value"        varbinary not null,
+    PRIMARY KEY("_key_type", "_key_id")
+  )
+>>
+
+h2_init_key_values_index() ::=<<
+  select 1
+>>
+
+h2_populate_key_types() ::=<< 
+  insert
+    into "_key_types" ("_key_type", "_type_name")
+  values
+    (0, '$key'),
+    (1, '$schema');
+>>
+
+h2_get_type_name() ::=<< 
+  select "_type_name"
+    from "_key_types"
+   where "_key_type" = :key_type;
+>>
+
+h2_get_type_id() ::=<< 
+  select "_key_type"
+    from "_key_types"
+   where "_type_name" = :type_name;
+>>
+
+h2_populate_sequences() ::=<< 
+  insert
+    into "_sequences" ("_key_type", "_next_id")
+  values
+    (0, 2),
+    (1, 1);
+>>
+
+h2_get_entity_types() ::=<< 
+  select "_type_name"
+    from "_key_types"
+>>
+
+h2_create() ::=<< 
+  insert into "_key_values" ("_key_type", "_key_id", "_created_dt", "_updated_dt", "_version", "_is_deleted", "_format", "_compression", "_value")
+  values (:key_type, :key_id, :created_dt, :created_dt, :version, 'N', 'S', 'F', :value)
+>>
+
+h2_retrieve() ::=<< 
+  select "_key_type", "_key_id", "_created_dt", "_updated_dt", "_format", "_compression", "_version", "_value"
+    from "_key_values"
+   where "_key_type" = :key_type
+     and "_key_id" = :key_id
+     and "_is_deleted" = 'N'
+>>
+
+h2_get_version() ::=<< 
+  select "_version"
+    from "_key_values"
+   where "_key_type" = :key_type
+     and "_key_id" = :key_id
+     and "_is_deleted" = 'N'
+>>
+
+h2_update() ::=<< 
+  update "_key_values"
+    set "_key_type"    = :key_type,
+        "_key_id"      = :key_id,
+        "_updated_dt"  = :updated_dt,
+        "_version"     = :new_version,
+        "_value"       = :value
+   where "_key_type"   = :key_type
+     and "_key_id"     = :key_id
+     and "_is_deleted" = 'N'
+     and "_version"    = :old_version
+>>
+
+h2_delete() ::=<< 
+  update "_key_values"
+    set "_updated_dt" = :updated_dt,
+        "_is_deleted" = 'Y'
+   where "_key_type" = :key_type
+     and "_key_id" = :key_id
+>>
+
+h2_key_ids_of_type() ::=<< 
+  select "_key_id"
+    from "_key_values"
+   where "_key_type" = :key_type
+>>
+
+h2_insert_ignore_seq() ::=<< 
+  insert
+    into "_sequences" ("_key_type", "_next_id")
+  values (:key_type, :next_id);
+>>
+
+h2_populate_key_type() ::=<< 
+  insert
+    into "_key_types" ("_key_type", "_type_name")
+  values (:key_type, :type_name);
+>>
+
+h2_get_next_id() ::=<< 
+  select "_next_id"
+    from "_sequences"
+   where "_key_type" = :key_type
+>>
+
+h2_increment_next_id() ::=<< 
+  update "_sequences"
+    set "_next_id" = "_next_id" + :increment
+   where "_key_type" = :key_type
+>>
+
+h2_truncate_key_types() ::=<< 
+  truncate table "_key_types"
+>>
+
+h2_truncate_sequences() ::=<< 
+  truncate table "_sequences"
+>>
+
+h2_truncate_key_values() ::=<< 
+  truncate table "_key_values"
+>>
+
+h2_reset_sequences() ::=<< 
+  update "_sequences" set "_next_id" = 0 where "_key_type" > 1
+>>
+
+h2_reset_key_values() ::=<< 
+  delete from "_key_values" where "_key_type" > 1
+>>
+
+h2_table_exists(table_name) ::=<< 
+  select 1 from <table_name>
+>>
+
+h2_truncate_table(table_name) ::=<< 
+  truncate table <table_name>
+>>
+
+h2_drop_index(table_name, index_name) ::=<< 
+  drop index <index_name> on <table_name>
+>>
