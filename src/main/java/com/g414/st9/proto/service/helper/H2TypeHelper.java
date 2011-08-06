@@ -28,7 +28,7 @@ public class H2TypeHelper implements SqlTypeHelper {
         case U64:
             return "BIGINT UNSIGNED";
         case UTC_DATE_SECS:
-            return "INT";
+            return "BIGINT";
         case REFERENCE:
         case UTF8_SMALLSTRING:
             return "VARCHAR(255)";
