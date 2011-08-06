@@ -23,7 +23,7 @@ public class MySQLCountServiceSQLTest extends CountServiceSQLTestBase {
                 MySQLTypeHelper.DATABASE_PREFIX, new MySQLTypeHelper());
 
         Assert.assertEquals(
-                "create table if not exists `_c_schema4__01848a41d2c44a4b` (`_x` INT, `hashcode` BIGINT UNSIGNED not null,`count` BIGINT UNSIGNED, PRIMARY KEY(`_x`), UNIQUE(`hashcode`))",
+                "create table if not exists `_c_schema4__01848a41d2c44a4b` (`_x` INT, `__hashcode` BIGINT UNSIGNED not null,`__count` BIGINT UNSIGNED, PRIMARY KEY(`_x`), UNIQUE(`__hashcode`))",
                 sqlite.getTableDefinition("schema4", "xc", def));
     }
 }

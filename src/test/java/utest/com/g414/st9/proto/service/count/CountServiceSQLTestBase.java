@@ -39,33 +39,33 @@ public abstract class CountServiceSQLTestBase {
                 MySQLTypeHelper.DATABASE_PREFIX, new MySQLTypeHelper());
 
         Assert.assertEquals(
-                "create table if not exists `_c_schema4__01848a41d2c44a4b` (`_x` INT, `hashcode` BIGINT UNSIGNED not null,`count` BIGINT UNSIGNED, PRIMARY KEY(`_x`), UNIQUE(`hashcode`))",
+                "create table if not exists `_c_schema4__01848a41d2c44a4b` (`_x` INT, `__hashcode` BIGINT UNSIGNED not null,`__count` BIGINT UNSIGNED, PRIMARY KEY(`_x`), UNIQUE(`__hashcode`))",
                 mysql.getTableDefinition("schema4", "xc", def));
 
         Assert.assertEquals(
-                "insert ignore into `_c_schema4__01848a41d2c44a4b` (`_x`, `hashcode`, `count`) values (:x, :__hashcode, 0)",
+                "insert ignore into `_c_schema4__01848a41d2c44a4b` (`_x`, `__hashcode`, `__count`) values (?, ?, 0)",
                 mysql.getInsertStatement("schema4", "xc", def,
                         ImmutableMap.<String, Object> of("x", 1),
-                        new SqlParamBindings(false)));
+                        new SqlParamBindings(true)));
 
         Assert.assertEquals(
-                "update `_c_schema4__01848a41d2c44a4b` set `count` = `count` + :__delta where `hashcode` = :__hashcode and `_x` = :x",
+                "update `_c_schema4__01848a41d2c44a4b` set `__count` = `__count` + ? where `__hashcode` = ? and `_x` = ?",
                 mysql.getUpdateStatement("schema4", "xc", def,
                         ImmutableMap.<String, Object> of("x", 1),
-                        new SqlParamBindings(false)));
+                        new SqlParamBindings(true)));
 
         Assert.assertEquals(
-                "delete from `_c_schema4__01848a41d2c44a4b` where `count` = 0 and `hashcode` = :__hashcode and `_x` = :x",
+                "delete from `_c_schema4__01848a41d2c44a4b` where `__count` = 0 and `__hashcode` = ? and `_x` = ?",
                 mysql.getDeleteStatement("schema4", "xc", def,
                         ImmutableMap.<String, Object> of("x", 1),
-                        new SqlParamBindings(false)));
+                        new SqlParamBindings(true)));
 
         List<QueryTerm> query0 = ImmutableList.<QueryTerm> of(new QueryTerm(
                 QueryOperator.EQ, "x", new QueryValue(ValueType.INTEGER, "1")));
 
-        SqlParamBindings bind0 = new SqlParamBindings(false);
+        SqlParamBindings bind0 = new SqlParamBindings(true);
         Assert.assertEquals(
-                "select `count` from `_c_schema4__01848a41d2c44a4b` where `_x` = :p0 order by `_x` ASC limit 1001 offset 0",
+                "select `__count` from `_c_schema4__01848a41d2c44a4b` where `_x` = ? order by `_x` ASC limit 1001 offset 0",
                 mysql.getCounterQuery("schema4", "xc", query0, null,
                         CounterResource.DEFAULT_PAGE_SIZE, def, bind0));
 
@@ -73,9 +73,9 @@ public abstract class CountServiceSQLTestBase {
 
         List<QueryTerm> query1 = ImmutableList.<QueryTerm> of();
 
-        SqlParamBindings bind1 = new SqlParamBindings(false);
+        SqlParamBindings bind1 = new SqlParamBindings(true);
         Assert.assertEquals(
-                "select `_x`, `count` from `_c_schema4__01848a41d2c44a4b` order by `_x` ASC limit 1001 offset 0",
+                "select `_x`, `__count` from `_c_schema4__01848a41d2c44a4b` order by `_x` ASC limit 1001 offset 0",
                 mysql.getCounterQuery("schema4", "xc", query1, null,
                         CounterResource.DEFAULT_PAGE_SIZE, def, bind1));
 

@@ -21,7 +21,7 @@ public class SqliteCountServiceSQLTest extends CountServiceSQLTestBase {
                 SqliteTypeHelper.DATABASE_PREFIX, new SqliteTypeHelper());
 
         Assert.assertEquals(
-                "create table if not exists `_c_schema4__01848a41d2c44a4b` (`_x` INT, `hashcode` INT not null,`count` INT, PRIMARY KEY(`_x`), UNIQUE(`hashcode`))",
+                "create table if not exists `_c_schema4__01848a41d2c44a4b` (`_x` INT, `__hashcode` INT not null,`__count` INT, PRIMARY KEY(`_x`), UNIQUE(`__hashcode`))",
                 sqlite.getTableDefinition("schema4", "xc", def));
     }
 }
