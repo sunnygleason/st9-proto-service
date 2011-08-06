@@ -171,5 +171,5 @@ h2_truncate_table(table_name) ::=<<
 >>
 
 h2_drop_index(table_name, index_name) ::=<< 
-  drop index <index_name> on <table_name>
+  drop index <index_name>
 >>

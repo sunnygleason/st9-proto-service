@@ -22,6 +22,7 @@ import org.skife.jdbi.v2.exceptions.UnableToExecuteStatementException;
 import com.g414.hash.LongHash;
 import com.g414.hash.impl.MurmurHash;
 import com.g414.st9.proto.service.helper.OpaquePaginationHelper;
+import com.g414.st9.proto.service.helper.SqlParamBindings;
 import com.g414.st9.proto.service.helper.SqlTypeHelper;
 import com.g414.st9.proto.service.helper.StringHelper;
 import com.g414.st9.proto.service.query.QueryOperator;
@@ -56,7 +57,8 @@ public class CountServiceTableHelper {
     }
 
     public String getInsertStatement(String type, String counterName,
-            SchemaDefinition schemaDefinition, Map<String, Object> value) {
+            SchemaDefinition schemaDefinition, Map<String, Object> value,
+            SqlParamBindings bindings) {
         CounterDefinition counterDefinition = schemaDefinition.getCounterMap()
                 .get(counterName);
 
@@ -65,13 +67,13 @@ public class CountServiceTableHelper {
 
         for (CounterAttribute attr : counterDefinition.getCounterAttributes()) {
             cols.add(getColumnName(attr.getName()));
-            params.add(":" + attr.getName());
+            params.add(bindings.bind(attr.getName()));
         }
 
-        cols.add("`hashcode`");
-        params.add(":__hashcode");
+        cols.add(typeHelper.quote("__hashcode"));
+        params.add(bindings.bind("__hashcode"));
 
-        cols.add("`count`");
+        cols.add(typeHelper.quote("__count"));
         params.add("0");
 
         StringBuilder sqlBuilder = new StringBuilder();
@@ -88,49 +90,62 @@ public class CountServiceTableHelper {
     }
 
     public String getUpdateStatement(String type, String counterName,
-            SchemaDefinition schemaDefinition, Map<String, Object> value) {
+            SchemaDefinition schemaDefinition, Map<String, Object> value,
+            SqlParamBindings bindings) {
         CounterDefinition counterDefinition = schemaDefinition.getCounterMap()
                 .get(counterName);
-
-        List<String> sets = getCounterMatchClauses(counterDefinition, value);
 
         StringBuilder sqlBuilder = new StringBuilder();
         sqlBuilder.append("update ");
         sqlBuilder.append(getTableName(type, counterName));
-        sqlBuilder.append(" set `count` = `count` + :__delta");
+        sqlBuilder.append(" set ");
+        sqlBuilder.append(typeHelper.quote("__count"));
+        sqlBuilder.append(" = ");
+        sqlBuilder.append(typeHelper.quote("__count"));
+        sqlBuilder.append(" + ");
+        sqlBuilder.append(bindings.bind("__delta"));
         sqlBuilder.append(" where ");
-        sqlBuilder.append(StringHelper.join(" and ", sets));
+        sqlBuilder.append(StringHelper.join(" and ",
+                getCounterMatchClauses(counterDefinition, value, bindings)));
 
         return sqlBuilder.toString();
     }
 
     public String getDeleteStatement(String type, String counterName,
-            SchemaDefinition schemaDefinition, Map<String, Object> value) {
+            SchemaDefinition schemaDefinition, Map<String, Object> value,
+            SqlParamBindings bindings) {
         CounterDefinition counterDefinition = schemaDefinition.getCounterMap()
                 .get(counterName);
-
-        List<String> sets = getCounterMatchClauses(counterDefinition, value);
-        sets.add("`count` = 0");
 
         StringBuilder sqlBuilder = new StringBuilder();
         sqlBuilder.append("delete from ");
         sqlBuilder.append(getTableName(type, counterName));
         sqlBuilder.append(" where ");
-        sqlBuilder.append(StringHelper.join(" and ", sets));
+        sqlBuilder.append(typeHelper.quote("__count"));
+        sqlBuilder.append(" = 0");
+
+        List<String> where = getCounterMatchClauses(counterDefinition, value,
+                bindings);
+        if (!where.isEmpty()) {
+            sqlBuilder.append(" and ");
+            sqlBuilder.append(StringHelper.join(" and ", where));
+        }
 
         return sqlBuilder.toString();
     }
 
     private List<String> getCounterMatchClauses(
-            CounterDefinition counterDefinition, Map<String, Object> value) {
+            CounterDefinition counterDefinition, Map<String, Object> value,
+            SqlParamBindings bindings) {
         List<String> sets = new ArrayList<String>();
 
-        sets.add("`hashcode` = :__hashcode");
+        sets.add(typeHelper.quote("__hashcode") + " = "
+                + bindings.bind("__hashcode"));
 
         for (CounterAttribute attr : counterDefinition.getCounterAttributes()) {
             if (value.get(attr.getName()) != null) {
-                sets.add(getColumnName(attr.getName()) + " = :"
-                        + attr.getName());
+                sets.add(getColumnName(attr.getName()) + " = "
+                        + bindings.bind(attr.getName()));
             } else {
                 sets.add(getColumnName(attr.getName()) + " is null");
             }
@@ -192,11 +207,11 @@ public class CountServiceTableHelper {
     }
 
     public String getColumnName(String attributeName) {
-        return "`_" + attributeName + "`";
+        return typeHelper.quote("_" + attributeName);
     }
 
     public String getTableName(String type, String index) {
-        return "`_c_" + type + "__" + getCounterHexId(index) + "`";
+        return typeHelper.quote("_c_" + type + "__" + getCounterHexId(index));
     }
 
     private String getCounterHexId(String index) {
@@ -243,14 +258,18 @@ public class CountServiceTableHelper {
             pkCols.add(colName);
         }
 
-        sqlBuilder.append("`hashcode` ");
+        sqlBuilder.append(typeHelper.quote("__hashcode"));
+        sqlBuilder.append(" ");
         sqlBuilder.append(typeHelper.getSqlType(AttributeType.U64));
         sqlBuilder.append(" not null,");
-        sqlBuilder.append("`count` ");
+        sqlBuilder.append(typeHelper.quote("__count"));
+        sqlBuilder.append(" ");
         sqlBuilder.append(typeHelper.getSqlType(AttributeType.U64));
         sqlBuilder.append(", PRIMARY KEY(");
         sqlBuilder.append(StringHelper.join(", ", pkCols));
-        sqlBuilder.append("), UNIQUE(`hashcode`))");
+        sqlBuilder.append("), UNIQUE(");
+        sqlBuilder.append(typeHelper.quote("__hashcode"));
+        sqlBuilder.append("))");
 
         return sqlBuilder.toString();
     }
@@ -259,10 +278,10 @@ public class CountServiceTableHelper {
             String counterName, List<QueryTerm> queryTerms, String token,
             Long pageSize, SchemaDefinition schemaDefinition) throws Exception {
         final List<Map<String, Object>> resultIds = new ArrayList<Map<String, Object>>();
-        final Map<String, Object> bindParams = new LinkedHashMap<String, Object>();
+        final SqlParamBindings bindings = new SqlParamBindings(true);
 
         final String querySql = getCounterQuery(type, counterName, queryTerms,
-                token, pageSize, schemaDefinition, bindParams);
+                token, pageSize, schemaDefinition, bindings);
 
         Response response = database
                 .inTransaction(new TransactionCallback<Response>() {
@@ -273,10 +292,7 @@ public class CountServiceTableHelper {
                             Query<Map<String, Object>> query = handle
                                     .createQuery(querySql);
 
-                            for (Map.Entry<String, Object> entry : bindParams
-                                    .entrySet()) {
-                                query.bind(entry.getKey(), entry.getValue());
-                            }
+                            bindings.bindToStatement(query);
 
                             for (Map<String, Object> r : query.list()) {
                                 resultIds.add(r);
@@ -298,7 +314,7 @@ public class CountServiceTableHelper {
 
     public String getCounterQuery(String type, String counterName,
             List<QueryTerm> queryTerms, String token, Long pageSize,
-            SchemaDefinition schemaDefinition, Map<String, Object> bindParams)
+            SchemaDefinition schemaDefinition, SqlParamBindings bindings)
             throws Exception {
         CounterDefinition counterDefinition = schemaDefinition.getCounterMap()
                 .get(counterName);
@@ -339,10 +355,21 @@ public class CountServiceTableHelper {
                     Object transformed = transformer.transformValue(attrName,
                             instance);
 
-                    bindParams.put("p" + param,
-                            transformAttributeValue(transformed, attribute));
+                    if (transformed instanceof Boolean) {
+                        transformed = (((Boolean) transformed).booleanValue()) ? 1
+                                : 0;
+                    }
 
-                    maybeParam = " :p" + param;
+                    if (transformed != null) {
+                        transformed = transformed.toString();
+                    }
+
+                    maybeParam = " "
+                            + bindings.bind(
+                                    "p" + param,
+                                    transformAttributeValue(transformed,
+                                            attribute));
+
                     param += 1;
                 }
 
@@ -352,7 +379,7 @@ public class CountServiceTableHelper {
             }
         }
 
-        outCols.add("`count`");
+        outCols.add(typeHelper.quote("__count"));
 
         List<String> sortOrders = new ArrayList<String>();
         for (CounterAttribute attr : counterDefinition.getCounterAttributes()) {

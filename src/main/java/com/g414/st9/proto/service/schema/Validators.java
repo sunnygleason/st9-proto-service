@@ -35,7 +35,8 @@ public class Validators {
                     Long.toString(0x00000000FFFFFFFFL));
         case U64:
             return new IntegerValidator(attribute.getName(), "0",
-                    "18446744073709551615");
+                    Long.toString(Long.MAX_VALUE)
+            /* was "18446744073709551615", but that's unsupported by h2 */);
 
         case I8:
             return new IntegerValidator(attribute.getName(),

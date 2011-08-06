@@ -23,6 +23,7 @@ import org.skife.jdbi.v2.exceptions.UnableToExecuteStatementException;
 import com.g414.hash.LongHash;
 import com.g414.hash.impl.MurmurHash;
 import com.g414.st9.proto.service.helper.OpaquePaginationHelper;
+import com.g414.st9.proto.service.helper.SqlParamBindings;
 import com.g414.st9.proto.service.helper.SqlTypeHelper;
 import com.g414.st9.proto.service.helper.StringHelper;
 import com.g414.st9.proto.service.query.QueryOperator;
@@ -73,8 +74,8 @@ public class SecondaryIndexTableHelper {
 				}
 
 				handle.createStatement(
-						getTableDefinition(type, indexName,
-								schemaDefinition)).execute();
+						getTableDefinition(type, indexName, schemaDefinition))
+						.execute();
 
 				handle.createStatement(
 						getIndexDefinition(type, indexName, schemaDefinition))
@@ -113,7 +114,7 @@ public class SecondaryIndexTableHelper {
 	}
 
 	public String getInsertStatement(String type, String indexName,
-			SchemaDefinition schemaDefinition) {
+			SchemaDefinition schemaDefinition, SqlParamBindings bindings) {
 		IndexDefinition indexDefinition = schemaDefinition.getIndexMap().get(
 				indexName);
 
@@ -122,7 +123,7 @@ public class SecondaryIndexTableHelper {
 
 		for (IndexAttribute attr : indexDefinition.getIndexAttributes()) {
 			cols.add(getColumnName(attr.getName()));
-			params.add(":" + attr.getName());
+			params.add(bindings.bind(attr.getName()));
 		}
 
 		StringBuilder sqlBuilder = new StringBuilder();
@@ -138,7 +139,7 @@ public class SecondaryIndexTableHelper {
 	}
 
 	public String getUpdateStatement(String type, String indexName,
-			SchemaDefinition schemaDefinition) {
+			SchemaDefinition schemaDefinition, SqlParamBindings bindings) {
 		IndexDefinition indexDefinition = schemaDefinition.getIndexMap().get(
 				indexName);
 
@@ -149,7 +150,8 @@ public class SecondaryIndexTableHelper {
 				continue;
 			}
 
-			sets.add(getColumnName(attr.getName()) + " = :" + attr.getName());
+			sets.add(getColumnName(attr.getName()) + " = "
+					+ bindings.bind(attr.getName()));
 		}
 
 		StringBuilder sqlBuilder = new StringBuilder();
@@ -159,18 +161,21 @@ public class SecondaryIndexTableHelper {
 		sqlBuilder.append(StringHelper.join(", ", sets));
 		sqlBuilder.append(" where ");
 		sqlBuilder.append(typeHelper.quote("_id"));
-		sqlBuilder.append(" = :id");
+		sqlBuilder.append(" = ");
+		sqlBuilder.append(bindings.bind("id"));
 
 		return sqlBuilder.toString();
 	}
 
-	public String getDeleteStatement(String type, String indexName) {
+	public String getDeleteStatement(String type, String indexName,
+			SqlParamBindings bindings) {
 		StringBuilder sqlBuilder = new StringBuilder();
 		sqlBuilder.append("delete from ");
 		sqlBuilder.append(getTableName(type, indexName));
 		sqlBuilder.append(" where ");
 		sqlBuilder.append(typeHelper.quote("_id"));
-		sqlBuilder.append(" = :id");
+		sqlBuilder.append(" = ");
+		sqlBuilder.append(bindings.bind("id"));
 
 		return sqlBuilder.toString();
 	}
@@ -374,10 +379,10 @@ public class SecondaryIndexTableHelper {
 			String indexName, List<QueryTerm> queryTerms, String token,
 			Long pageSize, SchemaDefinition schemaDefinition) throws Exception {
 		final List<Map<String, Object>> resultIds = new ArrayList<Map<String, Object>>();
-		final Map<String, Object> bindParams = new LinkedHashMap<String, Object>();
+		final SqlParamBindings bindings = new SqlParamBindings(true);
 
 		final String querySql = getIndexQuery(type, indexName, queryTerms,
-				token, pageSize, schemaDefinition, bindParams);
+				token, pageSize, schemaDefinition, bindings);
 
 		Response response = database
 				.inTransaction(new TransactionCallback<Response>() {
@@ -388,10 +393,7 @@ public class SecondaryIndexTableHelper {
 							Query<Map<String, Object>> query = handle
 									.createQuery(querySql);
 
-							for (Map.Entry<String, Object> entry : bindParams
-									.entrySet()) {
-								query.bind(entry.getKey(), entry.getValue());
-							}
+							bindings.bindToStatement(query);
 
 							for (Map<String, Object> r : query.list()) {
 								resultIds.add(r);
@@ -413,7 +415,7 @@ public class SecondaryIndexTableHelper {
 
 	public String getIndexQuery(String type, String indexName,
 			List<QueryTerm> queryTerms, String token, Long pageSize,
-			SchemaDefinition schemaDefinition, Map<String, Object> bindParams)
+			SchemaDefinition schemaDefinition, SqlParamBindings bindings)
 			throws Exception {
 		IndexDefinition indexDefinition = schemaDefinition.getIndexMap().get(
 				indexName);
@@ -463,12 +465,12 @@ public class SecondaryIndexTableHelper {
 					List<String> paramNames = new ArrayList<String>();
 
 					for (QueryValue value : valueList) {
-						boolean boundParam = bindParam(attribute, transformer,
-								bindParams, param, attrName,
-								term.getOperator(), value);
+						String boundParam = bindParam(attribute, transformer,
+								bindings, param, attrName, term.getOperator(),
+								value);
 
-						if (boundParam) {
-							maybeParam = " :p" + param;
+						if (boundParam != null) {
+							maybeParam = " " + boundParam;
 							paramNames.add(maybeParam);
 							param += 1;
 						} else {
@@ -480,12 +482,12 @@ public class SecondaryIndexTableHelper {
 							+ sqlOperator + "("
 							+ StringHelper.join(", ", paramNames) + ")");
 				} else {
-					boolean boundParam = bindParam(attribute, transformer,
-							bindParams, param, attrName, term.getOperator(),
+					String boundParam = bindParam(attribute, transformer,
+							bindings, param, attrName, term.getOperator(),
 							term.getValue());
 
-					if (boundParam) {
-						maybeParam = " :p" + param;
+					if (boundParam != null) {
+						maybeParam = " " + boundParam;
 						param += 1;
 					}
 
@@ -520,13 +522,16 @@ public class SecondaryIndexTableHelper {
 		return sqlBuilder.toString();
 	}
 
-	private boolean bindParam(IndexAttribute attribute,
-			SchemaValidatorTransformer transformer,
-			Map<String, Object> bindParams, int param, String attrName,
-			QueryOperator operator, QueryValue value) {
+	private String bindParam(IndexAttribute attribute,
+			SchemaValidatorTransformer transformer, SqlParamBindings bindings,
+			int param, String attrName, QueryOperator operator, QueryValue value) {
 		if (!value.getValueType().equals(ValueType.NULL)) {
 			Object instance = value.getValue();
 			Object transformed = transformer.transformValue(attrName, instance);
+
+			if (transformed != null) {
+				transformed = transformed.toString();
+			}
 
 			if (attrName.equals("id")) {
 				try {
@@ -537,13 +542,11 @@ public class SecondaryIndexTableHelper {
 				}
 			}
 
-			bindParams.put("p" + param,
+			return bindings.bind("p" + param,
 					transformAttributeValue(transformed, attribute));
-
-			return true;
 		}
 
-		return false;
+		return null;
 	}
 
 	private static Map<String, List<QueryTerm>> sortTerms(

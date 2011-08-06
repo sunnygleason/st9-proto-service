@@ -11,15 +11,18 @@ import java.util.Map;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
 
+import org.h2.jdbc.JdbcSQLException;
 import org.skife.jdbi.v2.Handle;
 import org.skife.jdbi.v2.IDBI;
 import org.skife.jdbi.v2.Query;
 import org.skife.jdbi.v2.TransactionCallback;
 import org.skife.jdbi.v2.TransactionStatus;
 import org.skife.jdbi.v2.Update;
+import org.skife.jdbi.v2.exceptions.UnableToExecuteStatementException;
 
 import com.g414.st9.proto.service.helper.EncodingHelper;
 import com.g414.st9.proto.service.helper.JDBIHelper;
+import com.g414.st9.proto.service.helper.SqlParamBindings;
 import com.g414.st9.proto.service.query.QueryTerm;
 import com.g414.st9.proto.service.schema.Attribute;
 import com.g414.st9.proto.service.schema.CounterAttribute;
@@ -128,7 +131,7 @@ public class JDBICountService {
             String counterName, List<QueryTerm> queryTerms, String token,
             Long pageSize, SchemaDefinition schemaDefinition) throws Exception {
         final List<Map<String, Object>> resultIds = new ArrayList<Map<String, Object>>();
-        final Map<String, Object> bindParams = new LinkedHashMap<String, Object>();
+        final SqlParamBindings bindings = new SqlParamBindings(true);
 
         final CounterDefinition counterDefinition = schemaDefinition
                 .getCounterMap().get(counterName);
@@ -139,7 +142,7 @@ public class JDBICountService {
                 schemaDefinition);
 
         final String querySql = tableHelper.getCounterQuery(type, counterName,
-                queryTerms, token, pageSize, schemaDefinition, bindParams);
+                queryTerms, token, pageSize, schemaDefinition, bindings);
 
         Response response = database
                 .inTransaction(new TransactionCallback<Response>() {
@@ -150,10 +153,7 @@ public class JDBICountService {
                             Query<Map<String, Object>> query = handle
                                     .createQuery(querySql);
 
-                            for (Map.Entry<String, Object> entry : bindParams
-                                    .entrySet()) {
-                                query.bind(entry.getKey(), entry.getValue());
-                            }
+                            bindings.bindToStatement(query);
 
                             for (Map<String, Object> r : query.list()) {
                                 Map<String, Object> row = new LinkedHashMap<String, Object>();
@@ -175,7 +175,7 @@ public class JDBICountService {
                                 Map<String, Object> untrans = transformer
                                         .untransform(row);
 
-                                untrans.put("count", r.get("count"));
+                                untrans.put("count", r.get("__count"));
 
                                 resultIds.add(untrans);
                             }
@@ -205,22 +205,37 @@ public class JDBICountService {
             final Map<String, Object> value, final String type,
             final String counterName, final SchemaDefinition schemaDefinition,
             CounterDefinition counterDefinition) throws Exception {
+        SqlParamBindings bindings = new SqlParamBindings(true);
+
         Update insert = handle.createStatement(tableHelper.getInsertStatement(
-                type, counterName, schemaDefinition, value));
+                type, counterName, schemaDefinition, value, bindings));
 
-        bindCounterParams(insert, value, counterDefinition);
+        bindCounterParams(insert, value, counterDefinition, bindings);
 
-        insert.execute();
+        try {
+            insert.execute();
+        } catch (UnableToExecuteStatementException e) {
+            if (e.getCause() instanceof JdbcSQLException
+                    && e.getCause()
+                            .getMessage()
+                            .startsWith("Unique index or primary key violation")) {
+                // ok, h2 doesn't support insert ignore
+            } else {
+                throw e;
+            }
+        }
     }
 
     private void possiblyDeleteCounter(Handle handle, final String type,
             final Map<String, Object> value, final String counterName,
             final SchemaDefinition schemaDefinition, CounterDefinition def)
             throws Exception {
-        Update delete = handle.createStatement(tableHelper.getDeleteStatement(
-                type, counterName, schemaDefinition, value));
+        SqlParamBindings bindings = new SqlParamBindings(true);
 
-        bindCounterParams(delete, value, def);
+        Update delete = handle.createStatement(tableHelper.getDeleteStatement(
+                type, counterName, schemaDefinition, value, bindings));
+
+        bindCounterParams(delete, value, def, bindings);
 
         delete.execute();
     }
@@ -229,17 +244,20 @@ public class JDBICountService {
             final Map<String, Object> value, final String counterName,
             final SchemaDefinition schemaDefinition, CounterDefinition def,
             int delta) throws Exception {
-        Update update = handle.createStatement(tableHelper.getUpdateStatement(
-                type, counterName, schemaDefinition, value));
-        update.bind("__delta", delta);
+        SqlParamBindings bindings = new SqlParamBindings(true);
 
-        bindCounterParams(update, value, def);
+        Update update = handle.createStatement(tableHelper.getUpdateStatement(
+                type, counterName, schemaDefinition, value, bindings));
+        bindings.bind("__delta", delta);
+
+        bindCounterParams(update, value, def, bindings);
 
         update.execute();
     }
 
     private void bindCounterParams(Update update,
-            final Map<String, Object> value, CounterDefinition counterDefinition)
+            final Map<String, Object> value,
+            CounterDefinition counterDefinition, SqlParamBindings bindings)
             throws Exception {
         Map<String, Object> key = new LinkedHashMap<String, Object>();
 
@@ -247,12 +265,18 @@ public class JDBICountService {
             String attrName = attr.getName();
             Object attrValue = tableHelper.transformAttributeValue(
                     value.get(attrName), attr);
+            if (attrValue != null) {
+                attrValue = attrValue.toString();
+            }
 
             key.put(attr.getName(), attrValue);
-            update.bind(attrName, attrValue);
+            bindings.bind(attrName, attrValue);
         }
 
-        update.bind("__hashcode", Long.valueOf(EncodingHelper.getKeyHash(key)));
+        bindings.bind("__hashcode",
+                Long.valueOf(EncodingHelper.getKeyHash(key)));
+
+        bindings.bindToStatement(update);
     }
 
     private boolean areCounterKeysEqual(final Map<String, Object> original,
@@ -283,7 +307,12 @@ public class JDBICountService {
         case ENUM:
             return Integer.valueOf(rowValue.toString());
         case BOOLEAN:
-            return (Integer.valueOf(rowValue.toString()) == 1) ? true : false;
+            try {
+                return (Integer.valueOf(rowValue.toString()) == 1) ? true
+                        : false;
+            } catch (NumberFormatException e) {
+                return Boolean.parseBoolean(rowValue.toString());
+            }
         case U8:
         case U16:
         case U32:

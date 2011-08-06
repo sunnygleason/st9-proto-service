@@ -28,7 +28,7 @@ public class MySQLTypeHelper implements SqlTypeHelper {
 		case U64:
 			return "BIGINT UNSIGNED";
 		case UTC_DATE_SECS:
-			return "INT UNSIGNED";
+			return "INT";
 		case REFERENCE:
 		case UTF8_SMALLSTRING:
 			return "VARCHAR(255)";

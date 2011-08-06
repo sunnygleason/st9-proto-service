@@ -22,8 +22,16 @@ tokens {
   RPAREN = ')' ; 
 }
 
-@parser::header { package com.g414.st9.proto.service.query; }
 @lexer::header  { package com.g414.st9.proto.service.query; }
+
+@lexer::members {
+  @Override
+  public void reportError(RecognitionException e) {
+    throw new IllegalArgumentException(e);
+  }
+}
+
+@parser::header { package com.g414.st9.proto.service.query; }
 
 @members {
 @Override

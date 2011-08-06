@@ -1,8 +1,6 @@
 package utest.com.g414.st9.proto.service.count;
 
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 
 import org.codehaus.jackson.map.ObjectMapper;
 import org.testng.Assert;
@@ -13,6 +11,7 @@ import utest.com.g414.st9.proto.service.schema.SchemaLoader;
 import com.g414.st9.proto.service.CounterResource;
 import com.g414.st9.proto.service.count.CountServiceTableHelper;
 import com.g414.st9.proto.service.helper.MySQLTypeHelper;
+import com.g414.st9.proto.service.helper.SqlParamBindings;
 import com.g414.st9.proto.service.query.QueryOperator;
 import com.g414.st9.proto.service.query.QueryTerm;
 import com.g414.st9.proto.service.query.QueryValue;
@@ -46,38 +45,40 @@ public abstract class CountServiceSQLTestBase {
         Assert.assertEquals(
                 "insert ignore into `_c_schema4__01848a41d2c44a4b` (`_x`, `hashcode`, `count`) values (:x, :__hashcode, 0)",
                 mysql.getInsertStatement("schema4", "xc", def,
-                        ImmutableMap.<String, Object> of("x", 1)));
+                        ImmutableMap.<String, Object> of("x", 1),
+                        new SqlParamBindings(false)));
 
         Assert.assertEquals(
                 "update `_c_schema4__01848a41d2c44a4b` set `count` = `count` + :__delta where `hashcode` = :__hashcode and `_x` = :x",
                 mysql.getUpdateStatement("schema4", "xc", def,
-                        ImmutableMap.<String, Object> of("x", 1)));
+                        ImmutableMap.<String, Object> of("x", 1),
+                        new SqlParamBindings(false)));
 
         Assert.assertEquals(
-                "delete from `_c_schema4__01848a41d2c44a4b` where `hashcode` = :__hashcode and `_x` = :x and `count` = 0",
+                "delete from `_c_schema4__01848a41d2c44a4b` where `count` = 0 and `hashcode` = :__hashcode and `_x` = :x",
                 mysql.getDeleteStatement("schema4", "xc", def,
-                        ImmutableMap.<String, Object> of("x", 1)));
+                        ImmutableMap.<String, Object> of("x", 1),
+                        new SqlParamBindings(false)));
 
         List<QueryTerm> query0 = ImmutableList.<QueryTerm> of(new QueryTerm(
                 QueryOperator.EQ, "x", new QueryValue(ValueType.INTEGER, "1")));
 
-        Map<String, Object> bindParams0 = new LinkedHashMap<String, Object>();
+        SqlParamBindings bind0 = new SqlParamBindings(false);
         Assert.assertEquals(
                 "select `count` from `_c_schema4__01848a41d2c44a4b` where `_x` = :p0 order by `_x` ASC limit 1001 offset 0",
                 mysql.getCounterQuery("schema4", "xc", query0, null,
-                        CounterResource.DEFAULT_PAGE_SIZE, def, bindParams0));
+                        CounterResource.DEFAULT_PAGE_SIZE, def, bind0));
 
-        Assert.assertEquals("{p0=1}", bindParams0.toString());
+        Assert.assertEquals("{p0=1}", bind0.asMap().toString());
 
         List<QueryTerm> query1 = ImmutableList.<QueryTerm> of();
 
-        Map<String, Object> bindParams1 = new LinkedHashMap<String, Object>();
-
+        SqlParamBindings bind1 = new SqlParamBindings(false);
         Assert.assertEquals(
                 "select `_x`, `count` from `_c_schema4__01848a41d2c44a4b` order by `_x` ASC limit 1001 offset 0",
                 mysql.getCounterQuery("schema4", "xc", query1, null,
-                        CounterResource.DEFAULT_PAGE_SIZE, def, bindParams1));
+                        CounterResource.DEFAULT_PAGE_SIZE, def, bind1));
 
-        Assert.assertEquals("{}", bindParams1.toString());
+        Assert.assertEquals("{}", bind1.asMap().toString());
     }
 }
