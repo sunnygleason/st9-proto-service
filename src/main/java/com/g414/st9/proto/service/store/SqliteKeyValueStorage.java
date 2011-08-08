@@ -66,8 +66,9 @@ public class SqliteKeyValueStorage extends JDBIKeyValueStorage {
     }
 
     @Override
-    public synchronized Response delete(String key) throws Exception {
-        return super.delete(key);
+    public synchronized Response delete(String key,
+            boolean updateIndexAndCounters) throws Exception {
+        return super.delete(key, updateIndexAndCounters);
     }
 
     @Override

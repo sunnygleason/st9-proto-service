@@ -262,7 +262,7 @@ public class SchemaResource {
             }
         }
 
-        return store.delete(SCHEMA_PREFIX + ":" + typeId);
+        return store.delete(SCHEMA_PREFIX + ":" + typeId, true);
     }
 
     public void rebuildIndexesAndCounters(Handle handle, String type,

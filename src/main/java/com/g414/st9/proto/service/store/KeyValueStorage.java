@@ -22,7 +22,8 @@ public interface KeyValueStorage {
     public abstract Response update(String key, String inValue)
             throws Exception;
 
-    public abstract Response delete(String key) throws Exception;
+    public abstract Response delete(String key, boolean updateIndexAndCounters)
+            throws Exception;
 
     public abstract Response clearRequested(boolean preserveSchema)
             throws Exception;

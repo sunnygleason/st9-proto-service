@@ -94,7 +94,7 @@ public class KeyValueResource {
     @DELETE
     @Path("{key}")
     public Response deleteEntity(@PathParam("key") String key) throws Exception {
-        return store.delete(key);
+        return store.delete(key, true);
     }
 
     /** Just for testing of course... */
