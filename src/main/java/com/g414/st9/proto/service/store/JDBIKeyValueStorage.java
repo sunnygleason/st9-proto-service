@@ -69,8 +69,8 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
     protected SequenceService sequences;
 
     @Inject
-    protected @Named("nuke.allowed")
-    boolean allowNuke;
+    @Named("nuke.allowed")
+    protected Boolean allowNuke;
 
     protected abstract String getPrefix();
 

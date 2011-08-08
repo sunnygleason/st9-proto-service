@@ -43,7 +43,11 @@ public class ImportExportResource {
     // TODO using String for the input value is busted/whack - pending better
     // automagical jackson configuration
     public Response importAll(String value) throws Exception {
-        this.store.clearRequested(false);
+        Response clearResponse = this.store.clearRequested(false);
+
+        if (clearResponse.getStatus() != Status.NO_CONTENT.getStatusCode()) {
+            return clearResponse;
+        }
 
         String[] values = value.split("\n");
 
