@@ -67,11 +67,15 @@ public class CountServiceTableHelper {
 
         for (CounterAttribute attr : counterDefinition.getCounterAttributes()) {
             cols.add(getColumnName(attr.getName()));
-            params.add(bindings.bind(attr.getName()));
+            params.add(bindings.bind(
+                    attr.getName(),
+                    "id".equals(attr.getName()) ? AttributeType.U64
+                            : schemaDefinition.getAttributesMap()
+                                    .get(attr.getName()).getType()));
         }
 
         cols.add(typeHelper.quote("__hashcode"));
-        params.add(bindings.bind("__hashcode"));
+        params.add(bindings.bind("__hashcode", AttributeType.I64));
 
         cols.add(typeHelper.quote("__count"));
         params.add("0");
@@ -103,10 +107,12 @@ public class CountServiceTableHelper {
         sqlBuilder.append(" = ");
         sqlBuilder.append(typeHelper.quote("__count"));
         sqlBuilder.append(" + ");
-        sqlBuilder.append(bindings.bind("__delta"));
+        sqlBuilder.append(bindings.bind("__delta", AttributeType.U64));
         sqlBuilder.append(" where ");
-        sqlBuilder.append(StringHelper.join(" and ",
-                getCounterMatchClauses(counterDefinition, value, bindings)));
+        sqlBuilder.append(StringHelper.join(
+                " and ",
+                getCounterMatchClauses(schemaDefinition, counterDefinition,
+                        value, bindings)));
 
         return sqlBuilder.toString();
     }
@@ -124,8 +130,8 @@ public class CountServiceTableHelper {
         sqlBuilder.append(typeHelper.quote("__count"));
         sqlBuilder.append(" = 0");
 
-        List<String> where = getCounterMatchClauses(counterDefinition, value,
-                bindings);
+        List<String> where = getCounterMatchClauses(schemaDefinition,
+                counterDefinition, value, bindings);
         if (!where.isEmpty()) {
             sqlBuilder.append(" and ");
             sqlBuilder.append(StringHelper.join(" and ", where));
@@ -135,17 +141,21 @@ public class CountServiceTableHelper {
     }
 
     private List<String> getCounterMatchClauses(
+            SchemaDefinition schemaDefinition,
             CounterDefinition counterDefinition, Map<String, Object> value,
             SqlParamBindings bindings) {
         List<String> sets = new ArrayList<String>();
 
         sets.add(typeHelper.quote("__hashcode") + " = "
-                + bindings.bind("__hashcode"));
+                + bindings.bind("__hashcode", AttributeType.I64));
 
         for (CounterAttribute attr : counterDefinition.getCounterAttributes()) {
             if (value.get(attr.getName()) != null) {
-                sets.add(getColumnName(attr.getName()) + " = "
-                        + bindings.bind(attr.getName()));
+                sets.add(getColumnName(attr.getName())
+                        + " = "
+                        + bindings.bind(attr.getName(), schemaDefinition
+                                .getAttributesMap().get(attr.getName())
+                                .getType()));
             } else {
                 sets.add(getColumnName(attr.getName()) + " is null");
             }
@@ -261,7 +271,7 @@ public class CountServiceTableHelper {
         sqlBuilder.append(typeHelper.quote("__hashcode"));
         sqlBuilder.append(" ");
         sqlBuilder.append(typeHelper.getSqlType(AttributeType.U64));
-        sqlBuilder.append(" not null,");
+        sqlBuilder.append(" not null, ");
         sqlBuilder.append(typeHelper.quote("__count"));
         sqlBuilder.append(" ");
         sqlBuilder.append(typeHelper.getSqlType(AttributeType.U64));
@@ -368,7 +378,9 @@ public class CountServiceTableHelper {
                             + bindings.bind(
                                     "p" + param,
                                     transformAttributeValue(transformed,
-                                            attribute));
+                                            attribute), schemaDefinition
+                                            .getAttributesMap().get(attrName)
+                                            .getType());
 
                     param += 1;
                 }

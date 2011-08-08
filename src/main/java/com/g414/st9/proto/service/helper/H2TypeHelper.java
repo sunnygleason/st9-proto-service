@@ -5,6 +5,12 @@ import com.g414.st9.proto.service.schema.AttributeType;
 public class H2TypeHelper implements SqlTypeHelper {
     public static final String DATABASE_PREFIX = "h2:h2_";
 
+    @Override
+    public String getPrefix() {
+        return DATABASE_PREFIX;
+    }
+
+    @Override
     public String getSqlType(AttributeType type) {
         switch (type) {
         case BOOLEAN:

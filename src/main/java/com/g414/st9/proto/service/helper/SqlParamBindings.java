@@ -9,6 +9,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.skife.jdbi.v2.SQLStatement;
 
+import com.g414.st9.proto.service.schema.AttributeType;
+
 public class SqlParamBindings {
     private final AtomicInteger next = new AtomicInteger();
     private final Map<String, Pair<Integer, Object>> params = new LinkedHashMap<String, Pair<Integer, Object>>();
@@ -18,8 +20,13 @@ public class SqlParamBindings {
         this.positional = positional;
     }
 
-    public String bind(String key, Object value) {
+    public String bind(String key, Object value, AttributeType type) {
         Pair<Integer, Object> pair = params.get(key);
+
+        if (value != null && value instanceof String
+                && type.equals(AttributeType.BOOLEAN)) {
+            value = Boolean.valueOf((String) value) ? 1 : 0;
+        }
 
         if (pair == null) {
             pair = new Pair<Integer, Object>(next.getAndIncrement(), value);
@@ -32,8 +39,8 @@ public class SqlParamBindings {
         return positional ? "?" : ":" + key;
     }
 
-    public String bind(String key) {
-        return bind(key, null);
+    public String bind(String key, AttributeType type) {
+        return bind(key, null, type);
     }
 
     public void bindToStatement(SQLStatement<?> stmt) {

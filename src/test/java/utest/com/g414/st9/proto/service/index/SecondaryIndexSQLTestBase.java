@@ -9,14 +9,15 @@ import org.testng.annotations.Test;
 import utest.com.g414.st9.proto.service.schema.SchemaLoader;
 
 import com.g414.st9.proto.service.SecondaryIndexResource;
-import com.g414.st9.proto.service.helper.MySQLTypeHelper;
 import com.g414.st9.proto.service.helper.SqlParamBindings;
+import com.g414.st9.proto.service.helper.SqlTypeHelper;
 import com.g414.st9.proto.service.index.SecondaryIndexTableHelper;
 import com.g414.st9.proto.service.query.QueryOperator;
 import com.g414.st9.proto.service.query.QueryTerm;
 import com.g414.st9.proto.service.query.QueryValue;
 import com.g414.st9.proto.service.query.QueryValueList;
 import com.g414.st9.proto.service.query.ValueType;
+import com.g414.st9.proto.service.schema.AttributeType;
 import com.g414.st9.proto.service.schema.SchemaDefinition;
 import com.g414.st9.proto.service.schema.SchemaDefinitionValidator;
 import com.google.inject.internal.ImmutableList;
@@ -29,6 +30,8 @@ public abstract class SecondaryIndexSQLTestBase {
 
     protected final ObjectMapper mapper = new ObjectMapper();
 
+    public abstract SqlTypeHelper getHelper();
+
     public abstract void testSchemaSpecific() throws Exception;
 
     public void testSchemaGeneric() throws Exception {
@@ -38,31 +41,50 @@ public abstract class SecondaryIndexSQLTestBase {
         SchemaDefinitionValidator v = new SchemaDefinitionValidator();
         v.validate(def);
 
-        SecondaryIndexTableHelper mysql = new SecondaryIndexTableHelper(
-                MySQLTypeHelper.DATABASE_PREFIX, new MySQLTypeHelper());
+        SqlTypeHelper helper = getHelper();
+        SecondaryIndexTableHelper indexHelper = new SecondaryIndexTableHelper(
+                helper.getPrefix(), helper);
 
         Assert.assertEquals(
-                "create table if not exists `_i_schema4__0c6ca14baa3cd7d1` (`_id` BIGINT UNSIGNED PRIMARY KEY, `_x` INT, `_y` INT)",
-                mysql.getTableDefinition("schema4", "xy", def));
+                "create table if not exists "
+                        + helper.quote("_i_schema4__0c6ca14baa3cd7d1") + " ("
+                        + helper.quote("_id") + " "
+                        + helper.getSqlType(AttributeType.U64)
+                        + " PRIMARY KEY, " + helper.quote("_x") + " "
+                        + helper.getSqlType(AttributeType.I32) + ", "
+                        + helper.quote("_y") + " "
+                        + helper.getSqlType(AttributeType.I32) + ")",
+                indexHelper.getTableDefinition("schema4", "xy", def));
 
         Assert.assertEquals(
-                "create index `_idx_schema4__0c6ca14baa3cd7d1` on `_i_schema4__0c6ca14baa3cd7d1` (`_x` ASC, `_y` ASC, `_id` ASC)",
-                mysql.getIndexDefinition("schema4", "xy", def));
+                "create index "
+                        + helper.quote("_idx_schema4__0c6ca14baa3cd7d1")
+                        + " on " + helper.quote("_i_schema4__0c6ca14baa3cd7d1")
+                        + " (" + helper.quote("_x") + " ASC, "
+                        + helper.quote("_y") + " ASC, " + helper.quote("_id")
+                        + " ASC)",
+                indexHelper.getIndexDefinition("schema4", "xy", def));
 
         Assert.assertEquals(
-                "insert into `_i_schema4__0c6ca14baa3cd7d1` (`_x`, `_y`, `_id`) values (?, ?, ?)",
-                mysql.getInsertStatement("schema4", "xy", def,
+                "insert into " + helper.quote("_i_schema4__0c6ca14baa3cd7d1")
+                        + " (" + helper.quote("_x") + ", " + helper.quote("_y")
+                        + ", " + helper.quote("_id") + ") values (?, ?, ?)",
+                indexHelper.getInsertStatement("schema4", "xy", def,
                         new SqlParamBindings(true)));
 
         Assert.assertEquals(
-                "update `_i_schema4__0c6ca14baa3cd7d1` set `_x` = ?, `_y` = ? where `_id` = ?",
-                mysql.getUpdateStatement("schema4", "xy", def,
-                        new SqlParamBindings(true)));
+                "update " + helper.quote("_i_schema4__0c6ca14baa3cd7d1")
+                        + " set " + helper.quote("_x") + " = ?, "
+                        + helper.quote("_y") + " = ? where "
+                        + helper.quote("_id") + " = ?", indexHelper
+                        .getUpdateStatement("schema4", "xy", def,
+                                new SqlParamBindings(true)));
 
         Assert.assertEquals(
-                "delete from `_i_schema4__0c6ca14baa3cd7d1` where `_id` = ?",
-                mysql.getDeleteStatement("schema4", "xy", new SqlParamBindings(
-                        true)));
+                "delete from " + helper.quote("_i_schema4__0c6ca14baa3cd7d1")
+                        + " where " + helper.quote("_id") + " = ?", indexHelper
+                        .getDeleteStatement("schema4", "xy",
+                                new SqlParamBindings(true)));
 
         List<QueryTerm> query0 = ImmutableList.<QueryTerm> of(
                 new QueryTerm(QueryOperator.GT, "y", new QueryValue(
@@ -76,8 +98,15 @@ public abstract class SecondaryIndexSQLTestBase {
 
         SqlParamBindings bind0 = new SqlParamBindings(true);
         Assert.assertEquals(
-                "select `_id` from `_i_schema4__0c6ca14baa3cd7d1` where `_x` > ? AND `_y` > ? AND `_y` < ? AND `_id` = ? order by `_x` ASC, `_y` ASC, `_id` ASC limit 101 offset 0",
-                mysql.getIndexQuery("schema4", "xy", query0, null,
+                "select " + helper.quote("_id") + " from "
+                        + helper.quote("_i_schema4__0c6ca14baa3cd7d1")
+                        + " where " + helper.quote("_x") + " > ? AND "
+                        + helper.quote("_y") + " > ? AND " + helper.quote("_y")
+                        + " < ? AND " + helper.quote("_id") + " = ? order by "
+                        + helper.quote("_x") + " ASC, " + helper.quote("_y")
+                        + " ASC, " + helper.quote("_id")
+                        + " ASC limit 101 offset 0", indexHelper.getIndexQuery(
+                        "schema4", "xy", query0, null,
                         SecondaryIndexResource.DEFAULT_PAGE_SIZE, def, bind0));
 
         Assert.assertEquals("{p0=1, p1=10, p2=20, p3=3}", bind0.asMap()
@@ -93,8 +122,14 @@ public abstract class SecondaryIndexSQLTestBase {
 
         SqlParamBindings bind1 = new SqlParamBindings(true);
         Assert.assertEquals(
-                "select `_id` from `_i_schema4__0c6ca14baa3cd7d1` where `_x` > ? AND `_y` > ? AND `_y` < ? order by `_x` ASC, `_y` ASC, `_id` ASC limit 101 offset 0",
-                mysql.getIndexQuery("schema4", "xy", query1, null,
+                "select " + helper.quote("_id") + " from "
+                        + helper.quote("_i_schema4__0c6ca14baa3cd7d1")
+                        + " where " + helper.quote("_x") + " > ? AND "
+                        + helper.quote("_y") + " > ? AND " + helper.quote("_y")
+                        + " < ? order by " + helper.quote("_x") + " ASC, "
+                        + helper.quote("_y") + " ASC, " + helper.quote("_id")
+                        + " ASC limit 101 offset 0", indexHelper.getIndexQuery(
+                        "schema4", "xy", query1, null,
                         SecondaryIndexResource.DEFAULT_PAGE_SIZE, def, bind1));
 
         Assert.assertEquals("{p0=1, p1=10, p2=20}", bind1.asMap().toString());
@@ -106,8 +141,14 @@ public abstract class SecondaryIndexSQLTestBase {
 
         SqlParamBindings bind2 = new SqlParamBindings(true);
         Assert.assertEquals(
-                "select `_id` from `_i_schema4__0c6ca14baa3cd7d1` where `_x` is null AND `_y` is not null order by `_x` ASC, `_y` ASC, `_id` ASC limit 101 offset 0",
-                mysql.getIndexQuery("schema4", "xy", query2, null,
+                "select " + helper.quote("_id") + " from "
+                        + helper.quote("_i_schema4__0c6ca14baa3cd7d1")
+                        + " where " + helper.quote("_x") + " is null AND "
+                        + helper.quote("_y") + " is not null order by "
+                        + helper.quote("_x") + " ASC, " + helper.quote("_y")
+                        + " ASC, " + helper.quote("_id")
+                        + " ASC limit 101 offset 0", indexHelper.getIndexQuery(
+                        "schema4", "xy", query2, null,
                         SecondaryIndexResource.DEFAULT_PAGE_SIZE, def, bind2));
 
         Assert.assertEquals("{}", bind2.asMap().toString());
@@ -123,8 +164,14 @@ public abstract class SecondaryIndexSQLTestBase {
 
         SqlParamBindings bind3 = new SqlParamBindings(true);
         Assert.assertEquals(
-                "select `_id` from `_i_schema4__0c6ca14baa3cd7d1` where `_x` in( ?,  ?,  ?) AND `_y` < ? order by `_x` ASC, `_y` ASC, `_id` ASC limit 101 offset 0",
-                mysql.getIndexQuery("schema4", "xy", query3, null,
+                "select " + helper.quote("_id") + " from "
+                        + helper.quote("_i_schema4__0c6ca14baa3cd7d1")
+                        + " where " + helper.quote("_x")
+                        + " in( ?,  ?,  ?) AND " + helper.quote("_y")
+                        + " < ? order by " + helper.quote("_x") + " ASC, "
+                        + helper.quote("_y") + " ASC, " + helper.quote("_id")
+                        + " ASC limit 101 offset 0", indexHelper.getIndexQuery(
+                        "schema4", "xy", query3, null,
                         SecondaryIndexResource.DEFAULT_PAGE_SIZE, def, bind3));
 
         Assert.assertEquals("{p0=1, p1=2, p2=3, p3=0}", bind3.asMap()
@@ -139,31 +186,46 @@ public abstract class SecondaryIndexSQLTestBase {
         SchemaDefinitionValidator v = new SchemaDefinitionValidator();
         v.validate(def);
 
-        SecondaryIndexTableHelper mysql = new SecondaryIndexTableHelper(
-                MySQLTypeHelper.DATABASE_PREFIX, new MySQLTypeHelper());
+        SqlTypeHelper helper = getHelper();
+        SecondaryIndexTableHelper indexHelper = new SecondaryIndexTableHelper(
+                helper.getPrefix(), helper);
 
         Assert.assertEquals(
-                "create table if not exists `_i_schema5__57dbd25de1659c0f` (`_id` BIGINT UNSIGNED PRIMARY KEY, `_hotness` SMALLINT)",
-                mysql.getTableDefinition("schema5", "hotness", def));
+                "create table if not exists "
+                        + helper.quote("_i_schema5__57dbd25de1659c0f") + " ("
+                        + helper.quote("_id") + " "
+                        + helper.getSqlType(AttributeType.U64)
+                        + " PRIMARY KEY, " + helper.quote("_hotness") + " "
+                        + helper.getSqlType(AttributeType.ENUM) + ")",
+                indexHelper.getTableDefinition("schema5", "hotness", def));
 
         Assert.assertEquals(
-                "create index `_idx_schema5__57dbd25de1659c0f` on `_i_schema5__57dbd25de1659c0f` (`_hotness` ASC, `_id` ASC)",
-                mysql.getIndexDefinition("schema5", "hotness", def));
+                "create index "
+                        + helper.quote("_idx_schema5__57dbd25de1659c0f")
+                        + " on " + helper.quote("_i_schema5__57dbd25de1659c0f")
+                        + " (" + helper.quote("_hotness") + " ASC, "
+                        + helper.quote("_id") + " ASC)",
+                indexHelper.getIndexDefinition("schema5", "hotness", def));
 
         Assert.assertEquals(
-                "insert into `_i_schema5__57dbd25de1659c0f` (`_hotness`, `_id`) values (?, ?)",
-                mysql.getInsertStatement("schema5", "hotness", def,
-                        new SqlParamBindings(true)));
+                "insert into " + helper.quote("_i_schema5__57dbd25de1659c0f")
+                        + " (" + helper.quote("_hotness") + ", "
+                        + helper.quote("_id") + ") values (?, ?)", indexHelper
+                        .getInsertStatement("schema5", "hotness", def,
+                                new SqlParamBindings(true)));
 
         Assert.assertEquals(
-                "update `_i_schema5__57dbd25de1659c0f` set `_hotness` = ? where `_id` = ?",
-                mysql.getUpdateStatement("schema5", "hotness", def,
-                        new SqlParamBindings(true)));
+                "update " + helper.quote("_i_schema5__57dbd25de1659c0f")
+                        + " set " + helper.quote("_hotness") + " = ? where "
+                        + helper.quote("_id") + " = ?", indexHelper
+                        .getUpdateStatement("schema5", "hotness", def,
+                                new SqlParamBindings(true)));
 
         Assert.assertEquals(
-                "delete from `_i_schema5__57dbd25de1659c0f` where `_id` = ?",
-                mysql.getDeleteStatement("schema5", "hotness",
-                        new SqlParamBindings(true)));
+                "delete from " + helper.quote("_i_schema5__57dbd25de1659c0f")
+                        + " where " + helper.quote("_id") + " = ?", indexHelper
+                        .getDeleteStatement("schema5", "hotness",
+                                new SqlParamBindings(true)));
 
         List<QueryTerm> query0 = ImmutableList.<QueryTerm> of(new QueryTerm(
                 QueryOperator.EQ, "hotness", new QueryValue(ValueType.STRING,
@@ -171,8 +233,13 @@ public abstract class SecondaryIndexSQLTestBase {
 
         SqlParamBindings bind0 = new SqlParamBindings(true);
         Assert.assertEquals(
-                "select `_id` from `_i_schema5__57dbd25de1659c0f` where `_hotness` = ? order by `_hotness` ASC, `_id` ASC limit 101 offset 0",
-                mysql.getIndexQuery("schema5", "hotness", query0, null,
+                "select " + helper.quote("_id") + " from "
+                        + helper.quote("_i_schema5__57dbd25de1659c0f")
+                        + " where " + helper.quote("_hotness")
+                        + " = ? order by " + helper.quote("_hotness")
+                        + " ASC, " + helper.quote("_id")
+                        + " ASC limit 101 offset 0", indexHelper.getIndexQuery(
+                        "schema5", "hotness", query0, null,
                         SecondaryIndexResource.DEFAULT_PAGE_SIZE, def, bind0));
 
         Assert.assertEquals("{p0=0}", bind0.asMap().toString());
@@ -183,8 +250,13 @@ public abstract class SecondaryIndexSQLTestBase {
 
         SqlParamBindings bind1 = new SqlParamBindings(true);
         Assert.assertEquals(
-                "select `_id` from `_i_schema5__57dbd25de1659c0f` where `_hotness` = ? order by `_hotness` ASC, `_id` ASC limit 101 offset 0",
-                mysql.getIndexQuery("schema5", "hotness", query1, null,
+                "select " + helper.quote("_id") + " from "
+                        + helper.quote("_i_schema5__57dbd25de1659c0f")
+                        + " where " + helper.quote("_hotness")
+                        + " = ? order by " + helper.quote("_hotness")
+                        + " ASC, " + helper.quote("_id")
+                        + " ASC limit 101 offset 0", indexHelper.getIndexQuery(
+                        "schema5", "hotness", query1, null,
                         SecondaryIndexResource.DEFAULT_PAGE_SIZE, def, bind1));
 
         Assert.assertEquals("{p0=1}", bind1.asMap().toString());
@@ -195,8 +267,13 @@ public abstract class SecondaryIndexSQLTestBase {
 
         SqlParamBindings bind2 = new SqlParamBindings(true);
         Assert.assertEquals(
-                "select `_id` from `_i_schema5__57dbd25de1659c0f` where `_hotness` is not null order by `_hotness` ASC, `_id` ASC limit 101 offset 0",
-                mysql.getIndexQuery("schema5", "hotness", query2, null,
+                "select " + helper.quote("_id") + " from "
+                        + helper.quote("_i_schema5__57dbd25de1659c0f")
+                        + " where " + helper.quote("_hotness")
+                        + " is not null order by " + helper.quote("_hotness")
+                        + " ASC, " + helper.quote("_id")
+                        + " ASC limit 101 offset 0", indexHelper.getIndexQuery(
+                        "schema5", "hotness", query2, null,
                         SecondaryIndexResource.DEFAULT_PAGE_SIZE, def, bind2));
 
         Assert.assertEquals("{}", bind2.asMap().toString());
@@ -208,12 +285,20 @@ public abstract class SecondaryIndexSQLTestBase {
         v2.validate(def2);
 
         Assert.assertEquals(
-                "create table if not exists `_i_schema6__57dbd25de1659c0f` (`_id` BIGINT UNSIGNED PRIMARY KEY, `_hotness` SMALLINT)",
-                mysql.getTableDefinition("schema6", "hotness", def2));
+                "create table if not exists "
+                        + helper.quote("_i_schema6__57dbd25de1659c0f") + " ("
+                        + helper.quote("_id") + " "
+                        + helper.getSqlType(AttributeType.U64)
+                        + " PRIMARY KEY, " + helper.quote("_hotness") + " "
+                        + helper.getSqlType(AttributeType.ENUM) + ")",
+                indexHelper.getTableDefinition("schema6", "hotness", def2));
 
         Assert.assertEquals(
-                "create unique index `_idx_schema6__57dbd25de1659c0f` on `_i_schema6__57dbd25de1659c0f` (`_hotness` ASC)",
-                mysql.getIndexDefinition("schema6", "hotness", def2));
+                "create unique index "
+                        + helper.quote("_idx_schema6__57dbd25de1659c0f")
+                        + " on " + helper.quote("_i_schema6__57dbd25de1659c0f")
+                        + " (" + helper.quote("_hotness") + " ASC)",
+                indexHelper.getIndexDefinition("schema6", "hotness", def2));
 
     }
 }

@@ -25,6 +25,7 @@ import com.g414.st9.proto.service.helper.JDBIHelper;
 import com.g414.st9.proto.service.helper.SqlParamBindings;
 import com.g414.st9.proto.service.query.QueryTerm;
 import com.g414.st9.proto.service.schema.Attribute;
+import com.g414.st9.proto.service.schema.AttributeType;
 import com.g414.st9.proto.service.schema.CounterAttribute;
 import com.g414.st9.proto.service.schema.CounterDefinition;
 import com.g414.st9.proto.service.schema.SchemaDefinition;
@@ -210,7 +211,8 @@ public class JDBICountService {
         Update insert = handle.createStatement(tableHelper.getInsertStatement(
                 type, counterName, schemaDefinition, value, bindings));
 
-        bindCounterParams(insert, value, counterDefinition, bindings);
+        bindCounterParams(schemaDefinition, insert, value, counterDefinition,
+                bindings);
 
         try {
             insert.execute();
@@ -235,7 +237,7 @@ public class JDBICountService {
         Update delete = handle.createStatement(tableHelper.getDeleteStatement(
                 type, counterName, schemaDefinition, value, bindings));
 
-        bindCounterParams(delete, value, def, bindings);
+        bindCounterParams(schemaDefinition, delete, value, def, bindings);
 
         delete.execute();
     }
@@ -248,15 +250,15 @@ public class JDBICountService {
 
         Update update = handle.createStatement(tableHelper.getUpdateStatement(
                 type, counterName, schemaDefinition, value, bindings));
-        bindings.bind("__delta", delta);
+        bindings.bind("__delta", delta, AttributeType.U64);
 
-        bindCounterParams(update, value, def, bindings);
+        bindCounterParams(schemaDefinition, update, value, def, bindings);
 
         update.execute();
     }
 
-    private void bindCounterParams(Update update,
-            final Map<String, Object> value,
+    private void bindCounterParams(SchemaDefinition schemaDefinition,
+            Update update, final Map<String, Object> value,
             CounterDefinition counterDefinition, SqlParamBindings bindings)
             throws Exception {
         Map<String, Object> key = new LinkedHashMap<String, Object>();
@@ -270,11 +272,12 @@ public class JDBICountService {
             }
 
             key.put(attr.getName(), attrValue);
-            bindings.bind(attrName, attrValue);
+            bindings.bind(attrName, attrValue, schemaDefinition
+                    .getAttributesMap().get(attrName).getType());
         }
 
         bindings.bind("__hashcode",
-                Long.valueOf(EncodingHelper.getKeyHash(key)));
+                Long.valueOf(EncodingHelper.getKeyHash(key)), AttributeType.I64);
 
         bindings.bindToStatement(update);
     }

@@ -1,21 +1,20 @@
-package itest.com.g414.st9.proto.service.count;
+package utest.com.g414.st9.proto.service.count;
 
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import utest.com.g414.st9.proto.service.count.CountServiceSQLTestBase;
-
 import com.g414.st9.proto.service.count.CountServiceTableHelper;
-import com.g414.st9.proto.service.helper.MySQLTypeHelper;
+import com.g414.st9.proto.service.helper.H2TypeHelper;
 import com.g414.st9.proto.service.helper.SqlTypeHelper;
+import com.g414.st9.proto.service.schema.AttributeType;
 import com.g414.st9.proto.service.schema.SchemaDefinition;
 import com.g414.st9.proto.service.schema.SchemaDefinitionValidator;
 
 @Test
-public class MySQLCountServiceSQLTest extends CountServiceSQLTestBase {
+public class H2CountServiceSQLTest extends CountServiceSQLTestBase {
     @Override
     public SqlTypeHelper getHelper() {
-        return new MySQLTypeHelper();
+        return new H2TypeHelper();
     }
 
     @Override
@@ -26,11 +25,18 @@ public class MySQLCountServiceSQLTest extends CountServiceSQLTestBase {
         SchemaDefinitionValidator v = new SchemaDefinitionValidator();
         v.validate(def);
 
+        SqlTypeHelper helper = getHelper();
         CountServiceTableHelper sqlite = new CountServiceTableHelper(
-                MySQLTypeHelper.DATABASE_PREFIX, new MySQLTypeHelper());
+                helper.getPrefix(), helper);
 
         Assert.assertEquals(
-                "create table if not exists `_c_schema4__01848a41d2c44a4b` (`_x` INT, `__hashcode` BIGINT UNSIGNED not null, `__count` BIGINT UNSIGNED, PRIMARY KEY(`_x`), UNIQUE(`__hashcode`))",
+                "create table if not exists \"_c_schema4__01848a41d2c44a4b\" (\"_x\" "
+                        + helper.getSqlType(AttributeType.I32)
+                        + ", \"__hashcode\" "
+                        + helper.getSqlType(AttributeType.U64)
+                        + " not null, \"__count\" "
+                        + helper.getSqlType(AttributeType.U64)
+                        + ", PRIMARY KEY(\"_x\"), UNIQUE(\"__hashcode\"))",
                 sqlite.getTableDefinition("schema4", "xc", def));
     }
 }
