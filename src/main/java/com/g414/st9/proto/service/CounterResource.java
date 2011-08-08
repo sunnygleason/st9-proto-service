@@ -219,6 +219,11 @@ public class CounterResource {
                         + counterAttr.getName());
             }
 
+            if (param.getPath().isEmpty()) {
+                throw new ValidationException(
+                        "counter parameter may not be empty");
+            }
+
             terms.add(new QueryTerm(QueryOperator.EQ, attr.getName(),
                     getQueryValue(attr, param.getPath())));
         }

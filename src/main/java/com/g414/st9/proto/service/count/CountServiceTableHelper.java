@@ -365,11 +365,6 @@ public class CountServiceTableHelper {
                     Object transformed = transformer.transformValue(attrName,
                             instance);
 
-                    if (transformed instanceof Boolean) {
-                        transformed = (((Boolean) transformed).booleanValue()) ? 1
-                                : 0;
-                    }
-
                     if (transformed != null) {
                         transformed = transformed.toString();
                     }
