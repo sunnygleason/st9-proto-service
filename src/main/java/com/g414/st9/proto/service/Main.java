@@ -12,6 +12,7 @@ import com.g414.guice.lifecycle.LifecycleModule;
 import com.g414.st9.proto.service.cache.EmptyKeyValueCache;
 import com.g414.st9.proto.service.cache.KeyValueCache;
 import com.g414.st9.proto.service.helper.EmptyServlet;
+import com.g414.st9.proto.service.helper.ExtendedNCSARequestLog;
 import com.g414.st9.proto.service.store.SqliteKeyValueStorage.SqliteKeyValueStorageModule;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
@@ -57,8 +58,8 @@ public class Main {
 
     private static RequestLogHandler getSecondaryLogHandler(String localLogPath) {
         RequestLogHandler logHandler = new RequestLogHandler();
-        NCSARequestLog requestLog = new NCSARequestLog(localLogPath
-                + "/jetty-yyyy_mm_dd.request.log");
+        ExtendedNCSARequestLog requestLog = new ExtendedNCSARequestLog(
+                localLogPath + "/jetty-yyyy_mm_dd.request.log");
         requestLog.setRetainDays(180);
         requestLog.setAppend(true);
         requestLog.setExtended(true);
