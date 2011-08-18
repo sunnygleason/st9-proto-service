@@ -456,7 +456,8 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                     String oldVersionString = null;
                     Map<String, Object> original = null;
 
-                    if (!definition.getCounters().isEmpty()) {
+                    if (!definition.getCounters().isEmpty()
+                            || !definition.getIndexes().isEmpty()) {
                         original = (Map<String, Object>) EncodingHelper
                                 .parseSmileLzf(getObjectBytes(realKey, false));
 
@@ -491,7 +492,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
                     for (IndexDefinition indexDef : definition.getIndexes()) {
                         index.updateEntity(handle, Long.valueOf(keyId),
-                                toUpdate, realKey.getType(),
+                                original, toUpdate, realKey.getType(),
                                 indexDef.getName(), definition);
                     }
 

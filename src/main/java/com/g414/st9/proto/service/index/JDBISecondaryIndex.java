@@ -141,15 +141,20 @@ public class JDBISecondaryIndex {
     }
 
     public void updateEntity(Handle handle, final Long id,
+            final Map<String, Object> original,
             final Map<String, Object> value, final String type,
             final String indexName, final SchemaDefinition schemaDefinition) {
+        IndexDefinition indexDefinition = schemaDefinition.getIndexMap().get(
+                indexName);
+
+        if (areIndexAttributesEqual(indexDefinition, original, value)) {
+            return;
+        }
+
         SqlParamBindings bindings = new SqlParamBindings(true);
 
         Update update = handle.createStatement(tableHelper.getUpdateStatement(
                 type, indexName, schemaDefinition, bindings));
-
-        IndexDefinition indexDefinition = schemaDefinition.getIndexMap().get(
-                indexName);
 
         for (IndexAttribute attr : indexDefinition.getIndexAttributes()) {
             String attrName = attr.getName();
@@ -268,5 +273,34 @@ public class JDBISecondaryIndex {
         String indexTableName = tableHelper.getTableName(type, indexName);
         handle.createStatement(tableHelper.getPrefix() + "truncate_table")
                 .define("table_name", indexTableName).execute();
+    }
+
+    private static boolean areIndexAttributesEqual(
+            IndexDefinition indexDefinition, Map<String, Object> original,
+            Map<String, Object> value) {
+        boolean match = true;
+
+        for (String attrName : indexDefinition.getAttributeNames()) {
+            if (attrName.equals("id")) {
+                continue;
+            }
+
+            Object v1 = original.get(attrName);
+            Object v2 = value.get(attrName);
+
+            boolean v1nullity = (v1 == null);
+            boolean v2nullity = (v2 == null);
+
+            if (v1nullity != v2nullity) {
+                match = false;
+                break;
+            }
+
+            if (!v1nullity && !v2nullity && !v1.equals(v2)) {
+                break;
+            }
+        }
+
+        return match;
     }
 }
