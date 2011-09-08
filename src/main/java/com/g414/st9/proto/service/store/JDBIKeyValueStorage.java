@@ -750,7 +750,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                         object = (Map<String, Object>) EncodingHelper
                                 .parseSmileLzf(objectBytes);
                         object.remove("id");
-                        object.remove("key");
+                        object.remove("kind");
                         object = schemaUntransform(definition, object);
                     } else {
                         object = new LinkedHashMap<String, Object>();
