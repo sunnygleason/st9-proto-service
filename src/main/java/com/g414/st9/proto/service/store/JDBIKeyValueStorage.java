@@ -1,6 +1,9 @@
 package com.g414.st9.proto.service.store;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -14,6 +17,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
+import javax.ws.rs.core.StreamingOutput;
 
 import org.codehaus.jackson.JsonParseException;
 import org.codehaus.jackson.map.JsonMappingException;
@@ -747,8 +751,14 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                     Map<String, Object> object = null;
 
                     if (objectBytes != null) {
-                        object = (Map<String, Object>) EncodingHelper
-                                .parseSmileLzf(objectBytes);
+                        try {
+                            object = (Map<String, Object>) EncodingHelper
+                                    .parseSmileLzf(objectBytes);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            object = new LinkedHashMap<String, Object>();
+                            object.put("$error", true);
+                        }
                         object.remove("id");
                         object.remove("kind");
                         object = schemaUntransform(definition, object);
@@ -792,22 +802,36 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
     @Override
     public Response exportAll() throws Exception {
-        StringBuilder json = new StringBuilder();
-        for (String type : this.getTypes()) {
-            SchemaDefinition schema = loadOrCreateEmptySchemaOutsideTxn(sequences
-                    .getTypeId(type, false));
+        return Response.status(Status.OK).entity(new StreamingOutput() {
+            @Override
+            public void write(OutputStream out) throws IOException,
+                    WebApplicationException {
+                PrintWriter output = new PrintWriter(new OutputStreamWriter(
+                        out, "UTF-8"));
+                output.println("{\"$export\":\"BEGIN\"}");
 
-            Iterator<Map<String, Object>> entities = this
-                    .iterator(type, schema);
+                try {
+                    for (String type : JDBIKeyValueStorage.this.getTypes()) {
+                        SchemaDefinition schema = loadOrCreateEmptySchemaOutsideTxn(sequences
+                                .getTypeId(type, false));
 
-            while (entities.hasNext()) {
-                Map<String, Object> entity = entities.next();
-                json.append(EncodingHelper.convertToJson(entity));
-                json.append("\n");
+                        Iterator<Map<String, Object>> entities = JDBIKeyValueStorage.this
+                                .iterator(type, schema);
+                        while (entities.hasNext()) {
+                            Map<String, Object> entity = entities.next();
+                            output.println(EncodingHelper.convertToJson(entity));
+                        }
+                    }
+
+                    output.println("{\"$export\":\"OK\"}");
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    output.println("{\"$export\":\"ERROR\"}");
+                } finally {
+                    output.close();
+                }
             }
-        }
-
-        return Response.status(Status.OK).entity(json.toString()).build();
+        }).build();
     }
 
     private List<String> getTypes() {

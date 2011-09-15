@@ -1,9 +1,11 @@
 package com.g414.st9.proto.service;
 
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Scanner;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -42,91 +44,118 @@ public class ImportExportResource {
     @Produces(MediaType.APPLICATION_JSON)
     // TODO using String for the input value is busted/whack - pending better
     // automagical jackson configuration
-    public Response importAll(String value) throws Exception {
-        Response clearResponse = this.store.clearRequested(false);
+    public Response importAll(InputStream postBody) throws Exception {
+        Scanner scan = null;
+        try {
+            Response clearResponse = this.store.clearRequested(false);
 
-        if (clearResponse.getStatus() != Status.NO_CONTENT.getStatusCode()) {
-            return clearResponse;
-        }
-
-        String[] values = value.split("\n");
-
-        List<String> success = new ArrayList<String>();
-        List<String> skipped = new ArrayList<String>();
-        List<String> failed = new ArrayList<String>();
-
-        for (String instance : values) {
-            if (instance.trim().length() == 0) {
-                continue;
+            if (clearResponse.getStatus() != Status.NO_CONTENT.getStatusCode()) {
+                return clearResponse;
             }
 
-            try {
-                Map<String, Object> parsedObject = EncodingHelper
-                        .parseJsonString(instance);
-                Boolean deleted = (Boolean) parsedObject.remove("$deleted");
+            List<String> success = new ArrayList<String>();
+            List<String> skipped = new ArrayList<String>();
+            List<String> failed = new ArrayList<String>();
 
-                Key key = Key.valueOf((String) parsedObject.remove("id"));
-                Long version = (parsedObject.containsKey("version")) ? Long
-                        .parseLong((String) parsedObject.remove("version"))
-                        : 1L;
+            scan = new Scanner(postBody);
 
-                Map<String, Object> object = new LinkedHashMap<String, Object>();
-                object.put("id", key.getEncryptedIdentifier());
-                object.put("kind", key.getType());
-                object.put("version", version.toString());
-                object.putAll(parsedObject);
+            while (scan.hasNextLine()) {
+                String value = scan.nextLine();
+                String[] values = value.split("\n");
 
-                Response r = null;
-
-                if (key.getType().equals("$schema")) {
-                    String type = (String) object.remove("$type");
-
-                    r = schema.createEntity(type,
-                            EncodingHelper.convertToJson(object));
-
-                    success.add(key.getEncryptedIdentifier());
-                } else if (!key.getType().startsWith("$")) {
-                    String jsonValue = EncodingHelper.convertToJson(object);
-
-                    if (deleted != null && deleted) {
-                        r = store.createDeleted(key.getType(), key.getId());
-                        jsonValue = instance;
-                    } else {
-                        r = store.create(key.getType(), jsonValue, key.getId(),
-                                version, true);
-                    }
-
-                    if (r.getStatus() != Status.OK.getStatusCode()) {
-                        failed.add(instance);
+                for (String instance : values) {
+                    if (instance.trim().length() == 0) {
                         continue;
                     }
 
-                    if (r.getEntity().equals(jsonValue)) {
-                        success.add(key.getEncryptedIdentifier());
-                    } else {
-                        throw new RuntimeException("mismatched entity : "
-                                + key.getEncryptedIdentifier());
-                    }
-                } else {
-                    skipped.add(key.getEncryptedIdentifier());
+                    try {
+                        Map<String, Object> parsedObject = EncodingHelper
+                                .parseJsonString(instance);
 
-                    continue;
+                        if (parsedObject.containsKey("$export")) {
+                            continue;
+                        }
+
+                        Boolean deleted = (Boolean) parsedObject
+                                .remove("$deleted");
+
+                        Key key = Key.valueOf((String) parsedObject
+                                .remove("id"));
+                        Long version = (parsedObject.containsKey("version")) ? Long
+                                .parseLong((String) parsedObject
+                                        .remove("version")) : 1L;
+
+                        Map<String, Object> object = new LinkedHashMap<String, Object>();
+                        object.put("id", key.getEncryptedIdentifier());
+                        object.put("kind", key.getType());
+                        object.put("version", version.toString());
+                        object.putAll(parsedObject);
+
+                        Response r = null;
+
+                        if (key.getType().equals("$schema")) {
+                            String type = (String) object.remove("$type");
+
+                            r = schema.createEntity(type,
+                                    EncodingHelper.convertToJson(object));
+
+                            success.add(key.getEncryptedIdentifier());
+                        } else if (!key.getType().startsWith("$")) {
+                            String jsonValue = EncodingHelper
+                                    .convertToJson(object);
+
+                            if (deleted != null && deleted) {
+                                r = store.createDeleted(key.getType(),
+                                        key.getId());
+                                jsonValue = instance;
+                            } else {
+                                r = store.create(key.getType(), jsonValue,
+                                        key.getId(), version, true);
+                            }
+
+                            if (r.getStatus() != Status.OK.getStatusCode()) {
+                                failed.add(instance);
+                                continue;
+                            }
+
+                            if (r.getEntity().equals(jsonValue)) {
+                                success.add(key.getEncryptedIdentifier());
+                            } else {
+                                throw new RuntimeException(
+                                        "mismatched entity : "
+                                                + key.getEncryptedIdentifier());
+                            }
+                        } else {
+                            skipped.add(key.getEncryptedIdentifier());
+
+                            continue;
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        System.out.println(instance);
+                        failed.add(instance);
+                    }
                 }
-            } catch (Exception e) {
-                e.printStackTrace();
-                failed.add(instance);
+            }
+
+            Map<String, Object> result = new LinkedHashMap<String, Object>();
+
+            result.put("success", success);
+            result.put("skipped", skipped);
+            result.put("failed", failed);
+
+            return Response
+                    .status((skipped.isEmpty() && failed.isEmpty()) ? Status.OK
+                            : Status.BAD_REQUEST)
+                    .entity(EncodingHelper.convertToJson(result)).build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Response.status(Status.INTERNAL_SERVER_ERROR)
+                    .entity(e.getMessage()).build();
+        } finally {
+            if (scan != null) {
+                scan.close();
             }
         }
-
-        Map<String, Object> result = new LinkedHashMap<String, Object>();
-
-        result.put("success", success);
-        result.put("skipped", skipped);
-        result.put("failed", failed);
-
-        return Response
-                .status((skipped.isEmpty() && failed.isEmpty()) ? Status.OK
-                        : Status.BAD_REQUEST)
-                .entity(EncodingHelper.convertToJson(result)).build();
     }
 }
