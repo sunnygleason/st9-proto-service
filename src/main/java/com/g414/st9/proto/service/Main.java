@@ -1,5 +1,7 @@
 package com.g414.st9.proto.service;
 
+import java.net.InetAddress;
+
 import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.NCSARequestLog;
 import org.eclipse.jetty.server.Server;
@@ -12,6 +14,7 @@ import com.g414.guice.lifecycle.LifecycleModule;
 import com.g414.st9.proto.service.cache.EmptyKeyValueCache;
 import com.g414.st9.proto.service.cache.KeyValueCache;
 import com.g414.st9.proto.service.helper.EmptyServlet;
+import com.g414.st9.proto.service.helper.ExtendedHttpRequestLogV20110917;
 import com.g414.st9.proto.service.helper.ExtendedNCSARequestLog;
 import com.g414.st9.proto.service.store.SqliteKeyValueStorage.SqliteKeyValueStorageModule;
 import com.google.inject.AbstractModule;
@@ -58,13 +61,9 @@ public class Main {
 
     private static RequestLogHandler getSecondaryLogHandler(String localLogPath) {
         RequestLogHandler logHandler = new RequestLogHandler();
-        ExtendedNCSARequestLog requestLog = new ExtendedNCSARequestLog(
-                localLogPath + "/jetty-yyyy_mm_dd.request.log");
-        requestLog.setRetainDays(180);
-        requestLog.setAppend(true);
-        requestLog.setExtended(true);
-        requestLog.setLogLatency(true);
-        requestLog.setLogTimeZone("UTC");
+        ExtendedHttpRequestLogV20110917 requestLog = new ExtendedHttpRequestLogV20110917(
+                localLogPath + "/jetty-" + getHostname()
+                        + "-yyyy_mm_dd.request.log");
         logHandler.setRequestLog(requestLog);
 
         return logHandler;
@@ -75,6 +74,18 @@ public class Main {
                 SqliteKeyValueStorageModule.class.getName());
 
         return (Module) Class.forName(moduleName).newInstance();
+    }
+
+    private static String getHostname() {
+        try {
+            InetAddress addr = InetAddress.getLocalHost();
+
+            return addr.getHostName().replaceAll("\\W", "_");
+        } catch (Exception e) {
+            e.printStackTrace();
+
+            return "localhost";
+        }
     }
 
     private static Module getCacheModule() throws Exception {
