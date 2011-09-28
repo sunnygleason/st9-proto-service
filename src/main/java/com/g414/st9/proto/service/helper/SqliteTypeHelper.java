@@ -28,6 +28,8 @@ public class SqliteTypeHelper implements SqlTypeHelper {
         case REFERENCE:
         case UTF8_SMALLSTRING:
             return "TEXT";
+        case CHAR_ONE:
+            return "CHAR(1)";
         default:
             throw new IllegalArgumentException("Unsupported type in index: "
                     + type);

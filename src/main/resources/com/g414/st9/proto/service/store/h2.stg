@@ -83,6 +83,14 @@ h2_retrieve() ::=<<
      and "_is_deleted" = 'N'
 >>
 
+h2_retrieve_quarantined() ::=<< 
+  select "_key_type", "_key_id", "_created_dt", "_updated_dt", "_format", "_compression", "_version", "_value"
+    from "_key_values"
+   where "_key_type" = :key_type
+     and "_key_id" = :key_id
+     and ("_is_deleted" = 'N' or "_is_deleted" = 'Q')
+>>
+
 h2_get_version() ::=<< 
   select "_version"
     from "_key_values"
@@ -110,6 +118,15 @@ h2_delete() ::=<<
         "_is_deleted" = 'Y'
    where "_key_type" = :key_type
      and "_key_id" = :key_id
+>>
+
+h2_quarantine() ::=<< 
+  update "_key_values"
+    set "_updated_dt" = :updated_dt,
+        "_is_deleted" = :is_deleted
+   where "_key_type" = :key_type
+     and "_key_id" = :key_id
+     and "_is_deleted" = :cur_deleted
 >>
 
 h2_key_ids_of_type() ::=<< 

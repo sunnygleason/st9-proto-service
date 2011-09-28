@@ -28,7 +28,7 @@ public class MySQLSecondaryIndexSQLTest extends SecondaryIndexSQLTestBase {
                 helper.getPrefix(), helper);
 
         Assert.assertEquals(
-                "create table if not exists `_i_schema4__0c6ca14baa3cd7d1` (`_id` BIGINT UNSIGNED PRIMARY KEY, `_x` INT, `_y` INT)",
+                "create table if not exists `_i_schema4__0c6ca14baa3cd7d1` (`_id` BIGINT UNSIGNED PRIMARY KEY, `_x` INT, `_y` INT, `quarantined` CHAR(1))",
                 mysql.getTableDefinition("schema4", "xy", def));
 
         Assert.assertEquals(

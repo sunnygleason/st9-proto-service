@@ -53,7 +53,9 @@ public abstract class SecondaryIndexSQLTestBase {
                         + " PRIMARY KEY, " + helper.quote("_x") + " "
                         + helper.getSqlType(AttributeType.I32) + ", "
                         + helper.quote("_y") + " "
-                        + helper.getSqlType(AttributeType.I32) + ")",
+                        + helper.getSqlType(AttributeType.I32) + ", "
+                        + helper.quote("quarantined") + " "
+                        + helper.getSqlType(AttributeType.CHAR_ONE) + ")",
                 indexHelper.getTableDefinition("schema4", "xy", def));
 
         Assert.assertEquals(
@@ -68,7 +70,8 @@ public abstract class SecondaryIndexSQLTestBase {
         Assert.assertEquals(
                 "insert into " + helper.quote("_i_schema4__0c6ca14baa3cd7d1")
                         + " (" + helper.quote("_x") + ", " + helper.quote("_y")
-                        + ", " + helper.quote("_id") + ") values (?, ?, ?)",
+                        + ", " + helper.quote("_id") + ", "
+                        + helper.quote("quarantined") + ") values (?, ?, ?, ?)",
                 indexHelper.getInsertStatement("schema4", "xy", def,
                         new SqlParamBindings(true)));
 
@@ -100,14 +103,16 @@ public abstract class SecondaryIndexSQLTestBase {
         Assert.assertEquals(
                 "select " + helper.quote("_id") + " from "
                         + helper.quote("_i_schema4__0c6ca14baa3cd7d1")
-                        + " where " + helper.quote("_x") + " > ? AND "
+                        + " where " + helper.quote("quarantined")
+                        + " = 'N' AND " + helper.quote("_x") + " > ? AND "
                         + helper.quote("_y") + " > ? AND " + helper.quote("_y")
                         + " < ? AND " + helper.quote("_id") + " = ? order by "
                         + helper.quote("_x") + " ASC, " + helper.quote("_y")
                         + " ASC, " + helper.quote("_id")
                         + " ASC limit 101 offset 0", indexHelper.getIndexQuery(
                         "schema4", "xy", query0, null,
-                        SecondaryIndexResource.DEFAULT_PAGE_SIZE, def, bind0));
+                        SecondaryIndexResource.DEFAULT_PAGE_SIZE, false, def,
+                        bind0));
 
         Assert.assertEquals("{p0=1, p1=10, p2=20, p3=3}", bind0.asMap()
                 .toString());
@@ -124,13 +129,15 @@ public abstract class SecondaryIndexSQLTestBase {
         Assert.assertEquals(
                 "select " + helper.quote("_id") + " from "
                         + helper.quote("_i_schema4__0c6ca14baa3cd7d1")
-                        + " where " + helper.quote("_x") + " > ? AND "
+                        + " where " + helper.quote("quarantined")
+                        + " = 'N' AND " + helper.quote("_x") + " > ? AND "
                         + helper.quote("_y") + " > ? AND " + helper.quote("_y")
                         + " < ? order by " + helper.quote("_x") + " ASC, "
                         + helper.quote("_y") + " ASC, " + helper.quote("_id")
                         + " ASC limit 101 offset 0", indexHelper.getIndexQuery(
                         "schema4", "xy", query1, null,
-                        SecondaryIndexResource.DEFAULT_PAGE_SIZE, def, bind1));
+                        SecondaryIndexResource.DEFAULT_PAGE_SIZE, false, def,
+                        bind1));
 
         Assert.assertEquals("{p0=1, p1=10, p2=20}", bind1.asMap().toString());
 
@@ -143,13 +150,15 @@ public abstract class SecondaryIndexSQLTestBase {
         Assert.assertEquals(
                 "select " + helper.quote("_id") + " from "
                         + helper.quote("_i_schema4__0c6ca14baa3cd7d1")
-                        + " where " + helper.quote("_x") + " is null AND "
+                        + " where " + helper.quote("quarantined")
+                        + " = 'N' AND " + helper.quote("_x") + " is null AND "
                         + helper.quote("_y") + " is not null order by "
                         + helper.quote("_x") + " ASC, " + helper.quote("_y")
                         + " ASC, " + helper.quote("_id")
                         + " ASC limit 101 offset 0", indexHelper.getIndexQuery(
                         "schema4", "xy", query2, null,
-                        SecondaryIndexResource.DEFAULT_PAGE_SIZE, def, bind2));
+                        SecondaryIndexResource.DEFAULT_PAGE_SIZE, false, def,
+                        bind2));
 
         Assert.assertEquals("{}", bind2.asMap().toString());
 
@@ -166,13 +175,15 @@ public abstract class SecondaryIndexSQLTestBase {
         Assert.assertEquals(
                 "select " + helper.quote("_id") + " from "
                         + helper.quote("_i_schema4__0c6ca14baa3cd7d1")
-                        + " where " + helper.quote("_x")
+                        + " where " + helper.quote("quarantined")
+                        + " = 'N' AND " + helper.quote("_x")
                         + " in( ?,  ?,  ?) AND " + helper.quote("_y")
                         + " < ? order by " + helper.quote("_x") + " ASC, "
                         + helper.quote("_y") + " ASC, " + helper.quote("_id")
                         + " ASC limit 101 offset 0", indexHelper.getIndexQuery(
                         "schema4", "xy", query3, null,
-                        SecondaryIndexResource.DEFAULT_PAGE_SIZE, def, bind3));
+                        SecondaryIndexResource.DEFAULT_PAGE_SIZE, false, def,
+                        bind3));
 
         Assert.assertEquals("{p0=1, p1=2, p2=3, p3=0}", bind3.asMap()
                 .toString());
@@ -196,7 +207,9 @@ public abstract class SecondaryIndexSQLTestBase {
                         + helper.quote("_id") + " "
                         + helper.getSqlType(AttributeType.U64)
                         + " PRIMARY KEY, " + helper.quote("_hotness") + " "
-                        + helper.getSqlType(AttributeType.ENUM) + ")",
+                        + helper.getSqlType(AttributeType.ENUM) + ", "
+                        + helper.quote("quarantined") + " "
+                        + helper.getSqlType(AttributeType.CHAR_ONE) + ")",
                 indexHelper.getTableDefinition("schema5", "hotness", def));
 
         Assert.assertEquals(
@@ -210,9 +223,10 @@ public abstract class SecondaryIndexSQLTestBase {
         Assert.assertEquals(
                 "insert into " + helper.quote("_i_schema5__57dbd25de1659c0f")
                         + " (" + helper.quote("_hotness") + ", "
-                        + helper.quote("_id") + ") values (?, ?)", indexHelper
-                        .getInsertStatement("schema5", "hotness", def,
-                                new SqlParamBindings(true)));
+                        + helper.quote("_id") + ", "
+                        + helper.quote("quarantined") + ") values (?, ?, ?)",
+                indexHelper.getInsertStatement("schema5", "hotness", def,
+                        new SqlParamBindings(true)));
 
         Assert.assertEquals(
                 "update " + helper.quote("_i_schema5__57dbd25de1659c0f")
@@ -235,12 +249,14 @@ public abstract class SecondaryIndexSQLTestBase {
         Assert.assertEquals(
                 "select " + helper.quote("_id") + " from "
                         + helper.quote("_i_schema5__57dbd25de1659c0f")
-                        + " where " + helper.quote("_hotness")
+                        + " where " + helper.quote("quarantined")
+                        + " = 'N' AND " + helper.quote("_hotness")
                         + " = ? order by " + helper.quote("_hotness")
                         + " ASC, " + helper.quote("_id")
                         + " ASC limit 101 offset 0", indexHelper.getIndexQuery(
                         "schema5", "hotness", query0, null,
-                        SecondaryIndexResource.DEFAULT_PAGE_SIZE, def, bind0));
+                        SecondaryIndexResource.DEFAULT_PAGE_SIZE, false, def,
+                        bind0));
 
         Assert.assertEquals("{p0=0}", bind0.asMap().toString());
 
@@ -252,12 +268,14 @@ public abstract class SecondaryIndexSQLTestBase {
         Assert.assertEquals(
                 "select " + helper.quote("_id") + " from "
                         + helper.quote("_i_schema5__57dbd25de1659c0f")
-                        + " where " + helper.quote("_hotness")
+                        + " where " + helper.quote("quarantined")
+                        + " = 'N' AND " + helper.quote("_hotness")
                         + " = ? order by " + helper.quote("_hotness")
                         + " ASC, " + helper.quote("_id")
                         + " ASC limit 101 offset 0", indexHelper.getIndexQuery(
                         "schema5", "hotness", query1, null,
-                        SecondaryIndexResource.DEFAULT_PAGE_SIZE, def, bind1));
+                        SecondaryIndexResource.DEFAULT_PAGE_SIZE, false, def,
+                        bind1));
 
         Assert.assertEquals("{p0=1}", bind1.asMap().toString());
 
@@ -269,12 +287,14 @@ public abstract class SecondaryIndexSQLTestBase {
         Assert.assertEquals(
                 "select " + helper.quote("_id") + " from "
                         + helper.quote("_i_schema5__57dbd25de1659c0f")
-                        + " where " + helper.quote("_hotness")
+                        + " where " + helper.quote("quarantined")
+                        + " = 'N' AND " + helper.quote("_hotness")
                         + " is not null order by " + helper.quote("_hotness")
                         + " ASC, " + helper.quote("_id")
                         + " ASC limit 101 offset 0", indexHelper.getIndexQuery(
                         "schema5", "hotness", query2, null,
-                        SecondaryIndexResource.DEFAULT_PAGE_SIZE, def, bind2));
+                        SecondaryIndexResource.DEFAULT_PAGE_SIZE, false, def,
+                        bind2));
 
         Assert.assertEquals("{}", bind2.asMap().toString());
 
@@ -290,7 +310,9 @@ public abstract class SecondaryIndexSQLTestBase {
                         + helper.quote("_id") + " "
                         + helper.getSqlType(AttributeType.U64)
                         + " PRIMARY KEY, " + helper.quote("_hotness") + " "
-                        + helper.getSqlType(AttributeType.ENUM) + ")",
+                        + helper.getSqlType(AttributeType.ENUM) + ", "
+                        + helper.quote("quarantined") + " "
+                        + helper.getSqlType(AttributeType.CHAR_ONE) + ")",
                 indexHelper.getTableDefinition("schema6", "hotness", def2));
 
         Assert.assertEquals(

@@ -194,6 +194,20 @@ public class JDBISecondaryIndex {
         delete.execute();
     }
 
+    public void setEntityQuarantine(Handle handle, final Long id,
+            final String type, final String indexName, boolean isQuarantined) {
+        SqlParamBindings bindings = new SqlParamBindings(true);
+
+        Update quarantine = handle.createStatement(tableHelper
+                .getQuarantineStatement(type, indexName, bindings,
+                        isQuarantined));
+
+        bindings.bind("id", id, AttributeType.U64);
+        bindings.bindToStatement(quarantine);
+
+        quarantine.execute();
+    }
+
     public void clear(Handle handle, Iterator<Map<String, Object>> schemas,
             boolean preserveSchema) throws Exception {
         while (schemas.hasNext()) {
@@ -221,12 +235,14 @@ public class JDBISecondaryIndex {
 
     public List<Map<String, Object>> doIndexQuery(IDBI database, String type,
             String indexName, List<QueryTerm> queryTerms, String token,
-            Long pageSize, SchemaDefinition schemaDefinition) throws Exception {
+            Long pageSize, boolean includeQuarantine,
+            SchemaDefinition schemaDefinition) throws Exception {
         final List<Map<String, Object>> resultIds = new ArrayList<Map<String, Object>>();
         final SqlParamBindings bindings = new SqlParamBindings(true);
 
         final String querySql = tableHelper.getIndexQuery(type, indexName,
-                queryTerms, token, pageSize, schemaDefinition, bindings);
+                queryTerms, token, pageSize, includeQuarantine,
+                schemaDefinition, bindings);
 
         Response response = database
                 .inTransaction(new TransactionCallback<Response>() {

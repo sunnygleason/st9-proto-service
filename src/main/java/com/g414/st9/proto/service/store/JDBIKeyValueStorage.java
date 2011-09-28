@@ -631,6 +631,98 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
         });
     }
 
+    /**
+     * @see com.g414.st9.proto.service.store.KeyValueStorage#quarantine(java.lang.String,
+     *      boolean)
+     */
+    @Override
+    public Response setQuarantined(final String key, final boolean isQuarantined)
+            throws Exception {
+        final Key realKey;
+
+        try {
+            realKey = Key.valueOf(key);
+        } catch (Exception e) {
+            return getErrorResponse(e);
+        }
+
+        return database.inTransaction(new TransactionCallback<Response>() {
+            @Override
+            public Response inTransaction(Handle handle,
+                    TransactionStatus status) throws Exception {
+                try {
+                    final int typeId = sequences.getTypeId(realKey.getType(),
+                            false);
+                    final long keyId = realKey.getId();
+
+                    SchemaDefinition definition = loadOrCreateEmptySchema(
+                            handle, typeId);
+
+                    Map<String, Object> original = null;
+
+                    if (!definition.getCounters().isEmpty()) {
+                        byte[] originalBytes = getObjectBytes(realKey, false,
+                                true);
+
+                        if (originalBytes == null) {
+                            return Response.status(Status.NOT_FOUND).entity("")
+                                    .build();
+                        }
+
+                        original = (Map<String, Object>) EncodingHelper
+                                .parseSmileLzf(originalBytes);
+                    }
+
+                    Update quarantine = handle.createStatement(getPrefix()
+                            + "quarantine");
+                    quarantine.bind("is_deleted", isQuarantined ? "Q" : "N");
+                    quarantine.bind("updated_dt", getEpochSecondsNow());
+                    quarantine.bind("key_type", typeId);
+                    quarantine.bind("key_id", keyId);
+                    quarantine.bind("cur_deleted", !isQuarantined ? "Q" : "N");
+
+                    int quarantined = quarantine.execute();
+
+                    if (quarantined > 0) {
+                        cache.delete(EncodingHelper.toKVCacheKey(realKey
+                                .getIdentifier()));
+
+                        for (CounterDefinition counterDef : definition
+                                .getCounters()) {
+                            if (isQuarantined) {
+                                counts.deleteEntity(handle, keyId,
+                                        realKey.getType(), original,
+                                        counterDef.getName(), definition);
+                            } else {
+                                counts.insertEntity(handle,
+                                        Long.valueOf(keyId), original,
+                                        realKey.getType(),
+                                        counterDef.getName(), definition);
+                            }
+                        }
+
+                        for (IndexDefinition indexDef : definition.getIndexes()) {
+                            index.setEntityQuarantine(handle,
+                                    Long.valueOf(keyId), realKey.getType(),
+                                    indexDef.getName(), isQuarantined);
+                        }
+                    }
+
+                    return (quarantined == 0) ? Response
+                            .status(Status.NOT_FOUND).entity("").build()
+                            : Response.status(Status.NO_CONTENT).entity("")
+                                    .build();
+                } catch (WebApplicationException e) {
+                    e.printStackTrace();
+                    return e.getResponse();
+                } catch (IllegalArgumentException e) {
+                    e.printStackTrace();
+                    return getErrorResponse(e);
+                }
+            }
+        });
+    }
+
     @Override
     public Response clearRequested(boolean preserveSchema) throws Exception {
         if (!allowNuke) {
@@ -855,6 +947,11 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
     private byte[] getObjectBytes(final Key key, boolean cacheOk)
             throws Exception {
+        return getObjectBytes(key, cacheOk, false);
+    }
+
+    private byte[] getObjectBytes(final Key key, final boolean cacheOk,
+            final boolean quarantineOk) throws Exception {
         if (cacheOk) {
             final String cacheKey = EncodingHelper.toKVCacheKey(key
                     .getIdentifier());
@@ -872,8 +969,10 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                 final int typeId = sequences.getTypeId(key.getType(), false);
                 final long keyId = key.getId();
 
+                String queryName = getPrefix()
+                        + (quarantineOk ? "retrieve_quarantined" : "retrieve");
                 Query<Map<String, Object>> select = handle
-                        .createQuery(getPrefix() + "retrieve");
+                        .createQuery(queryName);
 
                 select.bind("key_type", typeId);
                 select.bind("key_id", keyId);
@@ -899,8 +998,10 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                 byte[] valueBytesLzf = EncodingHelper
                         .convertToSmileLzf(withVersion);
 
-                cache.put(EncodingHelper.toKVCacheKey(key.getIdentifier()),
-                        valueBytesLzf);
+                if (!quarantineOk) {
+                    cache.put(EncodingHelper.toKVCacheKey(key.getIdentifier()),
+                            valueBytesLzf);
+                }
 
                 return valueBytesLzf;
             }

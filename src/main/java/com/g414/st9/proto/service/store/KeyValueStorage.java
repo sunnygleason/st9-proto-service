@@ -25,6 +25,9 @@ public interface KeyValueStorage {
     public abstract Response delete(String key, boolean updateIndexAndCounters)
             throws Exception;
 
+    public abstract Response setQuarantined(String key, boolean isQuarantined)
+            throws Exception;
+
     public abstract Response clearRequested(boolean preserveSchema)
             throws Exception;
 

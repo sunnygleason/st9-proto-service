@@ -15,6 +15,8 @@ public class MySQLTypeHelper implements SqlTypeHelper {
         switch (type) {
         case BOOLEAN:
             return "TINYINT";
+        case CHAR_ONE:
+            return "CHAR(1)";
         case ENUM:
             return "SMALLINT";
         case I8:

@@ -130,6 +130,9 @@ public class SecondaryIndexTableHelper {
                                     .get(attr.getName()).getType()));
         }
 
+        cols.add(typeHelper.quote("quarantined"));
+        params.add(bindings.bind("quarantined", "N", AttributeType.CHAR_ONE));
+
         StringBuilder sqlBuilder = new StringBuilder();
         sqlBuilder.append("insert into ");
         sqlBuilder.append(getTableName(type, indexName));
@@ -178,6 +181,24 @@ public class SecondaryIndexTableHelper {
         StringBuilder sqlBuilder = new StringBuilder();
         sqlBuilder.append("delete from ");
         sqlBuilder.append(getTableName(type, indexName));
+        sqlBuilder.append(" where ");
+        sqlBuilder.append(typeHelper.quote("_id"));
+        sqlBuilder.append(" = ");
+        sqlBuilder.append(bindings.bind("id", AttributeType.U64));
+
+        return sqlBuilder.toString();
+    }
+
+    public String getQuarantineStatement(String type, String indexName,
+            SqlParamBindings bindings, boolean isQuarantined) {
+        StringBuilder sqlBuilder = new StringBuilder();
+        sqlBuilder.append("update ");
+        sqlBuilder.append(getTableName(type, indexName));
+        sqlBuilder.append(" set ");
+        sqlBuilder.append(typeHelper.quote("quarantined"));
+        sqlBuilder.append(" = ");
+        sqlBuilder.append(bindings.bind("is_quarantined", isQuarantined ? "Y"
+                : "N", AttributeType.CHAR_ONE));
         sqlBuilder.append(" where ");
         sqlBuilder.append(typeHelper.quote("_id"));
         sqlBuilder.append(" = ");
@@ -325,6 +346,11 @@ public class SecondaryIndexTableHelper {
             sqlBuilder.append(typeHelper.getSqlType(attribute.getType()));
         }
 
+        sqlBuilder.append(", ");
+        sqlBuilder.append(typeHelper.quote("quarantined"));
+        sqlBuilder.append(" ");
+        sqlBuilder.append(typeHelper.getSqlType(AttributeType.CHAR_ONE));
+
         sqlBuilder.append(")");
 
         return sqlBuilder.toString();
@@ -385,12 +411,13 @@ public class SecondaryIndexTableHelper {
 
     public List<Map<String, Object>> doIndexQuery(IDBI database, String type,
             String indexName, List<QueryTerm> queryTerms, String token,
-            Long pageSize, SchemaDefinition schemaDefinition) throws Exception {
+            Long pageSize, boolean includeQuarantine,
+            SchemaDefinition schemaDefinition) throws Exception {
         final List<Map<String, Object>> resultIds = new ArrayList<Map<String, Object>>();
         final SqlParamBindings bindings = new SqlParamBindings(true);
 
         final String querySql = getIndexQuery(type, indexName, queryTerms,
-                token, pageSize, schemaDefinition, bindings);
+                token, pageSize, includeQuarantine, schemaDefinition, bindings);
 
         Response response = database
                 .inTransaction(new TransactionCallback<Response>() {
@@ -423,8 +450,8 @@ public class SecondaryIndexTableHelper {
 
     public String getIndexQuery(String type, String indexName,
             List<QueryTerm> queryTerms, String token, Long pageSize,
-            SchemaDefinition schemaDefinition, SqlParamBindings bindings)
-            throws Exception {
+            boolean includeQuarantine, SchemaDefinition schemaDefinition,
+            SqlParamBindings bindings) throws Exception {
         IndexDefinition indexDefinition = schemaDefinition.getIndexMap().get(
                 indexName);
 
@@ -519,6 +546,10 @@ public class SecondaryIndexTableHelper {
         sqlBuilder.append(" from ");
         sqlBuilder.append(getTableName(type, indexName));
         sqlBuilder.append(" where ");
+        if (!includeQuarantine) {
+            sqlBuilder.append(typeHelper.quote("quarantined"));
+            sqlBuilder.append(" = 'N' AND ");
+        }
         sqlBuilder.append(StringHelper.join(" AND ", clauses));
         sqlBuilder.append(" order by ");
         sqlBuilder.append(StringHelper.join(", ", sortOrders));

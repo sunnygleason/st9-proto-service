@@ -14,7 +14,7 @@ sqlite_init_sequences() ::=<<
 
 sqlite_init_key_values() ::=<<
   create table if not exists `_key_values` (`_key_type` INTEGER, `_key_id` INTEGER,
-    `_created_dt` INTEGER, `_updated_dt` INTEGER, `_version` INTEGER, `_is_deleted`,
+    `_created_dt` INTEGER, `_updated_dt` INTEGER, `_version` INTEGER, `_is_deleted` CHAR(1),
     `_format`, `_compression`, `_value`,
     PRIMARY KEY(`_key_type`, `_key_id`))
 >>
@@ -67,6 +67,14 @@ sqlite_retrieve() ::=<<
      and `_is_deleted` = 'N'
 >>
 
+sqlite_retrieve_quarantined() ::=<< 
+  select `_key_type`, `_key_id`, `_created_dt`, `_updated_dt`, `_format`, `_compression`, `_version`, `_value`
+    from `_key_values`
+   where `_key_type` = :key_type
+     and `_key_id` = :key_id
+     and (`_is_deleted` = 'N' or `_is_deleted` = 'Q')
+>>
+
 sqlite_get_version() ::=<< 
   select `_version`
     from `_key_values`
@@ -94,6 +102,15 @@ sqlite_delete() ::=<<
         `_is_deleted` = 'Y'
    where `_key_type` = :key_type
      and `_key_id` = :key_id
+>>
+
+sqlite_quarantine() ::=<< 
+  update `_key_values`
+    set `_updated_dt` = :updated_dt,
+        `_is_deleted` = :is_deleted
+   where `_key_type` = :key_type
+     and `_key_id` = :key_id
+     and `_is_deleted` = :cur_deleted
 >>
 
 sqlite_key_ids_of_type() ::=<< 

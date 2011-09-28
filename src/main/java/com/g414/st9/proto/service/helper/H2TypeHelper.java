@@ -38,6 +38,8 @@ public class H2TypeHelper implements SqlTypeHelper {
         case REFERENCE:
         case UTF8_SMALLSTRING:
             return "VARCHAR(255)";
+        case CHAR_ONE:
+            return "CHAR(1)";
         default:
             throw new IllegalArgumentException("Unsupported type in index: "
                     + type);

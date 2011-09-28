@@ -28,7 +28,7 @@ public class H2SecondaryIndexSQLTest extends SecondaryIndexSQLTestBase {
                 helper.getPrefix(), helper);
 
         Assert.assertEquals(
-                "create table if not exists \"_i_schema4__0c6ca14baa3cd7d1\" (\"_id\" BIGINT UNSIGNED PRIMARY KEY, \"_x\" INT, \"_y\" INT)",
+                "create table if not exists \"_i_schema4__0c6ca14baa3cd7d1\" (\"_id\" BIGINT UNSIGNED PRIMARY KEY, \"_x\" INT, \"_y\" INT, \"quarantined\" CHAR(1))",
                 h2.getTableDefinition("schema4", "xy", def));
 
         Assert.assertEquals(

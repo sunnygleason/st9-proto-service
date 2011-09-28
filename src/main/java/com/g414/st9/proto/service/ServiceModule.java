@@ -12,6 +12,7 @@ public class ServiceModule extends ServletModule {
     @Override
     protected void configureServlets() {
         bind(KeyValueResource.class).asEagerSingleton();
+        bind(QuarantineResource.class).asEagerSingleton();
         bind(NukeResource.class).asEagerSingleton();
         bind(ConnectionCloseFilter.class).asEagerSingleton();
         bind(ExtendedRequestFilter.class).asEagerSingleton();

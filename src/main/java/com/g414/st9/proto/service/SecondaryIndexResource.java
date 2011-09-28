@@ -63,8 +63,10 @@ public class SecondaryIndexResource {
     public Response retrieveEntity(@PathParam("type") String type,
             @PathParam("index") String indexName,
             @QueryParam("q") String query, @QueryParam("s") String token,
-            @QueryParam("n") Long num) throws Exception {
-        return doSearch(type, indexName, query, token, num);
+            @QueryParam("n") Long num,
+            @QueryParam("includeQuarantine") Boolean includeQuarantine)
+            throws Exception {
+        return doSearch(type, indexName, query, token, num, includeQuarantine);
     }
 
     public void clear(final boolean preserveSchema) {
@@ -90,13 +92,16 @@ public class SecondaryIndexResource {
      * @throws Exception
      */
     private Response doSearch(String type, String indexName, String query,
-            String token, Long pageSize) throws Exception {
+            String token, Long pageSize, Boolean includeQuarantine)
+            throws Exception {
         Integer typeId = null;
         try {
             typeId = sequences.getTypeId(type, false);
         } catch (WebApplicationException e) {
             return e.getResponse();
         }
+
+        boolean quarantine = (includeQuarantine != null) && includeQuarantine;
 
         List<QueryTerm> queryTerms = null;
         try {
@@ -121,7 +126,7 @@ public class SecondaryIndexResource {
 
                 List<Map<String, Object>> allIds = index.doIndexQuery(database,
                         type, indexName, queryTerms, token, pageSize,
-                        definition);
+                        quarantine, definition);
 
                 resultIds.addAll(allIds);
             } catch (ValidationException e) {
