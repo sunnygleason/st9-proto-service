@@ -49,14 +49,15 @@ public class SqliteKeyValueStorage extends JDBIKeyValueStorage {
     }
 
     @Override
-    public synchronized Response retrieve(String key) throws Exception {
-        return super.retrieve(key);
+    public synchronized Response retrieve(String key, Boolean includeQuarantine)
+            throws Exception {
+        return super.retrieve(key, includeQuarantine);
     }
 
     @Override
-    public synchronized Response multiRetrieve(List<String> keys)
-            throws Exception {
-        return super.multiRetrieve(keys);
+    public synchronized Response multiRetrieve(List<String> keys,
+            Boolean includeQuarantine) throws Exception {
+        return super.multiRetrieve(keys, includeQuarantine);
     }
 
     @Override

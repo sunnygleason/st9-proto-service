@@ -68,17 +68,19 @@ public class KeyValueResource {
     @GET
     @Path("{key}")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response retrieveEntity(@PathParam("key") String key)
+    public Response retrieveEntity(@PathParam("key") String key,
+            @QueryParam("includeQuarantine") Boolean includeQuarantine)
             throws Exception {
-        return store.retrieve(key);
+        return store.retrieve(key, includeQuarantine);
     }
 
     @GET
     @Path("multi")
     @Produces(MediaType.APPLICATION_JSON)
-    public Response retrieveEntity(@QueryParam("k") List<String> keys)
+    public Response retrieveEntity(@QueryParam("k") List<String> keys,
+            @QueryParam("includeQuarantine") Boolean includeQuarantine)
             throws Exception {
-        return store.multiRetrieve(keys);
+        return store.multiRetrieve(keys, includeQuarantine);
     }
 
     @PUT

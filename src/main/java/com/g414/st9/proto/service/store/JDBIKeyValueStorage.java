@@ -270,12 +270,15 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
      * @see com.g414.st9.proto.service.store.KeyValueStorage#retrieve(java.lang.String)
      */
     @Override
-    public Response retrieve(final String key) throws Exception {
+    public Response retrieve(final String key, final Boolean includeQuarantine)
+            throws Exception {
+        boolean doQuarantine = includeQuarantine != null && includeQuarantine;
+
         try {
             KeyHelper.validateKey(key);
             Key realKey = Key.valueOf(key);
 
-            byte[] objectBytes = getObjectBytes(realKey, true);
+            byte[] objectBytes = getObjectBytes(realKey, true, doQuarantine);
             if (objectBytes == null) {
                 return Response.status(Status.NOT_FOUND).entity("").build();
             }
@@ -295,7 +298,11 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
      * @see com.g414.st9.proto.service.store.KeyValueStorage#multiRetrieve(List)
      */
     @Override
-    public Response multiRetrieve(final List<String> keys) throws Exception {
+    public Response multiRetrieve(final List<String> keys,
+            final Boolean includeQuarantine) throws Exception {
+        final boolean doQuarantine = includeQuarantine != null
+                && includeQuarantine;
+
         if (keys == null || keys.isEmpty()) {
             return Response
                     .status(Status.OK)
@@ -368,8 +375,12 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                                 realKey.getType(), false);
                         final long keyId = realKey.getId();
 
+                        String selectStmt = getPrefix()
+                                + (doQuarantine ? "retrieve_quarantined"
+                                        : "retrieve");
+
                         Query<Map<String, Object>> select = handle
-                                .createQuery(getPrefix() + "retrieve");
+                                .createQuery(selectStmt);
 
                         select.bind("key_type", typeId);
                         select.bind("key_id", keyId);
@@ -582,7 +593,8 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
                     if (!definition.getCounters().isEmpty()) {
                         original = (Map<String, Object>) EncodingHelper
-                                .parseSmileLzf(getObjectBytes(realKey, false));
+                                .parseSmileLzf(getObjectBytes(realKey, false,
+                                        true));
 
                         if (original == null) {
                             return Response.status(Status.NOT_FOUND).entity("")
@@ -838,7 +850,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
                     KeyHelper.validateKey(nextKey);
                     realKey = Key.valueOf(nextKey);
-                    objectBytes = getObjectBytes(realKey, true);
+                    objectBytes = getObjectBytes(realKey, true, true);
 
                     Map<String, Object> object = null;
 
@@ -985,6 +997,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
                 Map<String, Object> first = results.iterator().next();
 
+                String rowStatus = (String) first.get("_is_deleted");
                 Long version = ((Number) first.get("_version")).longValue();
                 byte[] foundBytes = (byte[]) first.get("_value");
 
@@ -992,6 +1005,18 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                         .parseSmileLzf(foundBytes);
 
                 Map<String, Object> withVersion = new LinkedHashMap<String, Object>();
+
+                if (quarantineOk) {
+                    withVersion.put("$status", rowStatus);
+                    if ("Y".equals(rowStatus)) {
+                        withVersion.put("$deleted", true);
+                    } else if ("Q".equals(rowStatus)) {
+                        withVersion.put("$quarantined", true);
+                    } else {
+                        // no marker field
+                    }
+                }
+
                 withVersion.put("version", version.toString());
                 withVersion.putAll(found);
 
@@ -1211,7 +1236,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
         SchemaDefinition definition = null;
 
         Response schemaResponse = JDBIKeyValueStorage.this.retrieve("$schema:"
-                + typeId);
+                + typeId, false);
 
         if (schemaResponse.getStatus() == 200) {
             definition = mapper.readValue(

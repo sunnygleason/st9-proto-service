@@ -78,6 +78,9 @@ public class ImportExportResource {
 
                         Boolean deleted = (Boolean) parsedObject
                                 .remove("$deleted");
+                        Boolean quarantined = (Boolean) parsedObject
+                                .remove("$quarantined");
+                        parsedObject.remove("$status");
 
                         Key key = Key.valueOf((String) parsedObject
                                 .remove("id"));
@@ -85,8 +88,10 @@ public class ImportExportResource {
                                 .parseLong((String) parsedObject
                                         .remove("version")) : 1L;
 
+                        String encId = key.getEncryptedIdentifier();
+
                         Map<String, Object> object = new LinkedHashMap<String, Object>();
-                        object.put("id", key.getEncryptedIdentifier());
+                        object.put("id", encId);
                         object.put("kind", key.getType());
                         object.put("version", version.toString());
                         object.putAll(parsedObject);
@@ -111,6 +116,10 @@ public class ImportExportResource {
                             } else {
                                 r = store.create(key.getType(), jsonValue,
                                         key.getId(), version, true);
+
+                                if (quarantined != null && quarantined) {
+                                    store.setQuarantined(encId, true);
+                                }
                             }
 
                             if (r.getStatus() != Status.OK.getStatusCode()) {

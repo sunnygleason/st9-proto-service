@@ -76,7 +76,8 @@ public class SchemaResource {
                     .build();
         }
 
-        Response exists = this.store.retrieve(SCHEMA_PREFIX + ":" + typeId);
+        Response exists = this.store.retrieve(SCHEMA_PREFIX + ":" + typeId,
+                false);
         if (exists.getStatus() == 200) {
             return Response.status(Status.CONFLICT)
                     .entity("schema already exists").build();
@@ -134,7 +135,7 @@ public class SchemaResource {
                     .build();
         }
 
-        return store.retrieve(SCHEMA_PREFIX + ":" + typeId);
+        return store.retrieve(SCHEMA_PREFIX + ":" + typeId, false);
     }
 
     @PUT
@@ -151,7 +152,8 @@ public class SchemaResource {
                     .build();
         }
 
-        Response existing = this.store.retrieve(SCHEMA_PREFIX + ":" + typeId);
+        Response existing = this.store.retrieve(SCHEMA_PREFIX + ":" + typeId,
+                false);
         if (existing.getStatus() != 200) {
             return Response.status(Status.NOT_FOUND).entity("schema not found")
                     .build();
@@ -237,7 +239,8 @@ public class SchemaResource {
                     .build();
         }
 
-        Response existing = this.store.retrieve(SCHEMA_PREFIX + ":" + typeId);
+        Response existing = this.store.retrieve(SCHEMA_PREFIX + ":" + typeId,
+                false);
         if (existing.getStatus() != 200) {
             return Response.status(Status.NOT_FOUND).entity("schema not found")
                     .build();

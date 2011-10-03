@@ -91,16 +91,20 @@ public abstract class KeyValueResourceTestBase {
         assertResponseMatches(kvResource.createEntity("bar", "{}"), Status.OK,
                 "{\"id\":\"bar:2\",\"kind\":\"bar\",\"version\":\"1\"}");
 
-        assertResponseMatches(kvResource.retrieveEntity("foo:1"), Status.OK,
+        assertResponseMatches(kvResource.retrieveEntity("foo:1", false),
+                Status.OK,
                 "{\"id\":\"foo:1\",\"kind\":\"foo\",\"version\":\"1\"}");
 
-        assertResponseMatches(kvResource.retrieveEntity("foo:2"), Status.OK,
+        assertResponseMatches(kvResource.retrieveEntity("foo:2", false),
+                Status.OK,
                 "{\"id\":\"foo:2\",\"kind\":\"foo\",\"version\":\"1\",\"isAwesome\":true}");
 
-        assertResponseMatches(kvResource.retrieveEntity("bar:1"), Status.OK,
+        assertResponseMatches(kvResource.retrieveEntity("bar:1", false),
+                Status.OK,
                 "{\"id\":\"bar:1\",\"kind\":\"bar\",\"version\":\"1\"}");
 
-        assertResponseMatches(kvResource.retrieveEntity("bar:2"), Status.OK,
+        assertResponseMatches(kvResource.retrieveEntity("bar:2", false),
+                Status.OK,
                 "{\"id\":\"bar:2\",\"kind\":\"bar\",\"version\":\"1\"}");
 
         for (Map<String, Object> value : cache.getValues().values()) {
@@ -132,13 +136,15 @@ public abstract class KeyValueResourceTestBase {
                 Status.OK,
                 "{\"id\":\"foo:2\",\"kind\":\"foo\",\"version\":\"1\",\"isAwesome\":true}");
 
-        assertResponseMatches(kvResource.retrieveEntity("foo:1"), Status.OK,
+        assertResponseMatches(kvResource.retrieveEntity("foo:1", false),
+                Status.OK,
                 "{\"id\":\"foo:1\",\"kind\":\"foo\",\"version\":\"1\"}");
 
-        assertResponseMatches(kvResource.retrieveEntity("foo:2"), Status.OK,
+        assertResponseMatches(kvResource.retrieveEntity("foo:2", false),
+                Status.OK,
                 "{\"id\":\"foo:2\",\"kind\":\"foo\",\"version\":\"1\",\"isAwesome\":true}");
 
-        assertResponseMatches(kvResource.retrieveEntity("foo:3"),
+        assertResponseMatches(kvResource.retrieveEntity("foo:3", false),
                 Status.NOT_FOUND, "");
     }
 
@@ -151,8 +157,9 @@ public abstract class KeyValueResourceTestBase {
                 "{\"id\":\"foo:3\",\"kind\":\"foo\",\"version\":\"1\"}");
 
         assertMultiResponseMatches(
-                kvResource.retrieveEntity(Lists.newArrayList("foo:1", "foo:2",
-                        "foo:3", "foo:5")),
+                kvResource.retrieveEntity(
+                        Lists.newArrayList("foo:1", "foo:2", "foo:3", "foo:5"),
+                        false),
                 Status.OK,
                 "{\"foo:1\":{\"id\":\"foo:1\",\"kind\":\"foo\",\"version\":\"1\"},"
                         + "\"foo:2\":{\"id\":\"foo:2\",\"kind\":\"foo\",\"version\":\"1\"},"
@@ -204,10 +211,12 @@ public abstract class KeyValueResourceTestBase {
                 Status.OK,
                 "{\"id\":\"foo:2\",\"kind\":\"foo\",\"version\":\"1\",\"isAwesome\":true}");
 
-        assertResponseMatches(kvResource.retrieveEntity("foo:1"), Status.OK,
+        assertResponseMatches(kvResource.retrieveEntity("foo:1", false),
+                Status.OK,
                 "{\"id\":\"foo:1\",\"kind\":\"foo\",\"version\":\"1\"}");
 
-        assertResponseMatches(kvResource.retrieveEntity("foo:2"), Status.OK,
+        assertResponseMatches(kvResource.retrieveEntity("foo:2", false),
+                Status.OK,
                 "{\"id\":\"foo:2\",\"kind\":\"foo\",\"version\":\"1\",\"isAwesome\":true}");
 
         assertResponseMatches(kvResource.deleteEntity("foo:1"),
@@ -219,10 +228,10 @@ public abstract class KeyValueResourceTestBase {
         assertResponseMatches(kvResource.deleteEntity("foo:3"),
                 Status.NOT_FOUND, "");
 
-        assertResponseMatches(kvResource.retrieveEntity("foo:1"),
+        assertResponseMatches(kvResource.retrieveEntity("foo:1", false),
                 Status.NOT_FOUND, "");
 
-        assertResponseMatches(kvResource.retrieveEntity("foo:2"),
+        assertResponseMatches(kvResource.retrieveEntity("foo:2", false),
                 Status.NOT_FOUND, "");
 
     }
@@ -290,7 +299,7 @@ public abstract class KeyValueResourceTestBase {
     }
 
     public void testRetrieveFailureBadKey() throws Exception {
-        assertResponseMatches(kvResource.retrieveEntity("foo"),
+        assertResponseMatches(kvResource.retrieveEntity("foo", false),
                 Status.BAD_REQUEST, "Invalid key");
     }
 

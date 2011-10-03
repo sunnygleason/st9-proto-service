@@ -127,7 +127,7 @@ public abstract class SecondaryIndexQueryTestBase {
                 r1.getEntity(),
                 "{\"id\":\"@foo6:e5cbb6f9271a64f5\",\"kind\":\"foo6\",\"version\":\"1\",\"x\":1,\"ref\":\"foo:1\",\"isAwesome\":true}");
 
-        Response r2 = this.kvResource.retrieveEntity("foo6:1");
+        Response r2 = this.kvResource.retrieveEntity("foo6:1", false);
         Assert.assertEquals(
                 r2.getEntity(),
                 "{\"id\":\"@foo6:e5cbb6f9271a64f5\",\"kind\":\"foo6\",\"version\":\"1\",\"x\":1,\"ref\":\"@foo:190272f987c6ac27\",\"isAwesome\":true}");

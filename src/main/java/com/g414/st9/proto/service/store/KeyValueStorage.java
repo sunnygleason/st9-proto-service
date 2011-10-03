@@ -15,9 +15,11 @@ public interface KeyValueStorage {
     public abstract Response createDeleted(String type, Long id)
             throws Exception;
 
-    public abstract Response retrieve(String key) throws Exception;
+    public abstract Response retrieve(String key, Boolean includeQuarantine)
+            throws Exception;
 
-    public abstract Response multiRetrieve(List<String> keys) throws Exception;
+    public abstract Response multiRetrieve(List<String> keys,
+            Boolean includeQuarantine) throws Exception;
 
     public abstract Response update(String key, String inValue)
             throws Exception;

@@ -60,7 +60,7 @@ sqlite_create() ::=<<
 >>
 
 sqlite_retrieve() ::=<< 
-  select `_key_type`, `_key_id`, `_created_dt`, `_updated_dt`, `_format`, `_compression`, `_version`, `_value`
+  select `_key_type`, `_key_id`, `_created_dt`, `_updated_dt`, `_format`, `_compression`, `_version`, `_is_deleted`, `_value`
     from `_key_values`
    where `_key_type` = :key_type
      and `_key_id` = :key_id
@@ -68,7 +68,7 @@ sqlite_retrieve() ::=<<
 >>
 
 sqlite_retrieve_quarantined() ::=<< 
-  select `_key_type`, `_key_id`, `_created_dt`, `_updated_dt`, `_format`, `_compression`, `_version`, `_value`
+  select `_key_type`, `_key_id`, `_created_dt`, `_updated_dt`, `_format`, `_compression`, `_version`, `_is_deleted`, `_value`
     from `_key_values`
    where `_key_type` = :key_type
      and `_key_id` = :key_id

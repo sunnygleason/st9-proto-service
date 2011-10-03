@@ -111,7 +111,7 @@ public class CounterResource {
 
         Integer typeId = sequences.getTypeId(type, false);
 
-        Response schemaResponse = storage.retrieve("$schema:" + typeId);
+        Response schemaResponse = storage.retrieve("$schema:" + typeId, false);
 
         List<Map<String, Object>> resultIds = new ArrayList<Map<String, Object>>();
 

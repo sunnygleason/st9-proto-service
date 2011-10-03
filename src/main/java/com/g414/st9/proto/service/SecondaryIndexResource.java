@@ -115,7 +115,7 @@ public class SecondaryIndexResource {
             pageSize = DEFAULT_PAGE_SIZE;
         }
 
-        Response schemaResponse = storage.retrieve("$schema:" + typeId);
+        Response schemaResponse = storage.retrieve("$schema:" + typeId, false);
 
         List<Map<String, Object>> resultIds = new ArrayList<Map<String, Object>>();
 
