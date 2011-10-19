@@ -17,6 +17,7 @@ import javax.servlet.http.HttpServletResponse;
  */
 public class ExtendedRequestFilter implements Filter {
     public static final String X_REQUEST_ID = "X-Request-ID";
+    public static final String T0_MILLIS = "t0_millis";
     public static final String T1_NANOS = "t1_nanos";
 
     @Override
@@ -31,6 +32,8 @@ public class ExtendedRequestFilter implements Filter {
     public void doFilter(ServletRequest request, ServletResponse response,
             FilterChain chain) throws IOException, ServletException {
         if (request instanceof HttpServletRequest) {
+            ((HttpServletRequest) request).setAttribute(T0_MILLIS,
+                    System.currentTimeMillis());
             ((HttpServletRequest) request).setAttribute(T1_NANOS,
                     System.nanoTime());
         }
