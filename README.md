@@ -9,6 +9,7 @@ ST9 is a nimble and nifty data store that is designed for scalability.
 Some other noteworthy features of ST9:
 
 * REST API : designed to be *super* easy to work with any language or even the command line (i.e. Ruby, node.js, curl)
+* Developer-Friendly : provides Sqlite3 and H2 data stores for easy development, as well as the super-scalable MySQL-based store
 * Document-Oriented : stored entities may contain complex JSON structure (nested arrays and objects)
 * Multi-Get : retrieving several entities at one time without breaking a sweat!
 * 2-Query Model: secondary index queries return identifiers (primary keys), allowing client to decide which entities to load
@@ -32,7 +33,7 @@ To run st9, run:
 
 $ ./scripts/run-sqlite.sh
 
-(There is also a mysql version for power users.)
+(There is also a mysql version for power users, and an H2 (embedded in-memory) store for serious development.)
 
 
 # Using ST9
@@ -212,18 +213,18 @@ $ curl -v -v -X POST -H "Content-Type: application/json" --data-binary @the-file
 
 Properties that are currently supported:
 
-* http.port : port to listen on (default 8080)
-* st9.storageModule : module name of storage module (default "com.g414.st9.proto.service.store.SqliteKeyValueStorage\$SqliteKeyValueStorageModule", "com.g414.st9.proto.service.store.MySQLKeyValueStorage\$MySQLKeyValueStorageModule")
-* st9.cacheClass : class name of cache module (default none, "com.g414.st9.proto.service.cache.RedisKeyValueCache",  "com.g414.st9.proto.service.cache.MemcachedKeyValueCache")
-* log.dir : log directory (default "logs")
-* jdbc.url : url for jdbc data store (default "jdbc:sqlite:thedb.db")
-* jdbc.user : username for jdbc data store
-* jdbc.password : password for jdbc data store
-* redis.host : hostname of redis service (default "localhost")
-* redis.port : port of redis service (default "")
-* memcached.host : hostname and port of memcached service in "host:port" form (default "localhost:11211")
-* nuke.allowed : whether nukes are allowed on the data store (default "false")
-* strict.type.creation : whether types must be created via the schema endpoint before use (default "true")
+* _http.port_ : port to listen on (default 8080)
+* _st9.storageModule_ : module name of storage module (default "com.g414.st9.proto.service.store.SqliteKeyValueStorage\$SqliteKeyValueStorageModule", "com.g414.st9.proto.service.store.MySQLKeyValueStorage\$MySQLKeyValueStorageModule")
+* _st9.cacheClass_ : class name of cache module (default none, "com.g414.st9.proto.service.cache.RedisKeyValueCache",  "com.g414.st9.proto.service.cache.MemcachedKeyValueCache")
+* _log.dir_ : log directory (default "logs")
+* _jdbc.url_ : url for jdbc data store (default "jdbc:sqlite:thedb.db")
+* _jdbc.user_ : username for jdbc data store
+* _jdbc.password_ : password for jdbc data store
+* _redis.host_ : hostname of redis service (default "localhost")
+* _redis.port_ : port of redis service (default "")
+* _memcached.host_ : hostname and port of memcached service in "host:port" form (default "localhost:11211")
+* _nuke.allowed_ : whether nukes are allowed on the data store (default "false")
+* _strict.type.creation_ : whether types must be created via the schema endpoint before use (default "true")
 
 
 That's all for now.
