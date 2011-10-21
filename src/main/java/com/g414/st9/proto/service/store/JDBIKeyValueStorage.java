@@ -850,7 +850,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
                     KeyHelper.validateKey(nextKey);
                     realKey = Key.valueOf(nextKey);
-                    objectBytes = getObjectBytes(realKey, true, true);
+                    objectBytes = getObjectBytes(realKey, false, true);
 
                     Map<String, Object> object = null;
 
