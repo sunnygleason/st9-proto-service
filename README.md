@@ -14,8 +14,8 @@ Some other noteworthy features of ST9:
 * Multi-Get : retrieving several entities at one time without breaking a sweat!
 * 2-Query Model: secondary index queries return identifiers (primary keys), allowing client to decide which entities to load
 * Caching : can use a near cache (Memcached or Redis) to offload key-value lookups and support multi-get
-* Soft Deletion : the "delete" operation marks content as deleted but keep original content until expunged
-* Quarantine : content "quarantining" complements deletion - content is available in KV store, removed from counters and hidden from index queries
+* Soft Deletion : the "delete" operation marks content as deleted but keeps original content until expunged
+* Quarantine : content "quarantining" complements deletion - quarantined content is available in KV store by passing an extra flag, removed from counters and hidden from index queries (unless an extra flag is passed to the query)
 * Secondary Indexes : define indexes (think: database tables with _just_ the data you need) to support range queries and unique constraints
 * Counters: schemas may define counters (think: select count(*) where ... group by X,Y,Z) to support data aggregation with minimal (constant time) overhead per update
 * Binary Encoding: under the hood, ST9 stores data in SMILE (binary JSON) format to minimize data storage requirements
