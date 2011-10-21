@@ -14,6 +14,8 @@ Some other noteworthy features of ST9:
 * Multi-Get : retrieving several entities at one time without breaking a sweat!
 * 2-Query Model: secondary index queries return identifiers (primary keys), allowing client to decide which entities to load
 * Caching : can use a near cache (Memcached or Redis) to offload key-value lookups and support multi-get
+* Soft Deletion : the "delete" operation marks content as deleted but keep original content until expunged
+* Quarantine : content "quarantining" complements deletion - content is available in KV store, removed from counters and hidden from index queries
 * Secondary Indexes : define indexes (think: database tables with _just_ the data you need) to support range queries and unique constraints
 * Counters: schemas may define counters (think: select count(*) where ... group by X,Y,Z) to support data aggregation with minimal (constant time) overhead per update
 * Binary Encoding: under the hood, ST9 stores data in SMILE (binary JSON) format to minimize data storage requirements
@@ -185,6 +187,27 @@ $ curl "http://localhost:7331/1.0/c/awesome.byTargetHotnessYear/@foo:ce4ad6a1cd6
 
 $ curl "http://localhost:7331/1.0/c/awesome.byTargetHotnessYear/@foo:ce4ad6a1cd6293d9/TEH_HOTNESS/1980"
 
+## Quarantine Endpoints
+
+\# quarantine a point
+
+$ curl -v -v -X POST "http://localhost:7331/1.0/q/@point:5eae81437e481933"
+
+\# get quarantine status of a point
+
+$ curl -v -v -X GET "http://localhost:7331/1.0/q/@point:5eae81437e481933"
+
+\# unquarantine a point
+
+$ curl -v -v -X DELETE "http://localhost:7331/1.0/q/@point:5eae81437e481933"
+
+\# retrieve an entity that has been quarantined (note /e/ endpoint)
+
+$ curl -v -v -X GET "http://localhost:7331/1.0/e/@point:5eae81437e481933?includeQuarantine=true"
+
+\# include quarantined records in index searches (note /i/ endpoint)
+
+$ curl -v -v -X GET "http://localhost:7331/1.0/i/point.xy?q=x+eq+1&includeQuarantine=true"
 
 ## Administrative Endpoints
 
