@@ -21,6 +21,14 @@ mysql_init_sequences() ::=<<
   ) ENGINE=InnoDB ROW_FORMAT=DYNAMIC CHARACTER SET utf8
 >>
 
+mysql_select_sequences() ::=<<
+  select `_key_type`, `_next_id` from `_sequences`
+>>
+
+mysql_select_max_key_ids() ::=<<
+  select `_key_type`, max(`_key_id`) as `_last_id` from `_key_values` group by `_key_type`
+>>
+
 mysql_init_key_values() ::=<<
   create table if not exists `_key_values` (
     `_key_type`     smallint unsigned not null,

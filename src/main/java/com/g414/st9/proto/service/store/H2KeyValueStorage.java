@@ -38,7 +38,7 @@ public class H2KeyValueStorage extends JDBIKeyValueStorage {
 
 			datasource.setDriverClass(Driver.class.getName());
 			datasource.setJdbcUrl(System.getProperty("jdbc.url",
-					"jdbc:h2:mem:thedb"));
+					"jdbc:h2:mem:thedb;DB_CLOSE_ON_EXIT=FALSE"));
 			datasource.setUsername(System.getProperty("jdbc.user", "root"));
 			datasource.setPassword(System.getProperty("jdbc.password",
 					"notreallyused"));

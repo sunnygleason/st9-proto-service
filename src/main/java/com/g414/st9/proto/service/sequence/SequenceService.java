@@ -1,5 +1,8 @@
 package com.g414.st9.proto.service.sequence;
 
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
@@ -147,6 +150,41 @@ public class SequenceService {
         this.typeNames.clear();
     }
 
+    public Map<String, Counter> initializeCountersFromDb() {
+        database.inTransaction(new TransactionCallback<Void>() {
+            @Override
+            public Void inTransaction(Handle handle, TransactionStatus status)
+                    throws Exception {
+                try {
+                    List<Map<String, Object>> currentLimits = handle
+                            .createQuery(prefix + "select_sequences").list();
+
+                    List<Map<String, Object>> currentOffsets = handle
+                            .createQuery(prefix + "select_max_key_ids").list();
+
+                    Map<String, Counter> theCounters = computeCounters(
+                            currentLimits, currentOffsets);
+
+                    SequenceService.this.counters.putAll(theCounters);
+
+                    getCurrentCounters();
+
+                    return null;
+                } catch (WebApplicationException e) {
+                    e.printStackTrace();
+                    return null;
+                }
+            }
+        });
+        return null;
+    }
+
+    public Map<String, Counter> getCurrentCounters() {
+        System.out.println(counters);
+
+        return Collections.unmodifiableMap(counters);
+    }
+
     private Counter createCounter(final String type) {
         final int typeId = this.database
                 .withHandle(new HandleCallback<Integer>() {
@@ -166,6 +204,55 @@ public class SequenceService {
         });
 
         return new Counter(type, nextBase, nextBase + increment);
+    }
+
+    private Map<String, Counter> computeCounters(
+            List<Map<String, Object>> currentLimits,
+            List<Map<String, Object>> currentOffsets) throws Exception {
+        Map<Long, Long> lims = convert(currentLimits);
+        Map<Long, Long> offs = convert(currentOffsets);
+
+        Map<String, Counter> toReturn = new LinkedHashMap<String, Counter>();
+        for (Map.Entry<Long, Long> entry : offs.entrySet()) {
+            String typeName = this.getTypeName(entry.getKey().intValue());
+            Long limit = lims.get(entry.getKey());
+            Long base = limit - DEFAULT_INCREMENT;
+            Long offset = offs.get(entry.getKey());
+
+            if ("$schema".equals(typeName)) {
+                base = Long.valueOf(0);
+                offset += 1;
+            }
+
+            Counter theCount = new Counter(typeName, base, limit);
+            theCount.bumpKey(offset);
+
+            toReturn.put(typeName, theCount);
+        }
+
+        return toReturn;
+    }
+
+    private static Map<Long, Long> convert(List<Map<String, Object>> inputList) {
+        Map<Long, Long> toReturn = new LinkedHashMap<Long, Long>();
+
+        for (Map<String, Object> input : inputList) {
+            Long type = null;
+            Long value = null;
+
+            for (Map.Entry<String, Object> entry : input.entrySet()) {
+                if (entry.getKey().equals("_key_type")) {
+                    type = Long.parseLong(entry.getValue().toString());
+                } else {
+                    value = Long.parseLong(entry.getValue().toString());
+                }
+
+            }
+
+            toReturn.put(type, value);
+        }
+
+        return toReturn;
     }
 
     protected class Counter {
@@ -215,6 +302,23 @@ public class SequenceService {
             }
 
             return null;
+        }
+
+        @Override
+        public String toString() {
+            StringBuilder builder = new StringBuilder();
+
+            builder.append("Counter[type=");
+            builder.append(type);
+            builder.append(",base=");
+            builder.append(base);
+            builder.append(",offset=");
+            builder.append(offset.get());
+            builder.append(",max=");
+            builder.append(max);
+            builder.append("]");
+
+            return builder.toString();
         }
     }
 }

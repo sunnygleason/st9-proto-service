@@ -18,6 +18,14 @@ h2_init_sequences() ::=<<
   )
 >>
 
+h2_select_sequences() ::=<<
+  select "_key_type", "_next_id" from "_sequences"
+>>
+
+h2_select_max_key_ids() ::=<<
+  select "_key_type", max("_key_id") as "_last_id" from "_key_values" group by "_key_type"
+>>
+
 h2_init_key_values() ::=<<
   create table if not exists "_key_values" (
     "_key_type"     smallint unsigned not null,

@@ -12,6 +12,14 @@ sqlite_init_sequences() ::=<<
   create table if not exists `_sequences` (`_key_type` INTEGER PRIMARY KEY, `_next_id` INTEGER)
 >>
 
+sqlite_select_sequences() ::=<<
+  select `_key_type`, `_next_id` from `_sequences`
+>>
+
+sqlite_select_max_key_ids() ::=<<
+  select `_key_type`, max(`_key_id`) as `_last_id` from `_key_values` group by `_key_type`
+>>
+
 sqlite_init_key_values() ::=<<
   create table if not exists `_key_values` (`_key_type` INTEGER, `_key_id` INTEGER,
     `_created_dt` INTEGER, `_updated_dt` INTEGER, `_version` INTEGER, `_is_deleted` CHAR(1),

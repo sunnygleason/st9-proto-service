@@ -52,9 +52,11 @@ public class Main {
                 getSecondaryLogHandler(System.getProperty("log.dir", "logs")) });
         server.setHandler(handlers);
 
-        Lifecycle lifecycle = parentInjector.getInstance(Lifecycle.class);
+        final Lifecycle lifecycle = parentInjector.getInstance(Lifecycle.class);
         lifecycle.init();
         lifecycle.start();
+
+        addShutdownHook(lifecycle);
 
         server.start();
     }
@@ -104,5 +106,24 @@ public class Main {
                 }
             }
         };
+    }
+
+    private static void addShutdownHook(final Lifecycle lifecycle) {
+        Runtime.getRuntime().addShutdownHook(new Thread(new Runnable() {
+            @Override
+            public void run() {
+                System.err
+                        .println("Shutdown request received: notifying lifecycle");
+                lifecycle.shutdown();
+                System.err.println("Lifecycle notified: waiting 10s");
+
+                try {
+                    Thread.sleep(10000);
+                } catch (InterruptedException ignored) {
+                }
+
+                System.err.println("Clean shutdown.");
+            }
+        }));
     }
 }

@@ -37,6 +37,7 @@ import com.g414.guice.lifecycle.LifecycleRegistration;
 import com.g414.guice.lifecycle.LifecycleSupportBase;
 import com.g414.st9.proto.service.cache.KeyValueCache;
 import com.g414.st9.proto.service.count.JDBICountService;
+import com.g414.st9.proto.service.helper.AvailabilityManager;
 import com.g414.st9.proto.service.helper.EncodingHelper;
 import com.g414.st9.proto.service.index.JDBISecondaryIndex;
 import com.g414.st9.proto.service.schema.CounterDefinition;
@@ -56,6 +57,9 @@ import com.google.inject.name.Named;
 public abstract class JDBIKeyValueStorage implements KeyValueStorage,
         LifecycleRegistration {
     public static int MULTIGET_MAX_KEYS = 100;
+
+    @Inject
+    protected AvailabilityManager availability;
 
     @Inject
     protected IDBI database;
@@ -88,6 +92,15 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
             @Override
             public void init() {
                 JDBIKeyValueStorage.this.initialize();
+
+                availability.setAvailable(true);
+            }
+
+            @Override
+            public void shutdown() {
+                sequences.getCurrentCounters();
+
+                availability.setAvailable(false);
             }
         });
     }
@@ -102,6 +115,8 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                 return null;
             }
         });
+
+        sequences.initializeCountersFromDb();
     }
 
     /**
