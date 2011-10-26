@@ -1,6 +1,10 @@
 package com.g414.st9.proto.service;
 
+import java.io.IOException;
+import java.io.OutputStream;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 
 import javax.ws.rs.Consumes;
@@ -14,15 +18,19 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import javax.ws.rs.core.StreamingOutput;
 import javax.ws.rs.core.Response.Status;
 
 import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
+import org.joda.time.DateTime;
+import org.joda.time.format.ISODateTimeFormat;
 import org.skife.jdbi.v2.Handle;
 import org.skife.jdbi.v2.IDBI;
 import org.skife.jdbi.v2.tweak.HandleCallback;
 
 import com.g414.st9.proto.service.count.JDBICountService;
+import com.g414.st9.proto.service.helper.EncodingHelper;
 import com.g414.st9.proto.service.index.JDBISecondaryIndex;
 import com.g414.st9.proto.service.schema.CounterDefinition;
 import com.g414.st9.proto.service.schema.IndexDefinition;
@@ -34,6 +42,7 @@ import com.g414.st9.proto.service.sequence.SequenceService;
 import com.g414.st9.proto.service.store.Key;
 import com.g414.st9.proto.service.store.KeyValueStorage;
 import com.g414.st9.proto.service.validator.ValidationException;
+import com.google.common.collect.ImmutableMap;
 import com.google.inject.Inject;
 
 /**
@@ -266,6 +275,144 @@ public class SchemaResource {
         }
 
         return store.delete(SCHEMA_PREFIX + ":" + typeId, true);
+    }
+
+    @POST
+    @Path("{type}/rebuild")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response rebuild(@PathParam("type") final String type)
+            throws Exception {
+        Integer typeId = getTypeIdPossiblyNull(type, false);
+
+        if (typeId == null) {
+            return Response.status(Status.NOT_FOUND).entity("type not found")
+                    .build();
+        }
+
+        Response existing = this.store.retrieve(SCHEMA_PREFIX + ":" + typeId,
+                false);
+        if (existing.getStatus() != 200) {
+            return Response.status(Status.NOT_FOUND).entity("schema not found")
+                    .build();
+        }
+
+        final SchemaDefinition original;
+
+        try {
+            original = mapper.readValue((String) existing.getEntity(),
+                    SchemaDefinition.class);
+        } catch (JsonMappingException e) {
+            return Response.status(Status.BAD_REQUEST)
+                    .entity("invalid schema definition json").build();
+        }
+
+        for (IndexDefinition indexDefinition : original.getIndexes()) {
+            String indexName = indexDefinition.getName();
+
+            if (index.tableExists(database, type, indexName)) {
+                index.dropTable(database, type, indexName);
+            }
+        }
+
+        for (CounterDefinition counterDefinition : original.getCounters()) {
+            String counterName = counterDefinition.getName();
+
+            if (counts.tableExists(database, type, counterName)) {
+                counts.dropTable(database, type, counterName);
+            }
+        }
+
+        for (IndexDefinition indexDefinition : original.getIndexes()) {
+            String indexName = indexDefinition.getName();
+
+            if (!index.tableExists(database, type, indexName)) {
+                index.createTable(database, type, indexName, original);
+                index.createIndex(database, type, indexName, original);
+            }
+        }
+
+        for (CounterDefinition counterDefinition : original.getCounters()) {
+            String counterName = counterDefinition.getName();
+
+            if (!counts.tableExists(database, type, counterName)) {
+                counts.createTable(database, type, counterName, original);
+            }
+        }
+
+        database.withHandle(new HandleCallback<Void>() {
+            @Override
+            public Void withHandle(Handle handle) throws Exception {
+                try {
+                    rebuildIndexesAndCounters(handle, type, original,
+                            store.iterator(type, original));
+                    return null;
+                } catch (WebApplicationException e) {
+                    e.printStackTrace();
+
+                    return null;
+                }
+            }
+        });
+
+        return Response.status(Status.OK).entity("rebuild complete").build();
+    }
+
+    @POST
+    @Path("rebuild_all")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response rebuildAll() throws Exception {
+        return Response.status(Status.OK).entity(new StreamingOutput() {
+            @Override
+            public void write(OutputStream output) throws IOException,
+                    WebApplicationException {
+                try {
+                    output.write((EncodingHelper.convertToJson(ImmutableMap
+                            .<String, Object> of("$rebuild_all", "START",
+                                    "$date", ISODateTimeFormat.basicDateTime()
+                                            .print(new DateTime()))) + "\n")
+                            .getBytes());
+                    output.flush();
+
+                    Iterator<Map<String, Object>> schemas = SchemaResource.this.store
+                            .iterator(SCHEMA_PREFIX);
+
+                    while (schemas.hasNext()) {
+                        Map<String, Object> schema = schemas.next();
+                        String type = (String) schema.get("$type");
+                        if (type == null || type.startsWith("$")) {
+                            continue;
+                        }
+
+                        output.write((EncodingHelper.convertToJson(ImmutableMap
+                                .<String, Object> of("$rebuild", "START",
+                                        "$date",
+                                        ISODateTimeFormat.basicDateTime()
+                                                .print(new DateTime()),
+                                        "$type", type)) + "\n").getBytes());
+                        output.flush();
+
+                        SchemaResource.this.rebuild(type);
+
+                        output.write((EncodingHelper.convertToJson(ImmutableMap
+                                .<String, Object> of("$rebuild", "END",
+                                        "$date",
+                                        ISODateTimeFormat.basicDateTime()
+                                                .print(new DateTime()),
+                                        "$type", type)) + "\n").getBytes());
+                        output.flush();
+                    }
+
+                    output.write((EncodingHelper.convertToJson(ImmutableMap
+                            .<String, Object> of("$rebuild_all", "END",
+                                    "$date", ISODateTimeFormat.basicDateTime()
+                                            .print(new DateTime()))) + "\n")
+                            .getBytes());
+                    output.flush();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }).build();
     }
 
     public void rebuildIndexesAndCounters(Handle handle, String type,
