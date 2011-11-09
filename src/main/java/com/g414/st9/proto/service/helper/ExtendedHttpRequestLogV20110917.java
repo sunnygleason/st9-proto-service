@@ -157,7 +157,7 @@ public class ExtendedHttpRequestLogV20110917 extends AbstractLifeCycle
             }
 
             String agent = request.getHeader(HttpHeaders.USER_AGENT);
-            if (referer != null) {
+            if (agent != null) {
                 out.put("a", agent);
             }
 
@@ -166,7 +166,7 @@ public class ExtendedHttpRequestLogV20110917 extends AbstractLifeCycle
             }
 
             if (request.getHeader("X-User-ID") != null) {
-                out.put("u", request.getHeader("X-User-ID"));
+                out.put("w", request.getHeader("X-User-ID"));
             }
 
             if (request.getHeader("X-Session-ID") != null) {
