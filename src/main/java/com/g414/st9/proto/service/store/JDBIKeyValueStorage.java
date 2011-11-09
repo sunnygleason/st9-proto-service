@@ -24,6 +24,8 @@ import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.joda.time.DateTime;
 import org.joda.time.DateTimeZone;
+import org.joda.time.format.DateTimeFormatter;
+import org.joda.time.format.ISODateTimeFormat;
 import org.skife.jdbi.v2.Handle;
 import org.skife.jdbi.v2.IDBI;
 import org.skife.jdbi.v2.Query;
@@ -57,6 +59,8 @@ import com.google.inject.name.Named;
 public abstract class JDBIKeyValueStorage implements KeyValueStorage,
         LifecycleRegistration {
     public static int MULTIGET_MAX_KEYS = 100;
+    private final DateTimeFormatter DATETIME_FORMAT = ISODateTimeFormat
+            .basicDateTime().withZone(DateTimeZone.UTC);
 
     @Inject
     protected AvailabilityManager availability;
@@ -1030,6 +1034,11 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                     } else {
                         // no marker field
                     }
+
+                    populateDateField(first, withVersion, "_created_dt",
+                            "$created_dt");
+                    populateDateField(first, withVersion, "_updated_dt",
+                            "$updated_dt");
                 }
 
                 withVersion.put("version", version.toString());
@@ -1348,6 +1357,19 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
             return Response.status(Status.INTERNAL_SERVER_ERROR)
                     .entity(e.getMessage()).build();
+        }
+    }
+
+    private void populateDateField(Map<String, Object> databaseRow,
+            Map<String, Object> objectMap, String dateField,
+            String targetField) {
+        if (databaseRow.containsKey(dateField)) {
+            Number dateValue = (Number) databaseRow.get(dateField);
+            if (dateValue != null) {
+                String dateString = DATETIME_FORMAT
+                        .print(dateValue.longValue() * 1000);
+                objectMap.put(targetField, dateString);
+            }
         }
     }
 }

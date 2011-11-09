@@ -3,6 +3,7 @@ package com.g414.st9.proto.service;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Scanner;
@@ -97,11 +98,12 @@ public class ImportExportResource {
                                     continue;
                                 }
 
-                                Boolean deleted = (Boolean) parsedObject
-                                        .remove("$deleted");
-                                Boolean quarantined = (Boolean) parsedObject
-                                        .remove("$quarantined");
-                                parsedObject.remove("$status");
+                                Map<String, Object> special = extractSpecialFields(parsedObject);
+
+                                Boolean deleted = (Boolean) special
+                                        .get("$deleted");
+                                Boolean quarantined = (Boolean) special
+                                        .get("$quarantined");
 
                                 Key key = Key.valueOf((String) parsedObject
                                         .remove("id"));
@@ -121,8 +123,7 @@ public class ImportExportResource {
                                 Response r = null;
 
                                 if (key.getType().equals("$schema")) {
-                                    String type = (String) object
-                                            .remove("$type");
+                                    String type = (String) special.get("$type");
 
                                     r = schema.createEntity(type,
                                             EncodingHelper
@@ -149,10 +150,14 @@ public class ImportExportResource {
 
                                     if (r.getStatus() != Status.OK
                                             .getStatusCode()) {
+                                        System.out.println(instance);
+
                                         output.write((EncodingHelper.convertToJson(ImmutableMap.<String, Object> of(
                                                 "$status", "OK", "$record",
                                                 "FAILED", "$id",
-                                                key.getEncryptedIdentifier())) + "\n")
+                                                key.getEncryptedIdentifier(),
+                                                "$code", r.getStatus(),
+                                                "$reason", r.getEntity())) + "\n")
                                                 .getBytes());
 
                                         failedCount += 1;
@@ -229,7 +234,24 @@ public class ImportExportResource {
                 }
             }
         }).build();
+    }
 
+    private static Map<String, Object> extractSpecialFields(
+            Map<String, Object> parsedObject) {
+        Map<String, Object> special = new LinkedHashMap<String, Object>();
+
+        for (Map.Entry<String, Object> entry : parsedObject.entrySet()) {
+            String key = entry.getKey();
+            if (key.startsWith("$")) {
+                special.put(entry.getKey(), entry.getValue());
+            }
+        }
+
+        for (String key : special.keySet()) {
+            parsedObject.remove(key);
+        }
+
+        return special;
     }
 
     private static void printStatus(OutputStream output, Long successCount,
