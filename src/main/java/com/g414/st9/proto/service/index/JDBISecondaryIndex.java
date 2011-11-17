@@ -1,5 +1,7 @@
 package com.g414.st9.proto.service.index;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -141,15 +143,23 @@ public class JDBISecondaryIndex {
     }
 
     public void updateEntity(Handle handle, final Long id,
-            final Map<String, Object> value, final String type,
-            final String indexName, final SchemaDefinition schemaDefinition) {
+            final Map<String, Object> value, final Map<String, Object> prev,
+            final String type, final String indexName,
+            final SchemaDefinition schemaDefinition) {
+        IndexDefinition indexDefinition = schemaDefinition.getIndexMap().get(
+                indexName);
+
+        String origKey = computeIndexKey(indexDefinition, prev);
+        String newKey = computeIndexKey(indexDefinition, value);
+
+        if (origKey.equals(newKey)) {
+            return;
+        }
+
         SqlParamBindings bindings = new SqlParamBindings(true);
 
         Update update = handle.createStatement(tableHelper.getUpdateStatement(
                 type, indexName, schemaDefinition, bindings));
-
-        IndexDefinition indexDefinition = schemaDefinition.getIndexMap().get(
-                indexName);
 
         for (IndexAttribute attr : indexDefinition.getIndexAttributes()) {
             String attrName = attr.getName();
@@ -179,6 +189,30 @@ public class JDBISecondaryIndex {
                 throw e;
             }
         }
+    }
+
+    private static String computeIndexKey(IndexDefinition indexDefinition,
+            Map<String, Object> value) {
+        StringBuilder theKey = new StringBuilder();
+
+        theKey.append("|");
+
+        try {
+            for (IndexAttribute attr : indexDefinition.getIndexAttributes()) {
+                String attrName = attr.getName();
+                Object attrValue = value.get(attrName);
+
+                String attrValueString = (attrValue != null) ? URLEncoder
+                        .encode(attrValue.toString(), "UTF-8") : "$null";
+
+                theKey.append(attrValueString);
+                theKey.append("|");
+            }
+        } catch (UnsupportedEncodingException shouldntHappen) {
+            throw new RuntimeException(shouldntHappen);
+        }
+
+        return theKey.toString();
     }
 
     public void deleteEntity(Handle handle, final Long id, final String type,

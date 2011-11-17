@@ -490,7 +490,8 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                     String oldVersionString = null;
                     Map<String, Object> original = null;
 
-                    if (!definition.getCounters().isEmpty()) {
+                    if (!definition.getCounters().isEmpty()
+                            || !definition.getIndexes().isEmpty()) {
                         original = (Map<String, Object>) EncodingHelper
                                 .parseSmileLzf(getObjectBytes(realKey, false));
 
@@ -525,7 +526,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
                     for (IndexDefinition indexDef : definition.getIndexes()) {
                         index.updateEntity(handle, Long.valueOf(keyId),
-                                toUpdate, realKey.getType(),
+                                toUpdate, original, realKey.getType(),
                                 indexDef.getName(), definition);
                     }
 
@@ -1361,8 +1362,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
     }
 
     private void populateDateField(Map<String, Object> databaseRow,
-            Map<String, Object> objectMap, String dateField,
-            String targetField) {
+            Map<String, Object> objectMap, String dateField, String targetField) {
         if (databaseRow.containsKey(dateField)) {
             Number dateValue = (Number) databaseRow.get(dateField);
             if (dateValue != null) {
