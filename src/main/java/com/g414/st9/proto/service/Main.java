@@ -115,10 +115,10 @@ public class Main {
                 System.err
                         .println("Shutdown request received: notifying lifecycle");
                 lifecycle.shutdown();
-                System.err.println("Lifecycle notified: waiting 10s");
+                System.err.println("Lifecycle notified: waiting 3s");
 
                 try {
-                    Thread.sleep(10000);
+                    Thread.sleep(3000);
                 } catch (InterruptedException ignored) {
                 }
 
