@@ -180,8 +180,6 @@ public class SequenceService {
     }
 
     public Map<String, Counter> getCurrentCounters() {
-        System.out.println(counters);
-
         return Collections.unmodifiableMap(counters);
     }
 
