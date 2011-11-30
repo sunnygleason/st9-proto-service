@@ -1,5 +1,7 @@
 package com.g414.st9.proto.service.index;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -22,6 +24,8 @@ import org.skife.jdbi.v2.exceptions.UnableToExecuteStatementException;
 
 import com.g414.hash.LongHash;
 import com.g414.hash.impl.MurmurHash;
+import com.g414.st9.proto.service.cache.KeyValueCache;
+import com.g414.st9.proto.service.helper.EncodingHelper;
 import com.g414.st9.proto.service.helper.OpaquePaginationHelper;
 import com.g414.st9.proto.service.helper.SqlParamBindings;
 import com.g414.st9.proto.service.helper.SqlTypeHelper;
@@ -38,6 +42,8 @@ import com.g414.st9.proto.service.schema.SchemaDefinition;
 import com.g414.st9.proto.service.schema.SchemaValidatorTransformer;
 import com.g414.st9.proto.service.store.Key;
 import com.g414.st9.proto.service.validator.ValidationException;
+import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
 
@@ -120,8 +126,17 @@ public class SecondaryIndexTableHelper {
 
         List<String> cols = new ArrayList<String>();
         List<String> params = new ArrayList<String>();
+        Set<String> already = new HashSet<String>();
+
+        cols.add(getColumnName("id"));
+        params.add(bindings.bind("id", AttributeType.U64));
+        already.add("id");
 
         for (IndexAttribute attr : indexDefinition.getIndexAttributes()) {
+            if (already.contains(attr.getName())) {
+                continue;
+            }
+
             cols.add(getColumnName(attr.getName()));
             params.add(bindings.bind(
                     attr.getName(),
@@ -409,65 +424,32 @@ public class SecondaryIndexTableHelper {
         return sqlBuilder.toString();
     }
 
-    public List<Map<String, Object>> doIndexQuery(IDBI database, String type,
-            String indexName, List<QueryTerm> queryTerms, String token,
-            Long pageSize, boolean includeQuarantine,
-            SchemaDefinition schemaDefinition) throws Exception {
-        final List<Map<String, Object>> resultIds = new ArrayList<Map<String, Object>>();
-        final SqlParamBindings bindings = new SqlParamBindings(true);
-
-        final String querySql = getIndexQuery(type, indexName, queryTerms,
-                token, pageSize, includeQuarantine, schemaDefinition, bindings);
-
-        Response response = database
-                .inTransaction(new TransactionCallback<Response>() {
-                    @Override
-                    public Response inTransaction(Handle handle,
-                            TransactionStatus status) throws Exception {
-                        try {
-                            Query<Map<String, Object>> query = handle
-                                    .createQuery(querySql);
-
-                            bindings.bindToStatement(query);
-
-                            for (Map<String, Object> r : query.list()) {
-                                resultIds.add(r);
-                            }
-
-                            return null;
-                        } catch (WebApplicationException e) {
-                            return e.getResponse();
-                        }
-                    }
-                });
-
-        if (response != null) {
-            throw new WebApplicationException(response);
-        }
-
-        return Collections.unmodifiableList(resultIds);
-    }
-
     public String getIndexQuery(String type, String indexName,
             List<QueryTerm> queryTerms, String token, Long pageSize,
             boolean includeQuarantine, SchemaDefinition schemaDefinition,
             SqlParamBindings bindings) throws Exception {
-        IndexDefinition indexDefinition = schemaDefinition.getIndexMap().get(
-                indexName);
+        IndexDefinition indexDef = schemaDefinition.getIndexMap()
+                .get(indexName);
 
-        if (indexDefinition == null) {
+        if (indexDef == null) {
             throw new WebApplicationException(Response
                     .status(Status.BAD_REQUEST)
                     .entity("schema or index not found " + type + "."
                             + indexName).build());
         }
 
-        final SchemaValidatorTransformer transformer = new SchemaValidatorTransformer(
-                schemaDefinition);
+        return getIndexQuery(type, indexName, sortTerms(indexDef, queryTerms),
+                token, pageSize, includeQuarantine, indexDef, schemaDefinition,
+                new SchemaValidatorTransformer(schemaDefinition), bindings);
 
-        Map<String, List<QueryTerm>> termMap = sortTerms(indexDefinition,
-                queryTerms);
+    }
 
+    public String getIndexQuery(String type, String indexName,
+            Map<String, List<QueryTerm>> termMap, String token, Long pageSize,
+            boolean includeQuarantine, IndexDefinition indexDefinition,
+            SchemaDefinition schemaDefinition,
+            SchemaValidatorTransformer transformer, SqlParamBindings bindings)
+            throws Exception {
         List<QueryTerm> firstTerm = termMap.get(indexDefinition
                 .getIndexAttributes().get(0).getName());
         if (firstTerm == null || firstTerm.isEmpty()) {
@@ -502,7 +484,7 @@ public class SecondaryIndexTableHelper {
                     for (QueryValue value : valueList) {
                         String boundParam = bindParam(attribute,
                                 schemaDefinition, transformer, bindings, param,
-                                attrName, term.getOperator(), value);
+                                attrName, value);
 
                         if (boundParam != null) {
                             maybeParam = " " + boundParam;
@@ -519,7 +501,7 @@ public class SecondaryIndexTableHelper {
                 } else {
                     String boundParam = bindParam(attribute, schemaDefinition,
                             transformer, bindings, param, attrName,
-                            term.getOperator(), term.getValue());
+                            term.getValue());
 
                     if (boundParam != null) {
                         maybeParam = " " + boundParam;
@@ -561,40 +543,139 @@ public class SecondaryIndexTableHelper {
         return sqlBuilder.toString();
     }
 
-    private String bindParam(IndexAttribute attribute,
-            SchemaDefinition schemaDefinition,
-            SchemaValidatorTransformer transformer, SqlParamBindings bindings,
-            int param, String attrName, QueryOperator operator, QueryValue value) {
-        if (!value.getValueType().equals(ValueType.NULL)) {
-            Object instance = value.getValue();
-            Object transformed = transformer.transformValue(attrName, instance);
-
-            if (transformed != null) {
-                transformed = transformed.toString();
-            }
-
-            if (attrName.equals("id")) {
-                try {
-                    transformed = Key.valueOf(transformed.toString()).getId();
-                } catch (Exception e) {
-                    throw new ValidationException("invalid id: '"
-                            + instance.toString() + "'");
-                }
-            }
-
-            return bindings.bind(
-                    "p" + param,
-                    transformAttributeValue(transformed, attribute),
-                    "id".equals(attribute.getName()) ? AttributeType.U64
-                            : schemaDefinition.getAttributesMap()
-                                    .get(attribute.getName()).getType());
+    public List<Map<String, Object>> doUniqueIndexQuery(IDBI database,
+            KeyValueCache cache, String type, String indexName,
+            Map<String, List<QueryTerm>> termMap, String token,
+            IndexDefinition indexDefinition, SchemaDefinition schemaDefinition,
+            SchemaValidatorTransformer transformer) throws Exception {
+        if (token != null) {
+            return null;
         }
 
-        return null;
+        Set<String> foundAttrs = new HashSet<String>();
+        for (Map.Entry<String, List<QueryTerm>> entry : termMap.entrySet()) {
+            if (entry.getValue().size() != 1) {
+                return null;
+            }
+
+            if (!QueryOperator.EQ.equals(entry.getValue().get(0).getOperator())) {
+                return null;
+            }
+
+            foundAttrs.add(entry.getKey());
+        }
+
+        for (String attrName : indexDefinition.getAttributeNames()) {
+            if (!foundAttrs.contains(attrName)) {
+                return null;
+            }
+        }
+
+        Map<String, Object> value = new LinkedHashMap<String, Object>();
+
+        for (IndexAttribute attribute : indexDefinition.getIndexAttributes()) {
+            String attrName = attribute.getName();
+            QueryTerm term = termMap.get(attrName).get(0);
+            Object termValue = term.getValue().getValue();
+            value.put(attrName, transformer.transformValue(attrName, termValue));
+        }
+
+        String cacheKey = computeIndexKey(indexName, indexDefinition, value);
+        byte[] cacheResult = cache.get(cacheKey);
+
+        if (cacheResult != null) {
+            String resultString = new String(cacheResult);
+
+            return ImmutableList.<Map<String, Object>> of(ImmutableMap
+                    .<String, Object> of("_id", Long.parseLong(resultString)));
+        }
+
+        final List<Map<String, Object>> resultIds = new ArrayList<Map<String, Object>>();
+        final SqlParamBindings bindings = new SqlParamBindings(true);
+
+        final String querySql = getIndexQuery(type, indexName, termMap, token,
+                10L, false, indexDefinition, schemaDefinition, transformer,
+                bindings);
+
+        Response response = database
+                .inTransaction(new TransactionCallback<Response>() {
+                    @Override
+                    public Response inTransaction(Handle handle,
+                            TransactionStatus status) throws Exception {
+                        try {
+                            Query<Map<String, Object>> query = handle
+                                    .createQuery(querySql);
+
+                            bindings.bindToStatement(query);
+
+                            List<Map<String, Object>> qList = query.list();
+                            if (qList == null || qList.size() > 1) {
+                                throw new RuntimeException(
+                                        "Non-unique result set!");
+                            }
+
+                            if (qList.size() == 1) {
+                                resultIds.add(query.first());
+                            }
+
+                            return null;
+                        } catch (WebApplicationException e) {
+                            return e.getResponse();
+                        }
+                    }
+                });
+
+        if (response != null) {
+            throw new WebApplicationException(response);
+        }
+
+        if (resultIds.size() > 0) {
+            cache.put(cacheKey, resultIds.get(0).get("_id").toString()
+                    .getBytes());
+        }
+
+        return Collections.unmodifiableList(resultIds);
     }
 
-    private static Map<String, List<QueryTerm>> sortTerms(
-            IndexDefinition indexDef, List<QueryTerm> terms) {
+    public String computeIndexKey(String indexName,
+            IndexDefinition indexDefinition, Map<String, Object> value) {
+        StringBuilder theKey = new StringBuilder();
+        theKey.append("idx:");
+        theKey.append(indexName);
+        theKey.append(":");
+
+        try {
+            Iterator<IndexAttribute> indexAttrIter = indexDefinition
+                    .getIndexAttributes().iterator();
+
+            while (indexAttrIter.hasNext()) {
+                IndexAttribute attr = indexAttrIter.next();
+
+                String attrName = attr.getName();
+                if ("id".equals(attrName)) {
+                    continue;
+                }
+
+                Object attrValue = value.get(attrName);
+
+                String attrValueString = (attrValue != null) ? URLEncoder
+                        .encode(attrValue.toString(), "UTF-8") : "$";
+
+                theKey.append(attrValueString);
+
+                if (indexAttrIter.hasNext()) {
+                    theKey.append("|");
+                }
+            }
+        } catch (UnsupportedEncodingException shouldntHappen) {
+            throw new RuntimeException(shouldntHappen);
+        }
+
+        return theKey.toString();
+    }
+
+    public Map<String, List<QueryTerm>> sortTerms(IndexDefinition indexDef,
+            List<QueryTerm> terms) {
         Map<String, List<QueryTerm>> termMap = new LinkedHashMap<String, List<QueryTerm>>();
 
         Set<String> termFields = new HashSet<String>();
@@ -631,5 +712,37 @@ public class SecondaryIndexTableHelper {
         }
 
         return termMap;
+    }
+
+    private String bindParam(IndexAttribute attribute,
+            SchemaDefinition schemaDefinition,
+            SchemaValidatorTransformer transformer, SqlParamBindings bindings,
+            int param, String attrName, QueryValue value) {
+        if (!value.getValueType().equals(ValueType.NULL)) {
+            Object instance = value.getValue();
+            Object transformed = transformer.transformValue(attrName, instance);
+
+            if (transformed != null) {
+                transformed = transformed.toString();
+            }
+
+            if (attrName.equals("id")) {
+                try {
+                    transformed = Key.valueOf(transformed.toString()).getId();
+                } catch (Exception e) {
+                    throw new ValidationException("invalid id: '"
+                            + instance.toString() + "'");
+                }
+            }
+
+            return bindings.bind(
+                    "p" + param,
+                    transformAttributeValue(transformed, attribute),
+                    "id".equals(attribute.getName()) ? AttributeType.U64
+                            : schemaDefinition.getAttributesMap()
+                                    .get(attribute.getName()).getType());
+        }
+
+        return null;
     }
 }

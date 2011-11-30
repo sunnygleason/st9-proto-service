@@ -611,7 +611,8 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
                     Map<String, Object> original = null;
 
-                    if (!definition.getCounters().isEmpty()) {
+                    if (!definition.getIndexes().isEmpty()
+                            || !definition.getCounters().isEmpty()) {
                         original = (Map<String, Object>) EncodingHelper
                                 .parseSmileLzf(getObjectBytes(realKey, false,
                                         true));
@@ -625,7 +626,8 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                     if (updateIndexAndCounters) {
                         for (IndexDefinition indexDef : definition.getIndexes()) {
                             index.deleteEntity(handle, Long.valueOf(keyId),
-                                    realKey.getType(), indexDef.getName());
+                                    realKey.getType(), original,
+                                    indexDef.getName(), definition);
                         }
                     }
 
@@ -692,7 +694,8 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
                     Map<String, Object> original = null;
 
-                    if (!definition.getCounters().isEmpty()) {
+                    if (!definition.getIndexes().isEmpty()
+                            || !definition.getCounters().isEmpty()) {
                         byte[] originalBytes = getObjectBytes(realKey, false,
                                 true);
 
@@ -736,7 +739,8 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                         for (IndexDefinition indexDef : definition.getIndexes()) {
                             index.setEntityQuarantine(handle,
                                     Long.valueOf(keyId), realKey.getType(),
-                                    indexDef.getName(), isQuarantined);
+                                    indexDef.getName(), isQuarantined,
+                                    original, definition);
                         }
                     }
 

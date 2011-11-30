@@ -8,6 +8,7 @@ import com.g414.st9.proto.service.ImportExportResource;
 import com.g414.st9.proto.service.PingResource;
 import com.g414.st9.proto.service.SchemaResource;
 import com.g414.st9.proto.service.SecondaryIndexResource;
+import com.g414.st9.proto.service.UniqueIndexResource;
 import com.g414.st9.proto.service.helper.JDBIHelper;
 import com.g414.st9.proto.service.helper.MySQLTypeHelper;
 import com.g414.st9.proto.service.helper.SqlTypeHelper;
@@ -71,6 +72,7 @@ public class MySQLKeyValueStorage extends JDBIKeyValueStorage {
             bind(SchemaResource.class).asEagerSingleton();
             bind(CounterResource.class).asEagerSingleton();
             bind(SecondaryIndexResource.class).asEagerSingleton();
+            bind(UniqueIndexResource.class).asEagerSingleton();
             bind(ImportExportResource.class).asEagerSingleton();
             bind(PingResource.class).asEagerSingleton();
         }

@@ -98,8 +98,14 @@ public class SchemaDefinitionValidator {
             included.add(colName);
         }
 
-        if (!included.contains("id")) {
-            throw new ValidationException("Index must include 'id' attribute");
+        if (!index.isUnique() && !included.contains("id")) {
+            throw new ValidationException(
+                    "Non-unique index *must* include 'id' attribute");
+        }
+
+        if (index.isUnique() && included.contains("id")) {
+            throw new ValidationException(
+                    "Unique index *must not* include 'id' attribute");
         }
     }
 

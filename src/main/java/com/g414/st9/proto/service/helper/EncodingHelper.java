@@ -98,34 +98,6 @@ public class EncodingHelper {
                 .decode(cachekey.substring(KV_CACHE_PREFIX.length()));
     }
 
-    public static String toUniqueIdxCacheKey(List<String> key) throws Exception {
-        StringBuilder s = new StringBuilder();
-        s.append(UNIQUE_IDX_CACHE_PREFIX);
-
-        Iterator<String> i = key.iterator();
-        while (i.hasNext()) {
-            s.append(cacheKeyCodec.encode(i.next()));
-            if (i.hasNext()) {
-                s.append(":");
-            }
-        }
-
-        return s.toString();
-    }
-
-    public static List<String> fromUniqueIdxCacheKey(String cachekey)
-            throws Exception {
-        List<String> toReturn = new ArrayList<String>();
-
-        String[] key = cachekey.substring(UNIQUE_IDX_CACHE_PREFIX.length())
-                .split(":");
-        for (String k : key) {
-            toReturn.add(cacheKeyCodec.decode(k));
-        }
-
-        return Collections.unmodifiableList(toReturn);
-    }
-
     public static long getKeyHash(Map<String, Object> key) throws Exception {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         SmileGenerator smile = smileFactory.createJsonGenerator(out);

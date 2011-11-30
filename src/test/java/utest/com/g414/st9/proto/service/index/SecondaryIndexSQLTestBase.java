@@ -69,8 +69,8 @@ public abstract class SecondaryIndexSQLTestBase {
 
         Assert.assertEquals(
                 "insert into " + helper.quote("_i_schema4__0c6ca14baa3cd7d1")
-                        + " (" + helper.quote("_x") + ", " + helper.quote("_y")
-                        + ", " + helper.quote("_id") + ", "
+                        + " (" + helper.quote("_id") + ", "
+                        + helper.quote("_x") + ", " + helper.quote("_y") + ", "
                         + helper.quote("quarantined") + ") values (?, ?, ?, ?)",
                 indexHelper.getInsertStatement("schema4", "xy", def,
                         new SqlParamBindings(true)));
@@ -222,8 +222,8 @@ public abstract class SecondaryIndexSQLTestBase {
 
         Assert.assertEquals(
                 "insert into " + helper.quote("_i_schema5__57dbd25de1659c0f")
-                        + " (" + helper.quote("_hotness") + ", "
-                        + helper.quote("_id") + ", "
+                        + " (" + helper.quote("_id") + ", "
+                        + helper.quote("_hotness") + ", "
                         + helper.quote("quarantined") + ") values (?, ?, ?)",
                 indexHelper.getInsertStatement("schema5", "hotness", def,
                         new SqlParamBindings(true)));

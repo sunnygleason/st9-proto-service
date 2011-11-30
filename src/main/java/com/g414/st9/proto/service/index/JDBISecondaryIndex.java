@@ -1,7 +1,5 @@
 package com.g414.st9.proto.service.index;
 
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
@@ -20,6 +18,7 @@ import org.skife.jdbi.v2.TransactionStatus;
 import org.skife.jdbi.v2.Update;
 import org.skife.jdbi.v2.exceptions.UnableToExecuteStatementException;
 
+import com.g414.st9.proto.service.cache.KeyValueCache;
 import com.g414.st9.proto.service.helper.JDBIHelper;
 import com.g414.st9.proto.service.helper.SqlParamBindings;
 import com.g414.st9.proto.service.query.QueryTerm;
@@ -27,14 +26,18 @@ import com.g414.st9.proto.service.schema.AttributeType;
 import com.g414.st9.proto.service.schema.IndexAttribute;
 import com.g414.st9.proto.service.schema.IndexDefinition;
 import com.g414.st9.proto.service.schema.SchemaDefinition;
+import com.g414.st9.proto.service.schema.SchemaValidatorTransformer;
 import com.google.inject.Inject;
 
 public class JDBISecondaryIndex {
     private final SecondaryIndexTableHelper tableHelper;
+    private final KeyValueCache cache;
 
     @Inject
-    public JDBISecondaryIndex(SecondaryIndexTableHelper tableHelper) {
+    public JDBISecondaryIndex(SecondaryIndexTableHelper tableHelper,
+            KeyValueCache cache) {
         this.tableHelper = tableHelper;
+        this.cache = cache;
     }
 
     public void createTable(IDBI database, final String type,
@@ -111,11 +114,12 @@ public class JDBISecondaryIndex {
 
         IndexDefinition indexDefinition = schemaDefinition.getIndexMap().get(
                 indexName);
+        bindings.bind("id", id, AttributeType.U64);
 
         for (IndexAttribute attr : indexDefinition.getIndexAttributes()) {
             String attrName = attr.getName();
             if ("id".equals(attrName)) {
-                bindings.bind("id", id, AttributeType.U64);
+                continue;
             } else {
                 Object v = value.get(attrName) != null ? value.get(attrName)
                         .toString() : null;
@@ -140,6 +144,17 @@ public class JDBISecondaryIndex {
                 throw e;
             }
         }
+
+        if (indexDefinition.isUnique()) {
+            String uniqKey = tableHelper.computeIndexKey(indexName,
+                    indexDefinition, value);
+
+            try {
+                cache.put(uniqKey, id.toString().getBytes());
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
     public void updateEntity(Handle handle, final Long id,
@@ -149,8 +164,10 @@ public class JDBISecondaryIndex {
         IndexDefinition indexDefinition = schemaDefinition.getIndexMap().get(
                 indexName);
 
-        String origKey = computeIndexKey(indexDefinition, prev);
-        String newKey = computeIndexKey(indexDefinition, value);
+        String origKey = tableHelper.computeIndexKey(indexName,
+                indexDefinition, prev);
+        String newKey = tableHelper.computeIndexKey(indexName, indexDefinition,
+                value);
 
         if (origKey.equals(newKey)) {
             return;
@@ -189,34 +206,32 @@ public class JDBISecondaryIndex {
                 throw e;
             }
         }
-    }
 
-    private static String computeIndexKey(IndexDefinition indexDefinition,
-            Map<String, Object> value) {
-        StringBuilder theKey = new StringBuilder();
-
-        theKey.append("|");
-
-        try {
-            for (IndexAttribute attr : indexDefinition.getIndexAttributes()) {
-                String attrName = attr.getName();
-                Object attrValue = value.get(attrName);
-
-                String attrValueString = (attrValue != null) ? URLEncoder
-                        .encode(attrValue.toString(), "UTF-8") : "$null";
-
-                theKey.append(attrValueString);
-                theKey.append("|");
+        if (indexDefinition.isUnique()) {
+            String oldUniqKey = tableHelper.computeIndexKey(indexName,
+                    indexDefinition, prev);
+            try {
+                cache.delete(oldUniqKey);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
             }
-        } catch (UnsupportedEncodingException shouldntHappen) {
-            throw new RuntimeException(shouldntHappen);
-        }
 
-        return theKey.toString();
+            String newUniqKey = tableHelper.computeIndexKey(indexName,
+                    indexDefinition, value);
+            try {
+                cache.put(newUniqKey, id.toString().getBytes());
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
     public void deleteEntity(Handle handle, final Long id, final String type,
-            final String indexName) {
+            final Map<String, Object> value, final String indexName,
+            final SchemaDefinition schemaDefinition) {
+        IndexDefinition indexDefinition = schemaDefinition.getIndexMap().get(
+                indexName);
+
         SqlParamBindings bindings = new SqlParamBindings(true);
 
         Update delete = handle.createStatement(tableHelper.getDeleteStatement(
@@ -226,10 +241,22 @@ public class JDBISecondaryIndex {
         bindings.bindToStatement(delete);
 
         delete.execute();
+
+        if (indexDefinition.isUnique()) {
+            String uniqKey = tableHelper.computeIndexKey(indexName,
+                    indexDefinition, value);
+            try {
+                cache.delete(uniqKey);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
     public void setEntityQuarantine(Handle handle, final Long id,
-            final String type, final String indexName, boolean isQuarantined) {
+            final String type, final String indexName, boolean isQuarantined,
+            final Map<String, Object> original,
+            final SchemaDefinition schemaDefinition) {
         SqlParamBindings bindings = new SqlParamBindings(true);
 
         Update quarantine = handle.createStatement(tableHelper
@@ -240,6 +267,19 @@ public class JDBISecondaryIndex {
         bindings.bindToStatement(quarantine);
 
         quarantine.execute();
+
+        IndexDefinition indexDefinition = schemaDefinition.getIndexMap().get(
+                indexName);
+
+        if (indexDefinition.isUnique()) {
+            String uniqKey = tableHelper.computeIndexKey(indexName,
+                    indexDefinition, original);
+            try {
+                cache.delete(uniqKey);
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 
     public void clear(Handle handle, Iterator<Map<String, Object>> schemas,
@@ -271,12 +311,33 @@ public class JDBISecondaryIndex {
             String indexName, List<QueryTerm> queryTerms, String token,
             Long pageSize, boolean includeQuarantine,
             SchemaDefinition schemaDefinition) throws Exception {
+        IndexDefinition indexDefinition = schemaDefinition.getIndexMap().get(
+                indexName);
+        if (indexDefinition == null) {
+            throw new WebApplicationException(Response
+                    .status(Status.BAD_REQUEST)
+                    .entity("schema or index not found " + type + "."
+                            + indexName).build());
+        }
+
+        final SchemaValidatorTransformer transformer = new SchemaValidatorTransformer(
+                schemaDefinition);
+
+        Map<String, List<QueryTerm>> termMap = tableHelper.sortTerms(
+                indexDefinition, queryTerms);
+
+        if (!includeQuarantine && indexDefinition.isUnique()) {
+            return tableHelper.doUniqueIndexQuery(database, cache, type,
+                    indexName, termMap, token, indexDefinition,
+                    schemaDefinition, transformer);
+        }
+
         final List<Map<String, Object>> resultIds = new ArrayList<Map<String, Object>>();
         final SqlParamBindings bindings = new SqlParamBindings(true);
 
         final String querySql = tableHelper.getIndexQuery(type, indexName,
-                queryTerms, token, pageSize, includeQuarantine,
-                schemaDefinition, bindings);
+                termMap, token, pageSize, includeQuarantine, indexDefinition,
+                schemaDefinition, transformer, bindings);
 
         Response response = database
                 .inTransaction(new TransactionCallback<Response>() {
