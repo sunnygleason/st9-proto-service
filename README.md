@@ -17,6 +17,7 @@ Some other noteworthy features of ST9:
 * Soft Deletion : the "delete" operation marks content as deleted but keeps original content until expunged
 * Quarantine : content "quarantining" complements deletion - quarantined content is available in KV store by passing an extra flag, removed from counters and hidden from index queries (unless an extra flag is passed to the query)
 * Secondary Indexes : define indexes (think: database tables with _just_ the data you need) to support range queries and unique constraints
+* Unique Index Optimization : ST9 populates KV cache entries for unique indexes to optimize entity loading without hitting the database (think: load user by email or SSN)
 * Counters: schemas may define counters (think: select count(*) where ... group by X,Y,Z) to support data aggregation with minimal (constant time) overhead per update
 * Binary Encoding: under the hood, ST9 stores data in SMILE (binary JSON) format to minimize data storage requirements
 * Compression: under the hood, ST9 stores data with LZF compression to minimize data storage requirements even further
@@ -125,6 +126,7 @@ Possible value literals:
 * Boolean literals: true, false
 * Null literal: null
 
+A query is a conjunction (list AND'ed together) of query terms.
 
 Advanced schema and query stuff:
 
@@ -151,6 +153,19 @@ $ curl -v -v -X GET "http://localhost:7331/1.0/i2/message.hotmsg?q=hotness+eq+\"
 $ curl -v -v -X GET "http://localhost:7331/1.0/i2/message.hotmsg?q=hotness+eq+\"HOT\"+and+msg+lt+\"he\""
 
 $ curl -v -v -X GET "http://localhost:7331/1.0/i2/message.hotmsg?q=hotness+eq+\"HOT\"+and+msg+gt+\"he\""
+
+
+## Unique Entity API - the /u/ endpoint
+
+Queries "unique" entities using unique secondary (non-primary key) indexes,
+saving a second round-trip for the entity fetch.
+
+This example assumes that the user has created a "point" schema with
+x and y attributes and a *unique* index on the x attribute called "uniq_x".
+
+\# Query point entities using the 'uniq_x' index where 'x' equals 1:
+
+$ curl -v -v -X GET "http://localhost:7331/1.0/u/point.uniq_x?q=x+eq+1"
 
 
 ## Counters API - the /c/ endpoint
@@ -187,6 +202,7 @@ $ curl "http://localhost:7331/1.0/c/awesome.byTargetHotnessYear/@foo:ce4ad6a1cd6
 
 $ curl "http://localhost:7331/1.0/c/awesome.byTargetHotnessYear/@foo:ce4ad6a1cd6293d9/TEH_HOTNESS/1980"
 
+
 ## Quarantine Endpoints
 
 \# quarantine a point
@@ -208,6 +224,7 @@ $ curl -v -v -X GET "http://localhost:7331/1.0/e/@point:5eae81437e481933?include
 \# include quarantined records in index searches (note /i/ endpoint)
 
 $ curl -v -v -X GET "http://localhost:7331/1.0/i/point.xy?q=x+eq+1&includeQuarantine=true"
+
 
 ## Administrative Endpoints
 
