@@ -146,8 +146,10 @@ public class JDBISecondaryIndex {
         }
 
         if (indexDefinition.isUnique()) {
+            SchemaValidatorTransformer transformer = new SchemaValidatorTransformer(
+                    schemaDefinition);
             String uniqKey = tableHelper.computeIndexKey(indexName,
-                    indexDefinition, value);
+                    indexDefinition, value, transformer);
 
             try {
                 cache.put(uniqKey, id.toString().getBytes());
@@ -163,11 +165,13 @@ public class JDBISecondaryIndex {
             final SchemaDefinition schemaDefinition) {
         IndexDefinition indexDefinition = schemaDefinition.getIndexMap().get(
                 indexName);
+        SchemaValidatorTransformer transformer = new SchemaValidatorTransformer(
+                schemaDefinition);
 
         String origKey = tableHelper.computeIndexKey(indexName,
-                indexDefinition, prev);
+                indexDefinition, prev, transformer);
         String newKey = tableHelper.computeIndexKey(indexName, indexDefinition,
-                value);
+                value, transformer);
 
         if (origKey.equals(newKey)) {
             return;
@@ -209,7 +213,7 @@ public class JDBISecondaryIndex {
 
         if (indexDefinition.isUnique()) {
             String oldUniqKey = tableHelper.computeIndexKey(indexName,
-                    indexDefinition, prev);
+                    indexDefinition, prev, transformer);
             try {
                 cache.delete(oldUniqKey);
             } catch (Exception e) {
@@ -217,7 +221,7 @@ public class JDBISecondaryIndex {
             }
 
             String newUniqKey = tableHelper.computeIndexKey(indexName,
-                    indexDefinition, value);
+                    indexDefinition, value, transformer);
             try {
                 cache.put(newUniqKey, id.toString().getBytes());
             } catch (Exception e) {
@@ -242,15 +246,8 @@ public class JDBISecondaryIndex {
 
         delete.execute();
 
-        if (indexDefinition.isUnique()) {
-            String uniqKey = tableHelper.computeIndexKey(indexName,
-                    indexDefinition, value);
-            try {
-                cache.delete(uniqKey);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-        }
+        possiblyPurgeUniqueIndexCache(indexName, value, schemaDefinition,
+                indexDefinition);
     }
 
     public void setEntityQuarantine(Handle handle, final Long id,
@@ -271,9 +268,20 @@ public class JDBISecondaryIndex {
         IndexDefinition indexDefinition = schemaDefinition.getIndexMap().get(
                 indexName);
 
+        possiblyPurgeUniqueIndexCache(indexName, original, schemaDefinition,
+                indexDefinition);
+    }
+
+    private void possiblyPurgeUniqueIndexCache(final String indexName,
+            final Map<String, Object> original,
+            final SchemaDefinition schemaDefinition,
+            IndexDefinition indexDefinition) {
         if (indexDefinition.isUnique()) {
+            SchemaValidatorTransformer transformer = new SchemaValidatorTransformer(
+                    schemaDefinition);
             String uniqKey = tableHelper.computeIndexKey(indexName,
-                    indexDefinition, original);
+                    indexDefinition, original, transformer);
+
             try {
                 cache.delete(uniqKey);
             } catch (Exception e) {

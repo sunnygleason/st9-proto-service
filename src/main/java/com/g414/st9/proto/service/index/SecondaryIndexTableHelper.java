@@ -25,7 +25,6 @@ import org.skife.jdbi.v2.exceptions.UnableToExecuteStatementException;
 import com.g414.hash.LongHash;
 import com.g414.hash.impl.MurmurHash;
 import com.g414.st9.proto.service.cache.KeyValueCache;
-import com.g414.st9.proto.service.helper.EncodingHelper;
 import com.g414.st9.proto.service.helper.OpaquePaginationHelper;
 import com.g414.st9.proto.service.helper.SqlParamBindings;
 import com.g414.st9.proto.service.helper.SqlTypeHelper;
@@ -580,7 +579,8 @@ public class SecondaryIndexTableHelper {
             value.put(attrName, transformer.transformValue(attrName, termValue));
         }
 
-        String cacheKey = computeIndexKey(indexName, indexDefinition, value);
+        String cacheKey = computeIndexKey(indexName, indexDefinition, value,
+                transformer);
         byte[] cacheResult = cache.get(cacheKey);
 
         if (cacheResult != null) {
@@ -638,7 +638,8 @@ public class SecondaryIndexTableHelper {
     }
 
     public String computeIndexKey(String indexName,
-            IndexDefinition indexDefinition, Map<String, Object> value) {
+            IndexDefinition indexDefinition, Map<String, Object> value,
+            SchemaValidatorTransformer transformer) {
         StringBuilder theKey = new StringBuilder();
         theKey.append("idx:");
         theKey.append(indexName);
@@ -657,9 +658,11 @@ public class SecondaryIndexTableHelper {
                 }
 
                 Object attrValue = value.get(attrName);
+                Object transformed = transformAttributeValue(
+                        transformer.transformValue(attrName, attrValue), attr);
 
-                String attrValueString = (attrValue != null) ? URLEncoder
-                        .encode(attrValue.toString(), "UTF-8") : "$";
+                String attrValueString = (transformed != null) ? URLEncoder
+                        .encode(transformed.toString(), "UTF-8") : "$";
 
                 theKey.append(attrValueString);
 
