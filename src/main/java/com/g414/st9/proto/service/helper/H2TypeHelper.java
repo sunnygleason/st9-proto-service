@@ -60,4 +60,9 @@ public class H2TypeHelper implements SqlTypeHelper {
     public String quote(String name) {
         return "\"" + name + "\"";
     }
+
+    @Override
+    public String getTableOptions() {
+        return "";
+    }
 }

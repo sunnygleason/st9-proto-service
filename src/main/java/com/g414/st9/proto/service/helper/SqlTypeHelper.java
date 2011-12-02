@@ -12,4 +12,6 @@ public interface SqlTypeHelper {
     public String getPKConflictResolve();
 
     public String quote(String name);
+    
+    public String getTableOptions();
 }

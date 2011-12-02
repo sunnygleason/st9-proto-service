@@ -60,4 +60,9 @@ public class MySQLTypeHelper implements SqlTypeHelper {
     public String quote(String name) {
         return "`" + name + "`";
     }
+
+    @Override
+    public String getTableOptions() {
+        return " ENGINE=InnoDB ROW_FORMAT=DYNAMIC CHARACTER SET utf8";
+    }
 }
