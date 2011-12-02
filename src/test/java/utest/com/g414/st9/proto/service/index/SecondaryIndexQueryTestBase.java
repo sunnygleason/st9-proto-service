@@ -95,7 +95,7 @@ public abstract class SecondaryIndexQueryTestBase {
     }
 
     public void testMissingType() throws Exception {
-        this.schemaResource.createEntity("foo4", schema4);
+        safeCreateSchema("foo4", schema4);
 
         Response r1 = this.indexResource.retrieveEntity("bar", "xy", "x eq 1",
                 null, null, false);
@@ -109,7 +109,7 @@ public abstract class SecondaryIndexQueryTestBase {
     }
 
     public void testMissingIndex() throws Exception {
-        this.schemaResource.createEntity("foo5", schema4);
+        safeCreateSchema("foo5", schema4);
 
         Response r = this.indexResource.retrieveEntity("foo5", "xyz", "x eq 1",
                 null, null, false);
@@ -119,7 +119,7 @@ public abstract class SecondaryIndexQueryTestBase {
 
     public void testReferenceType() throws Exception {
         String type = "foo6";
-        this.schemaResource.createEntity(type, schema6);
+        safeCreateSchema(type, schema6);
 
         Response r1 = this.kvResource.createEntity(type,
                 "{\"x\":1,\"ref\":\"foo:1\",\"isAwesome\":true}");
@@ -135,7 +135,7 @@ public abstract class SecondaryIndexQueryTestBase {
 
     public void testUtf8Types() throws Exception {
         String type = "foo7";
-        this.schemaResource.createEntity(type, schema7);
+        safeCreateSchema(type, schema7);
 
         Assert.assertTrue(this.index.tableExists(database, type, "xref"));
 
@@ -217,8 +217,7 @@ public abstract class SecondaryIndexQueryTestBase {
 
     protected void runSchemaTest(String type, String indexName, String schema)
             throws Exception {
-        this.schemaResource.createEntity(type, schema);
-
+        safeCreateSchema(type, schema);
         Assert.assertTrue(this.index.tableExists(database, type, indexName));
 
         List<String> ids = new ArrayList<String>();
@@ -319,8 +318,7 @@ public abstract class SecondaryIndexQueryTestBase {
 
     protected void doUniqueIntegerTest(String type, String schema,
             Integer value, String found1, String found2) throws Exception {
-        this.schemaResource.createEntity(type, schema);
-
+        safeCreateSchema(type, schema);
         Assert.assertTrue(this.index.tableExists(database, type, "uniq"));
 
         for (int i = 0; i < 74; i++) {
@@ -354,8 +352,7 @@ public abstract class SecondaryIndexQueryTestBase {
     protected void doUniqueStringTest(String type, String schema,
             String prefix, String target, String found1, String found2)
             throws Exception {
-        this.schemaResource.createEntity(type, schema);
-
+        safeCreateSchema(type, schema);
         Assert.assertTrue(this.index.tableExists(database, type, "uniq"));
 
         for (int i = 0; i < 74; i++) {
@@ -365,6 +362,7 @@ public abstract class SecondaryIndexQueryTestBase {
                             + " even? " + (i % 2 == 0) + "\"}").getEntity();
         }
 
+        // Thread.sleep(100000);
         Response r = this.indexResource.retrieveEntity(type, "uniq",
                 "small eq \"" + prefix + "1\"", null, 25L, false);
         Assert.assertEquals(r.getEntity().toString(), "{\"kind\":\"" + type
@@ -391,8 +389,7 @@ public abstract class SecondaryIndexQueryTestBase {
     protected void doUniqueCompoundTest(String type, String schema,
             String prefix, String target, String found1, String found2,
             String found3) throws Exception {
-        this.schemaResource.createEntity(type, schema);
-
+        safeCreateSchema(type, schema);
         Assert.assertTrue(this.index.tableExists(database, type,
                 "uniq_compound"));
 
@@ -438,5 +435,13 @@ public abstract class SecondaryIndexQueryTestBase {
         Assert.assertEquals(r4.getEntity().toString(), "{\"id\":\"" + found3
                 + "\",\"kind\":\"" + type + "\",\"version\":\"1\",\"small\":\""
                 + prefix + "1\",\"x\":" + 2 + ",\"text\":\"-1 even? false\"}");
+    }
+
+    private void safeCreateSchema(String type, String schema) throws Exception {
+        Response sr = this.schemaResource.createEntity(type, schema);
+        if (sr.getStatus() != 200) {
+            throw new IllegalStateException("schema didn't work:\n" + schema
+                    + "\n" + sr.getEntity());
+        }
     }
 }

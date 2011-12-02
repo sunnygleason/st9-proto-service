@@ -12,10 +12,12 @@ import com.g414.st9.proto.service.UniqueIndexResource;
 import com.g414.st9.proto.service.helper.JDBIHelper;
 import com.g414.st9.proto.service.helper.MySQLTypeHelper;
 import com.g414.st9.proto.service.helper.SqlTypeHelper;
+import com.g414.st9.proto.service.helper.SqliteTypeHelper;
 import com.g414.st9.proto.service.index.JDBISecondaryIndex;
 import com.g414.st9.proto.service.index.SecondaryIndexTableHelper;
 import com.g414.st9.proto.service.sequence.SequenceHelper;
 import com.g414.st9.proto.service.sequence.SequenceService;
+import com.g414.st9.proto.service.sequence.SequenceServiceDatabaseImpl;
 import com.google.inject.AbstractModule;
 import com.google.inject.Binder;
 import com.google.inject.name.Names;
@@ -52,15 +54,17 @@ public class MySQLKeyValueStorage extends JDBIKeyValueStorage {
             binder.bind(Boolean.class)
                     .annotatedWith(Names.named("nuke.allowed"))
                     .toInstance(
-                            Boolean.valueOf(System.getProperty(
-                                    "nuke.allowed", "false")));
+                            Boolean.valueOf(System.getProperty("nuke.allowed",
+                                    "false")));
 
-            binder.bind(SequenceService.class).toInstance(
-                    new SequenceService(new SequenceHelper(Boolean
-                            .valueOf(System.getProperty("strict.type.creation",
-                                    "true"))), dbi,
-                            MySQLTypeHelper.DATABASE_PREFIX,
-                            SequenceService.DEFAULT_INCREMENT));
+            SequenceServiceDatabaseImpl sequenceService = new SequenceServiceDatabaseImpl(
+                    new SequenceHelper(Boolean.valueOf(System.getProperty(
+                            "strict.type.creation", "true"))), dbi,
+                    MySQLTypeHelper.DATABASE_PREFIX,
+                    SequenceServiceDatabaseImpl.DEFAULT_INCREMENT);
+            binder.bind(SequenceService.class).toInstance(sequenceService);
+            binder.bind(SequenceServiceDatabaseImpl.class).toInstance(
+                    sequenceService);
 
             binder.bind(KeyValueStorage.class).to(MySQLKeyValueStorage.class)
                     .asEagerSingleton();

@@ -185,7 +185,7 @@ public class JDBISecondaryIndex {
         for (IndexAttribute attr : indexDefinition.getIndexAttributes()) {
             String attrName = attr.getName();
             if ("id".equals(attrName)) {
-                bindings.bind("id", id, AttributeType.U64);
+                continue;
             } else {
                 Object v = value.get(attrName) != null ? value.get(attrName)
                         .toString() : null;
@@ -196,6 +196,8 @@ public class JDBISecondaryIndex {
                                 .getType());
             }
         }
+
+        bindings.bind("id", id, AttributeType.U64);
 
         bindings.bindToStatement(update);
 
@@ -378,8 +380,10 @@ public class JDBISecondaryIndex {
 
     public boolean tableExists(IDBI database, final String type,
             final String indexName) {
+        String tablename = tableHelper.getTableName(type, indexName);
+
         return JDBIHelper.tableExists(database, tableHelper.getPrefix(),
-                tableHelper.getTableName(type, indexName));
+                tablename);
     }
 
     public void truncateTable(Handle handle, final String type,

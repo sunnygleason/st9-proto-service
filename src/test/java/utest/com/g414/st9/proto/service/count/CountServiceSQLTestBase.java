@@ -19,6 +19,7 @@ import com.g414.st9.proto.service.query.ValueType;
 import com.g414.st9.proto.service.schema.AttributeType;
 import com.g414.st9.proto.service.schema.SchemaDefinition;
 import com.g414.st9.proto.service.schema.SchemaDefinitionValidator;
+import com.g414.st9.proto.service.sequence.SequenceService;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 
@@ -31,6 +32,27 @@ public abstract class CountServiceSQLTestBase {
 
     public abstract SqlTypeHelper getHelper();
 
+    public SequenceService getMockSequenceService() {
+        return new SequenceService() {
+            @Override
+            public String getTypeName(Integer id) throws Exception {
+                return "mock_type";
+            }
+
+            @Override
+            public Integer getTypeId(String type, boolean create)
+                    throws Exception {
+                return 1;
+            }
+
+            @Override
+            public Integer getTypeId(String type, boolean create, boolean strict)
+                    throws Exception {
+                return 1;
+            }
+        };
+    }
+
     public void testSchemaGeneric() throws Exception {
         SchemaDefinition def = mapper.readValue(schema15,
                 SchemaDefinition.class);
@@ -40,11 +62,11 @@ public abstract class CountServiceSQLTestBase {
 
         SqlTypeHelper helper = getHelper();
         CountServiceTableHelper mysql = new CountServiceTableHelper(
-                helper.getPrefix(), helper);
+                helper.getPrefix(), helper, getMockSequenceService());
 
         Assert.assertEquals(
                 "create table if not exists "
-                        + helper.quote("_c_schema4__01848a41d2c44a4b") + " ("
+                        + helper.quote("_c_0001__01848a41d2c44a4b") + " ("
                         + helper.quote("_x") + " "
                         + helper.getSqlType(AttributeType.I32) + ", "
                         + helper.quote("__hashcode") + " "
@@ -52,12 +74,13 @@ public abstract class CountServiceSQLTestBase {
                         + helper.quote("__count") + " "
                         + helper.getSqlType(AttributeType.U64)
                         + ", PRIMARY KEY(" + helper.quote("_x") + "), UNIQUE("
-                        + helper.quote("__hashcode") + "))",
+                        + helper.quote("__hashcode") + "))"
+                        + helper.getTableOptions(),
                 mysql.getTableDefinition("schema4", "xc", def));
 
         Assert.assertEquals(
                 helper.getInsertIgnore() + " into "
-                        + helper.quote("_c_schema4__01848a41d2c44a4b") + " ("
+                        + helper.quote("_c_0001__01848a41d2c44a4b") + " ("
                         + helper.quote("_x") + ", "
                         + helper.quote("__hashcode") + ", "
                         + helper.quote("__count") + ") values (?, ?, 0)", mysql
@@ -66,8 +89,8 @@ public abstract class CountServiceSQLTestBase {
                                 new SqlParamBindings(true)));
 
         Assert.assertEquals(
-                "update " + helper.quote("_c_schema4__01848a41d2c44a4b")
-                        + " set " + helper.quote("__count") + " = "
+                "update " + helper.quote("_c_0001__01848a41d2c44a4b") + " set "
+                        + helper.quote("__count") + " = "
                         + helper.quote("__count") + " + ? where "
                         + helper.quote("__hashcode") + " = ? and "
                         + helper.quote("_x") + " = ?", mysql
@@ -76,7 +99,7 @@ public abstract class CountServiceSQLTestBase {
                                 new SqlParamBindings(true)));
 
         Assert.assertEquals(
-                "delete from " + helper.quote("_c_schema4__01848a41d2c44a4b")
+                "delete from " + helper.quote("_c_0001__01848a41d2c44a4b")
                         + " where " + helper.quote("__count") + " = 0 and "
                         + helper.quote("__hashcode") + " = ? and "
                         + helper.quote("_x") + " = ?", mysql
@@ -89,7 +112,7 @@ public abstract class CountServiceSQLTestBase {
 
         SqlParamBindings bind0 = new SqlParamBindings(true);
         Assert.assertEquals("select " + helper.quote("__count") + " from "
-                + helper.quote("_c_schema4__01848a41d2c44a4b") + " where "
+                + helper.quote("_c_0001__01848a41d2c44a4b") + " where "
                 + helper.quote("_x") + " = ? order by " + helper.quote("_x")
                 + " ASC limit 1001 offset 0", mysql.getCounterQuery("schema4",
                 "xc", query0, null, CounterResource.DEFAULT_PAGE_SIZE, def,
@@ -102,8 +125,7 @@ public abstract class CountServiceSQLTestBase {
         SqlParamBindings bind1 = new SqlParamBindings(true);
         Assert.assertEquals(
                 "select " + helper.quote("_x") + ", " + helper.quote("__count")
-                        + " from "
-                        + helper.quote("_c_schema4__01848a41d2c44a4b")
+                        + " from " + helper.quote("_c_0001__01848a41d2c44a4b")
                         + " order by " + helper.quote("_x")
                         + " ASC limit 1001 offset 0", mysql.getCounterQuery(
                         "schema4", "xc", query1, null,

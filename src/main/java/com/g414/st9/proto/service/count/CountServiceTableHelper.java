@@ -35,6 +35,7 @@ import com.g414.st9.proto.service.schema.CounterAttribute;
 import com.g414.st9.proto.service.schema.CounterDefinition;
 import com.g414.st9.proto.service.schema.SchemaDefinition;
 import com.g414.st9.proto.service.schema.SchemaValidatorTransformer;
+import com.g414.st9.proto.service.sequence.SequenceService;
 import com.g414.st9.proto.service.validator.ValidationException;
 import com.google.inject.Inject;
 import com.google.inject.name.Named;
@@ -43,13 +44,15 @@ public class CountServiceTableHelper {
     private String prefix;
     private SqlTypeHelper typeHelper;
     private LongHash longHash;
+    private SequenceService sequences;
 
     @Inject
     public CountServiceTableHelper(@Named("db.prefix") String prefix,
-            SqlTypeHelper typeHelper) {
+            SqlTypeHelper typeHelper, SequenceService sequences) {
         this.prefix = prefix;
         this.typeHelper = typeHelper;
         this.longHash = new MurmurHash();
+        this.sequences = sequences;
     }
 
     public String getPrefix() {
@@ -221,7 +224,17 @@ public class CountServiceTableHelper {
     }
 
     public String getTableName(String type, String index) {
-        return typeHelper.quote("_c_" + type + "__" + getCounterHexId(index));
+        try {
+            Integer typeId = sequences.getTypeId(type, false, false);
+            if (typeId == null) {
+                return null;
+            }
+
+            return typeHelper.quote("_c_" + String.format("%04d", typeId)
+                    + "__" + getCounterHexId(index));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private String getCounterHexId(String index) {
@@ -280,6 +293,7 @@ public class CountServiceTableHelper {
         sqlBuilder.append("), UNIQUE(");
         sqlBuilder.append(typeHelper.quote("__hashcode"));
         sqlBuilder.append("))");
+        sqlBuilder.append(typeHelper.getTableOptions());
 
         return sqlBuilder.toString();
     }

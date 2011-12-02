@@ -47,7 +47,7 @@ import com.g414.st9.proto.service.schema.IndexDefinition;
 import com.g414.st9.proto.service.schema.SchemaDefinition;
 import com.g414.st9.proto.service.schema.SchemaHelper;
 import com.g414.st9.proto.service.schema.SchemaValidatorTransformer;
-import com.g414.st9.proto.service.sequence.SequenceService;
+import com.g414.st9.proto.service.sequence.SequenceServiceDatabaseImpl;
 import com.g414.st9.proto.service.validator.ValidationException;
 import com.google.common.collect.ImmutableMap;
 import com.google.inject.Inject;
@@ -78,7 +78,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
     protected JDBICountService counts;
 
     @Inject
-    protected SequenceService sequences;
+    protected SequenceServiceDatabaseImpl sequences;
 
     @Inject
     @Named("nuke.allowed")
@@ -436,9 +436,11 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
                         dbFound.put(key, value);
 
-                        cache.put(EncodingHelper.toKVCacheKey(realKey
-                                .getIdentifier()), EncodingHelper
-                                .convertToSmileLzf(cacheIn));
+                        if (!doQuarantine) {
+                            cache.put(EncodingHelper.toKVCacheKey(realKey
+                                    .getIdentifier()), EncodingHelper
+                                    .convertToSmileLzf(cacheIn));
+                        }
                     }
 
                     return makeMultiRetrieveResponse(keys, cacheFound, dbFound,

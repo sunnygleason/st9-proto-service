@@ -25,7 +25,7 @@ import com.g414.st9.proto.service.query.QueryParser;
 import com.g414.st9.proto.service.query.QueryTerm;
 import com.g414.st9.proto.service.schema.IndexDefinition;
 import com.g414.st9.proto.service.schema.SchemaDefinition;
-import com.g414.st9.proto.service.sequence.SequenceService;
+import com.g414.st9.proto.service.sequence.SequenceServiceDatabaseImpl;
 import com.g414.st9.proto.service.store.Key;
 import com.g414.st9.proto.service.store.KeyValueStorage;
 import com.g414.st9.proto.service.validator.ValidationException;
@@ -45,7 +45,7 @@ public class UniqueIndexResource {
     private KeyValueStorage storage;
 
     @Inject
-    protected SequenceService sequences;
+    protected SequenceServiceDatabaseImpl sequences;
 
     @Inject
     private JDBISecondaryIndex index;

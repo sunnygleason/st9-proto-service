@@ -39,6 +39,7 @@ import com.g414.st9.proto.service.schema.IndexAttribute;
 import com.g414.st9.proto.service.schema.IndexDefinition;
 import com.g414.st9.proto.service.schema.SchemaDefinition;
 import com.g414.st9.proto.service.schema.SchemaValidatorTransformer;
+import com.g414.st9.proto.service.sequence.SequenceService;
 import com.g414.st9.proto.service.store.Key;
 import com.g414.st9.proto.service.validator.ValidationException;
 import com.google.common.collect.ImmutableList;
@@ -50,13 +51,15 @@ public class SecondaryIndexTableHelper {
     private String prefix;
     private SqlTypeHelper typeHelper;
     private LongHash longHash;
+    private SequenceService sequences;
 
     @Inject
     public SecondaryIndexTableHelper(@Named("db.prefix") String prefix,
-            SqlTypeHelper typeHelper) {
+            SqlTypeHelper typeHelper, SequenceService sequences) {
         this.prefix = prefix;
         this.typeHelper = typeHelper;
         this.longHash = new MurmurHash();
+        this.sequences = sequences;
     }
 
     public String getPrefix() {
@@ -137,11 +140,8 @@ public class SecondaryIndexTableHelper {
             }
 
             cols.add(getColumnName(attr.getName()));
-            params.add(bindings.bind(
-                    attr.getName(),
-                    "id".equals(attr.getName()) ? AttributeType.U64
-                            : schemaDefinition.getAttributesMap()
-                                    .get(attr.getName()).getType()));
+            params.add(bindings.bind(attr.getName(), schemaDefinition
+                    .getAttributesMap().get(attr.getName()).getType()));
         }
 
         cols.add(typeHelper.quote("quarantined"));
@@ -292,11 +292,27 @@ public class SecondaryIndexTableHelper {
     }
 
     public String getTableName(String type, String index) {
-        return typeHelper.quote("_i_" + type + "__" + getIndexHexId(index));
+        try {
+            Integer typeId = sequences.getTypeId(type, false, false);
+            if (typeId == null) {
+                return null;
+            }
+
+            return typeHelper.quote("_i_" + String.format("%04d", typeId)
+                    + "__" + getIndexHexId(index));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     public String getIndexName(String type, String index) {
-        return typeHelper.quote("_idx_" + type + "__" + getIndexHexId(index));
+        try {
+            return typeHelper.quote("_idx_"
+                    + String.format("%04d", sequences.getTypeId(type, false))
+                    + "__" + getIndexHexId(index));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private String getIndexHexId(String index) {
@@ -366,6 +382,7 @@ public class SecondaryIndexTableHelper {
         sqlBuilder.append(typeHelper.getSqlType(AttributeType.CHAR_ONE));
 
         sqlBuilder.append(")");
+        sqlBuilder.append(typeHelper.getTableOptions());
 
         return sqlBuilder.toString();
     }
@@ -658,8 +675,10 @@ public class SecondaryIndexTableHelper {
                 }
 
                 Object attrValue = value.get(attrName);
-                Object transformed = transformAttributeValue(
-                        transformer.transformValue(attrName, attrValue), attr);
+                Object transformed = (attrValue == null) ? null
+                        : transformAttributeValue(
+                                transformer.transformValue(attrName, attrValue),
+                                attr);
 
                 String attrValueString = (transformed != null) ? URLEncoder
                         .encode(transformed.toString(), "UTF-8") : "$";

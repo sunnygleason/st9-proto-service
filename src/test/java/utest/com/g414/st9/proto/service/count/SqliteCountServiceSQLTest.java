@@ -27,10 +27,10 @@ public class SqliteCountServiceSQLTest extends CountServiceSQLTestBase {
 
         SqlTypeHelper helper = getHelper();
         CountServiceTableHelper sqlite = new CountServiceTableHelper(
-                helper.getPrefix(), helper);
+                helper.getPrefix(), helper, getMockSequenceService());
 
         Assert.assertEquals(
-                "create table if not exists `_c_schema4__01848a41d2c44a4b` (`_x` "
+                "create table if not exists `_c_0001__01848a41d2c44a4b` (`_x` "
                         + helper.getSqlType(AttributeType.I32)
                         + ", `__hashcode` "
                         + helper.getSqlType(AttributeType.I64)

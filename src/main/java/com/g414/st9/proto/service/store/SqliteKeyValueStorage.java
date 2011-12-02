@@ -25,6 +25,7 @@ import com.g414.st9.proto.service.index.JDBISecondaryIndex;
 import com.g414.st9.proto.service.index.SecondaryIndexTableHelper;
 import com.g414.st9.proto.service.sequence.SequenceHelper;
 import com.g414.st9.proto.service.sequence.SequenceService;
+import com.g414.st9.proto.service.sequence.SequenceServiceDatabaseImpl;
 import com.google.inject.AbstractModule;
 import com.google.inject.Binder;
 import com.google.inject.name.Names;
@@ -139,12 +140,14 @@ public class SqliteKeyValueStorage extends JDBIKeyValueStorage {
                             Boolean.valueOf(System.getProperty("nuke.allowed",
                                     "false")));
 
-            binder.bind(SequenceService.class).toInstance(
-                    new SequenceService(new SequenceHelper(Boolean
-                            .valueOf(System.getProperty("strict.type.creation",
-                                    "true"))), dbi,
-                            SqliteTypeHelper.DATABASE_PREFIX,
-                            SequenceService.DEFAULT_INCREMENT));
+            SequenceServiceDatabaseImpl sequenceService = new SequenceServiceDatabaseImpl(
+                    new SequenceHelper(Boolean.valueOf(System.getProperty(
+                            "strict.type.creation", "true"))), dbi,
+                    SqliteTypeHelper.DATABASE_PREFIX,
+                    SequenceServiceDatabaseImpl.DEFAULT_INCREMENT);
+            binder.bind(SequenceService.class).toInstance(sequenceService);
+            binder.bind(SequenceServiceDatabaseImpl.class).toInstance(
+                    sequenceService);
 
             binder.bind(KeyValueStorage.class).to(SqliteKeyValueStorage.class)
                     .asEagerSingleton();

@@ -27,10 +27,11 @@ public class MySQLCountServiceSQLTest extends CountServiceSQLTestBase {
         v.validate(def);
 
         CountServiceTableHelper sqlite = new CountServiceTableHelper(
-                MySQLTypeHelper.DATABASE_PREFIX, new MySQLTypeHelper());
+                MySQLTypeHelper.DATABASE_PREFIX, new MySQLTypeHelper(),
+                getMockSequenceService());
 
         Assert.assertEquals(
-                "create table if not exists `_c_schema4__01848a41d2c44a4b` (`_x` INT, `__hashcode` BIGINT UNSIGNED not null, `__count` BIGINT UNSIGNED, PRIMARY KEY(`_x`), UNIQUE(`__hashcode`))",
+                "create table if not exists `_c_0001__01848a41d2c44a4b` (`_x` INT, `__hashcode` BIGINT UNSIGNED not null, `__count` BIGINT UNSIGNED, PRIMARY KEY(`_x`), UNIQUE(`__hashcode`)) ENGINE=InnoDB ROW_FORMAT=DYNAMIC CHARACTER SET utf8",
                 sqlite.getTableDefinition("schema4", "xc", def));
     }
 }

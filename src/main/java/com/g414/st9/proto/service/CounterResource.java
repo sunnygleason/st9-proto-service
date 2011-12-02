@@ -34,7 +34,7 @@ import com.g414.st9.proto.service.schema.Attribute;
 import com.g414.st9.proto.service.schema.CounterAttribute;
 import com.g414.st9.proto.service.schema.CounterDefinition;
 import com.g414.st9.proto.service.schema.SchemaDefinition;
-import com.g414.st9.proto.service.sequence.SequenceService;
+import com.g414.st9.proto.service.sequence.SequenceServiceDatabaseImpl;
 import com.g414.st9.proto.service.store.KeyValueStorage;
 import com.g414.st9.proto.service.validator.ValidationException;
 import com.google.inject.Inject;
@@ -54,7 +54,7 @@ public class CounterResource {
     private KeyValueStorage storage;
 
     @Inject
-    protected SequenceService sequences;
+    protected SequenceServiceDatabaseImpl sequences;
 
     @Inject
     private JDBICountService counts;

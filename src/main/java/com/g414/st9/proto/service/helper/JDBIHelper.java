@@ -85,6 +85,10 @@ public class JDBIHelper {
 
     public static boolean tableExists(IDBI database, final String prefix,
             final String tableName) {
+        if (tableName == null) {
+            return false;
+        }
+
         return database.inTransaction(new TransactionCallback<Boolean>() {
             @Override
             public Boolean inTransaction(Handle handle, TransactionStatus arg1)

@@ -25,14 +25,14 @@ public class SqliteSecondaryIndexSQLTest extends SecondaryIndexSQLTestBase {
 
         SqlTypeHelper helper = getHelper();
         SecondaryIndexTableHelper sqlite = new SecondaryIndexTableHelper(
-                helper.getPrefix(), helper);
+                helper.getPrefix(), helper, getMockSequenceService());
 
         Assert.assertEquals(
-                "create table if not exists `_i_schema4__0c6ca14baa3cd7d1` (`_id` INT PRIMARY KEY, `_x` INT, `_y` INT, `quarantined` CHAR(1))",
+                "create table if not exists `_i_0001__0c6ca14baa3cd7d1` (`_id` INT PRIMARY KEY, `_x` INT, `_y` INT, `quarantined` CHAR(1))",
                 sqlite.getTableDefinition("schema4", "xy", def));
 
         Assert.assertEquals(
-                "create index `_idx_schema4__0c6ca14baa3cd7d1` on `_i_schema4__0c6ca14baa3cd7d1` (`_x` ASC, `_y` ASC, `_id` ASC)",
+                "create index `_idx_0001__0c6ca14baa3cd7d1` on `_i_0001__0c6ca14baa3cd7d1` (`_x` ASC, `_y` ASC, `_id` ASC)",
                 sqlite.getIndexDefinition("schema4", "xy", def));
     }
 }

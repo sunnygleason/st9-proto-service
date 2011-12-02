@@ -12,7 +12,7 @@ import com.g414.st9.proto.service.KeyValueResource;
 import com.g414.st9.proto.service.ServiceModule;
 import com.g414.st9.proto.service.cache.EmptyKeyValueCache;
 import com.g414.st9.proto.service.cache.KeyValueCache;
-import com.g414.st9.proto.service.sequence.SequenceService;
+import com.g414.st9.proto.service.sequence.SequenceServiceDatabaseImpl;
 import com.g414.st9.proto.service.store.Key;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
@@ -22,7 +22,7 @@ import com.google.inject.Module;
 @Test
 public abstract class CounterServiceTestBase {
     protected KeyValueResource kvResource;
-    protected SequenceService counters;
+    protected SequenceServiceDatabaseImpl counters;
 
     public abstract Module getStorageModule();
 
@@ -37,7 +37,7 @@ public abstract class CounterServiceTestBase {
                 }, new ServiceModule());
 
         this.kvResource = injector.getInstance(KeyValueResource.class);
-        this.counters = injector.getInstance(SequenceService.class);
+        this.counters = injector.getInstance(SequenceServiceDatabaseImpl.class);
 
         injector.getInstance(Lifecycle.class).init();
         injector.getInstance(Lifecycle.class).start();

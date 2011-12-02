@@ -70,6 +70,8 @@ public class SchemaDefinitionValidator {
 
         Set<String> included = new HashSet<String>();
 
+        boolean isUnique = index.isUnique();
+
         for (IndexAttribute column : index.getIndexAttributes()) {
             String colName = column.getName();
 
@@ -93,6 +95,12 @@ public class SchemaDefinitionValidator {
             if (included.contains(colName)) {
                 throw new ValidationException(
                         "Attribute appears more than once in index: " + colName);
+            }
+
+            if (isUnique && att.isNullable()) {
+                throw new ValidationException(
+                        "Unique index attribute must not be nullable: "
+                                + colName);
             }
 
             included.add(colName);
