@@ -615,14 +615,16 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
                     if (!definition.getIndexes().isEmpty()
                             || !definition.getCounters().isEmpty()) {
-                        original = (Map<String, Object>) EncodingHelper
-                                .parseSmileLzf(getObjectBytes(realKey, false,
-                                        true));
+                        byte[] originalBytes = getObjectBytes(realKey, false,
+                                true);
 
-                        if (original == null) {
+                        if (originalBytes == null) {
                             return Response.status(Status.NOT_FOUND).entity("")
                                     .build();
                         }
+
+                        original = (Map<String, Object>) EncodingHelper
+                                .parseSmileLzf(originalBytes);
                     }
 
                     if (updateIndexAndCounters) {
