@@ -676,9 +676,7 @@ public class SecondaryIndexTableHelper {
 
                 Object attrValue = value.get(attrName);
                 Object transformed = (attrValue == null) ? null
-                        : transformAttributeValue(
-                                transformer.transformValue(attrName, attrValue),
-                                attr);
+                        : transformAttributeValue(attrValue, attr);
 
                 String attrValueString = (transformed != null) ? URLEncoder
                         .encode(transformed.toString(), "UTF-8") : "$";
