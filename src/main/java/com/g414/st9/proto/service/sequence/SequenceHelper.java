@@ -23,7 +23,8 @@ public class SequenceHelper {
             final String type, boolean doCreate) {
         doCreate |= !useStrictTypeCreation;
 
-        if (type == null || type.length() == 0 || type.indexOf(":") != -1) {
+        if (type == null || type.length() == 0 || type.indexOf(":") != -1
+                || type.length() > 72) {
             throw new WebApplicationException(Response
                     .status(Status.BAD_REQUEST).entity("Invalid entity 'type'")
                     .build());

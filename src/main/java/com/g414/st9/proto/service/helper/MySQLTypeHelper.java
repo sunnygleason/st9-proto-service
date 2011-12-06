@@ -38,6 +38,7 @@ public class MySQLTypeHelper implements SqlTypeHelper {
         case UTC_DATE_SECS:
             return "BIGINT";
         case REFERENCE:
+            return "VARCHAR(100)";
         case UTF8_SMALLSTRING:
             return "VARCHAR(255)";
         default:
