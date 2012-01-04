@@ -22,11 +22,14 @@ import com.g414.st9.proto.service.cache.KeyValueCache;
 import com.g414.st9.proto.service.helper.JDBIHelper;
 import com.g414.st9.proto.service.helper.SqlParamBindings;
 import com.g414.st9.proto.service.query.QueryTerm;
+import com.g414.st9.proto.service.schema.AttributeTransform;
 import com.g414.st9.proto.service.schema.AttributeType;
 import com.g414.st9.proto.service.schema.IndexAttribute;
 import com.g414.st9.proto.service.schema.IndexDefinition;
 import com.g414.st9.proto.service.schema.SchemaDefinition;
 import com.g414.st9.proto.service.schema.SchemaValidatorTransformer;
+import com.g414.st9.proto.service.schema.SortOrder;
+import com.google.common.collect.ImmutableList;
 import com.google.inject.Inject;
 
 public class JDBISecondaryIndex {
@@ -348,6 +351,44 @@ public class JDBISecondaryIndex {
         final String querySql = tableHelper.getIndexQuery(type, indexName,
                 termMap, token, pageSize, includeQuarantine, indexDefinition,
                 schemaDefinition, transformer, bindings);
+
+        Response response = database
+                .inTransaction(new TransactionCallback<Response>() {
+                    @Override
+                    public Response inTransaction(Handle handle,
+                            TransactionStatus status) throws Exception {
+                        try {
+                            Query<Map<String, Object>> query = handle
+                                    .createQuery(querySql);
+
+                            bindings.bindToStatement(query);
+
+                            for (Map<String, Object> r : query.list()) {
+                                resultIds.add(r);
+                            }
+
+                            return null;
+                        } catch (WebApplicationException e) {
+                            return e.getResponse();
+                        }
+                    }
+                });
+
+        if (response != null) {
+            throw new WebApplicationException(response);
+        }
+
+        return Collections.unmodifiableList(resultIds);
+    }
+
+    public List<Map<String, Object>> doIndexAllQuery(IDBI database,
+            String type, String token, Long pageSize, boolean includeQuarantine)
+            throws Exception {
+        final List<Map<String, Object>> resultIds = new ArrayList<Map<String, Object>>();
+        final SqlParamBindings bindings = new SqlParamBindings(true);
+
+        final String querySql = tableHelper.getIndexAllQuery(type, token,
+                pageSize, includeQuarantine);
 
         Response response = database
                 .inTransaction(new TransactionCallback<Response>() {

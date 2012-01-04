@@ -559,6 +559,31 @@ public class SecondaryIndexTableHelper {
         return sqlBuilder.toString();
     }
 
+    public String getIndexAllQuery(String type, String token, Long pageSize,
+            boolean includeQuarantine) throws Exception {
+        StringBuilder sqlBuilder = new StringBuilder();
+        sqlBuilder.append("select ");
+        sqlBuilder.append(typeHelper.quote("_key_id"));
+        sqlBuilder.append(" as ");
+        sqlBuilder.append(typeHelper.quote("_id"));
+        sqlBuilder.append(" from ");
+        sqlBuilder.append(typeHelper.quote("_key_values"));
+        sqlBuilder.append(" where ");
+        if (!includeQuarantine) {
+            sqlBuilder.append(typeHelper.quote("_is_deleted"));
+            sqlBuilder.append(" = 'N'");
+        } else {
+            sqlBuilder.append(typeHelper.quote("_is_deleted"));
+            sqlBuilder.append(" != 'Y'");
+        }
+        sqlBuilder.append(" limit ");
+        sqlBuilder.append(pageSize + 1L);
+        sqlBuilder.append(" offset ");
+        sqlBuilder.append(OpaquePaginationHelper.decodeOpaqueCursor(token));
+
+        return sqlBuilder.toString();
+    }
+
     public List<Map<String, Object>> doUniqueIndexQuery(IDBI database,
             KeyValueCache cache, String type, String indexName,
             Map<String, List<QueryTerm>> termMap, String token,

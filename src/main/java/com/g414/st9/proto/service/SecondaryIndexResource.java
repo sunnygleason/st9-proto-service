@@ -104,11 +104,13 @@ public class SecondaryIndexResource {
         boolean quarantine = (includeQuarantine != null) && includeQuarantine;
 
         List<QueryTerm> queryTerms = null;
-        try {
-            queryTerms = parseQuery(query);
-        } catch (Exception e) {
-            return Response.status(Status.BAD_REQUEST)
-                    .entity("Invalid query: " + query).build();
+        if (!indexName.equals("all")) {
+            try {
+                queryTerms = parseQuery(query);
+            } catch (Exception e) {
+                return Response.status(Status.BAD_REQUEST)
+                        .entity("Invalid query: " + query).build();
+            }
         }
 
         if (pageSize == null || pageSize > 100 || pageSize < 1) {
@@ -124,7 +126,9 @@ public class SecondaryIndexResource {
                 SchemaDefinition definition = mapper.readValue(schemaResponse
                         .getEntity().toString(), SchemaDefinition.class);
 
-                List<Map<String, Object>> allIds = index.doIndexQuery(database,
+                List<Map<String, Object>> allIds = indexName.equals("all") ? index
+                        .doIndexAllQuery(database, type, token, pageSize,
+                                quarantine) : index.doIndexQuery(database,
                         type, indexName, queryTerms, token, pageSize,
                         quarantine, definition);
 
@@ -157,7 +161,9 @@ public class SecondaryIndexResource {
 
         result.put("kind", type);
         result.put("index", indexName);
-        result.put("query", query);
+        if (!indexName.equals("all")) {
+            result.put("query", query);
+        }
         result.put("results", hits);
 
         for (Map<String, Object> rec : resultIds) {

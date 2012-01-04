@@ -59,9 +59,10 @@ public class SchemaDefinitionValidator {
         String indexName = index.getName();
 
         if ("id".equalsIgnoreCase(indexName)
-                || "kind".equalsIgnoreCase(indexName)) {
+                || "kind".equalsIgnoreCase(indexName)
+                || "all".equalsIgnoreCase(indexName)) {
             throw new ValidationException(
-                    "Index may not be named 'id' or 'kind'");
+                    "Index may not be named 'id', 'kind', or 'all'");
         }
 
         if (!VALID_NAME_PATTERN.matcher(indexName).matches()) {
