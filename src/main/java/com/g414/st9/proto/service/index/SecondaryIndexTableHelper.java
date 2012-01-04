@@ -569,6 +569,10 @@ public class SecondaryIndexTableHelper {
         sqlBuilder.append(" from ");
         sqlBuilder.append(typeHelper.quote("_key_values"));
         sqlBuilder.append(" where ");
+        sqlBuilder.append(typeHelper.quote("_key_type"));
+        sqlBuilder.append(" = ");
+        sqlBuilder.append(sequences.getTypeId(type, false));
+        sqlBuilder.append(" AND ");
         if (!includeQuarantine) {
             sqlBuilder.append(typeHelper.quote("_is_deleted"));
             sqlBuilder.append(" = 'N'");
