@@ -140,8 +140,8 @@ public abstract class SecondaryIndexSQLTestBase {
                         + helper.quote("_id") + " from "
                         + helper.quote("_key_values") + " where "
                         + helper.quote("_key_type") + " = 1 AND "
-                        + helper.quote("_is_deleted")
-                        + " = 'N' limit 101 offset 0",
+                        + helper.quote("_is_deleted") + " = 'N' order by "
+                        + helper.quote("_id") + " limit 101 offset 0",
                 indexHelper.getIndexAllQuery("schema4", null,
                         SecondaryIndexResource.DEFAULT_PAGE_SIZE, false));
         Assert.assertEquals(
@@ -149,10 +149,10 @@ public abstract class SecondaryIndexSQLTestBase {
                         + helper.quote("_id") + " from "
                         + helper.quote("_key_values") + " where "
                         + helper.quote("_key_type") + " = 1 AND "
-                        + helper.quote("_is_deleted")
-                        + " != 'Y' limit 101 offset 0", indexHelper
-                        .getIndexAllQuery("schema4", null,
-                                SecondaryIndexResource.DEFAULT_PAGE_SIZE, true));
+                        + helper.quote("_is_deleted") + " != 'Y' order by "
+                        + helper.quote("_id") + " limit 101 offset 0",
+                indexHelper.getIndexAllQuery("schema4", null,
+                        SecondaryIndexResource.DEFAULT_PAGE_SIZE, true));
 
         Assert.assertEquals("{p0=1, p1=10, p2=20, p3=3}", bind0.asMap()
                 .toString());

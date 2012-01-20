@@ -22,14 +22,11 @@ import com.g414.st9.proto.service.cache.KeyValueCache;
 import com.g414.st9.proto.service.helper.JDBIHelper;
 import com.g414.st9.proto.service.helper.SqlParamBindings;
 import com.g414.st9.proto.service.query.QueryTerm;
-import com.g414.st9.proto.service.schema.AttributeTransform;
 import com.g414.st9.proto.service.schema.AttributeType;
 import com.g414.st9.proto.service.schema.IndexAttribute;
 import com.g414.st9.proto.service.schema.IndexDefinition;
 import com.g414.st9.proto.service.schema.SchemaDefinition;
 import com.g414.st9.proto.service.schema.SchemaValidatorTransformer;
-import com.g414.st9.proto.service.schema.SortOrder;
-import com.google.common.collect.ImmutableList;
 import com.google.inject.Inject;
 
 public class JDBISecondaryIndex {
@@ -151,7 +148,7 @@ public class JDBISecondaryIndex {
         if (indexDefinition.isUnique()) {
             SchemaValidatorTransformer transformer = new SchemaValidatorTransformer(
                     schemaDefinition);
-            String uniqKey = tableHelper.computeIndexKey(indexName,
+            String uniqKey = tableHelper.computeIndexKey(type, indexName,
                     indexDefinition, value, transformer);
 
             try {
@@ -171,10 +168,10 @@ public class JDBISecondaryIndex {
         SchemaValidatorTransformer transformer = new SchemaValidatorTransformer(
                 schemaDefinition);
 
-        String origKey = tableHelper.computeIndexKey(indexName,
+        String origKey = tableHelper.computeIndexKey(type, indexName,
                 indexDefinition, prev, transformer);
-        String newKey = tableHelper.computeIndexKey(indexName, indexDefinition,
-                value, transformer);
+        String newKey = tableHelper.computeIndexKey(type, indexName,
+                indexDefinition, value, transformer);
 
         if (origKey.equals(newKey)) {
             return;
@@ -217,7 +214,7 @@ public class JDBISecondaryIndex {
         }
 
         if (indexDefinition.isUnique()) {
-            String oldUniqKey = tableHelper.computeIndexKey(indexName,
+            String oldUniqKey = tableHelper.computeIndexKey(type, indexName,
                     indexDefinition, prev, transformer);
             try {
                 cache.delete(oldUniqKey);
@@ -225,7 +222,7 @@ public class JDBISecondaryIndex {
                 throw new RuntimeException(e);
             }
 
-            String newUniqKey = tableHelper.computeIndexKey(indexName,
+            String newUniqKey = tableHelper.computeIndexKey(type, indexName,
                     indexDefinition, value, transformer);
             try {
                 cache.put(newUniqKey, id.toString().getBytes());
@@ -251,7 +248,7 @@ public class JDBISecondaryIndex {
 
         delete.execute();
 
-        possiblyPurgeUniqueIndexCache(indexName, value, schemaDefinition,
+        possiblyPurgeUniqueIndexCache(type, indexName, value, schemaDefinition,
                 indexDefinition);
     }
 
@@ -273,18 +270,18 @@ public class JDBISecondaryIndex {
         IndexDefinition indexDefinition = schemaDefinition.getIndexMap().get(
                 indexName);
 
-        possiblyPurgeUniqueIndexCache(indexName, original, schemaDefinition,
-                indexDefinition);
+        possiblyPurgeUniqueIndexCache(type, indexName, original,
+                schemaDefinition, indexDefinition);
     }
 
-    private void possiblyPurgeUniqueIndexCache(final String indexName,
-            final Map<String, Object> original,
+    private void possiblyPurgeUniqueIndexCache(final String type,
+            final String indexName, final Map<String, Object> original,
             final SchemaDefinition schemaDefinition,
             IndexDefinition indexDefinition) {
         if (indexDefinition.isUnique()) {
             SchemaValidatorTransformer transformer = new SchemaValidatorTransformer(
                     schemaDefinition);
-            String uniqKey = tableHelper.computeIndexKey(indexName,
+            String uniqKey = tableHelper.computeIndexKey(type, indexName,
                     indexDefinition, original, transformer);
 
             try {

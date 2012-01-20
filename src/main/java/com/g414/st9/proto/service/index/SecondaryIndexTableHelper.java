@@ -1,6 +1,5 @@
 package com.g414.st9.proto.service.index;
 
-import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -308,8 +307,7 @@ public class SecondaryIndexTableHelper {
     public String getIndexName(String type, String index) {
         try {
             return typeHelper.quote("_idx_"
-                    + String.format("%04d", sequences.getTypeId(type, false))
-                    + "__" + getIndexHexId(index));
+                    + getUniqueIndexIdentifier(type, index));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -580,6 +578,8 @@ public class SecondaryIndexTableHelper {
             sqlBuilder.append(typeHelper.quote("_is_deleted"));
             sqlBuilder.append(" != 'Y'");
         }
+        sqlBuilder.append(" order by ");
+        sqlBuilder.append(typeHelper.quote("_id"));
         sqlBuilder.append(" limit ");
         sqlBuilder.append(pageSize + 1L);
         sqlBuilder.append(" offset ");
@@ -625,8 +625,8 @@ public class SecondaryIndexTableHelper {
             value.put(attrName, transformer.transformValue(attrName, termValue));
         }
 
-        String cacheKey = computeIndexKey(indexName, indexDefinition, value,
-                transformer);
+        String cacheKey = computeIndexKey(type, indexName, indexDefinition,
+                value, transformer);
         byte[] cacheResult = cache.get(cacheKey);
 
         if (cacheResult != null) {
@@ -683,15 +683,16 @@ public class SecondaryIndexTableHelper {
         return Collections.unmodifiableList(resultIds);
     }
 
-    public String computeIndexKey(String indexName,
+    public String computeIndexKey(String type, String indexName,
             IndexDefinition indexDefinition, Map<String, Object> value,
             SchemaValidatorTransformer transformer) {
         StringBuilder theKey = new StringBuilder();
-        theKey.append("idx:");
-        theKey.append(indexName);
-        theKey.append(":");
 
         try {
+            theKey.append("idx:");
+            theKey.append(getUniqueIndexIdentifier(type, indexName));
+            theKey.append(":");
+
             Iterator<IndexAttribute> indexAttrIter = indexDefinition
                     .getIndexAttributes().iterator();
 
@@ -716,7 +717,7 @@ public class SecondaryIndexTableHelper {
                     theKey.append("|");
                 }
             }
-        } catch (UnsupportedEncodingException shouldntHappen) {
+        } catch (Exception shouldntHappen) {
             throw new RuntimeException(shouldntHappen);
         }
 
@@ -793,5 +794,11 @@ public class SecondaryIndexTableHelper {
         }
 
         return null;
+    }
+
+    private String getUniqueIndexIdentifier(String type, String index)
+            throws Exception {
+        return String.format("%04d", sequences.getTypeId(type, false)) + "__"
+                + getIndexHexId(index);
     }
 }
