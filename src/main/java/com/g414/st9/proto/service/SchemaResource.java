@@ -2,9 +2,7 @@ package com.g414.st9.proto.service;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 
 import javax.ws.rs.Consumes;
@@ -18,8 +16,8 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
-import javax.ws.rs.core.StreamingOutput;
 import javax.ws.rs.core.Response.Status;
+import javax.ws.rs.core.StreamingOutput;
 
 import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -30,7 +28,10 @@ import org.skife.jdbi.v2.IDBI;
 import org.skife.jdbi.v2.tweak.HandleCallback;
 
 import com.g414.st9.proto.service.count.JDBICountService;
+import com.g414.st9.proto.service.helper.AvailabilityManager;
+import com.g414.st9.proto.service.helper.AvailabilityManager.ProtectedCommand;
 import com.g414.st9.proto.service.helper.EncodingHelper;
+import com.g414.st9.proto.service.helper.Releasable;
 import com.g414.st9.proto.service.index.JDBISecondaryIndex;
 import com.g414.st9.proto.service.schema.CounterDefinition;
 import com.g414.st9.proto.service.schema.IndexDefinition;
@@ -52,6 +53,9 @@ import com.google.inject.Inject;
 @Path("/1.0/s")
 public class SchemaResource {
     private static final String SCHEMA_PREFIX = "$schema";
+
+    @Inject
+    protected AvailabilityManager availability;
 
     @Inject
     private KeyValueStorage store;
@@ -154,134 +158,348 @@ public class SchemaResource {
     // automagical jackson configuration
     public Response updateEntity(@PathParam("type") final String type,
             final String value) throws Exception {
-        Integer typeId = getTypeIdPossiblyNull(type, false);
+        final KeyValueStorage theStore = this.store;
 
-        if (typeId == null) {
-            return Response.status(Status.NOT_FOUND).entity("type not found")
-                    .build();
-        }
-
-        Response existing = this.store.retrieve(SCHEMA_PREFIX + ":" + typeId,
-                false);
-        if (existing.getStatus() != 200) {
-            return Response.status(Status.NOT_FOUND).entity("schema not found")
-                    .build();
-        }
-
-        final SchemaDefinition original;
-
-        try {
-            original = mapper.readValue((String) existing.getEntity(),
-                    SchemaDefinition.class);
-        } catch (JsonMappingException e) {
-            return Response.status(Status.BAD_REQUEST)
-                    .entity("invalid schema definition json").build();
-        }
-
-        for (IndexDefinition indexDefinition : original.getIndexes()) {
-            String indexName = indexDefinition.getName();
-
-            if (index.tableExists(database, type, indexName)) {
-                index.dropTable(database, type, indexName);
-            }
-        }
-
-        for (CounterDefinition counterDefinition : original.getCounters()) {
-            String counterName = counterDefinition.getName();
-
-            if (counts.tableExists(database, type, counterName)) {
-                counts.dropTable(database, type, counterName);
-            }
-        }
-
-        final SchemaDefinition schemaDefinition = mapper.readValue(value,
-                SchemaDefinition.class);
-
-        SchemaDefinitionValidator validator = new SchemaDefinitionValidator();
-        validator.validate(schemaDefinition);
-
-        for (IndexDefinition indexDefinition : schemaDefinition.getIndexes()) {
-            String indexName = indexDefinition.getName();
-
-            if (!index.tableExists(database, type, indexName)) {
-                index.createTable(database, type, indexName, schemaDefinition);
-                index.createIndex(database, type, indexName, schemaDefinition);
-            }
-        }
-
-        for (CounterDefinition counterDefinition : schemaDefinition
-                .getCounters()) {
-            String counterName = counterDefinition.getName();
-
-            if (!counts.tableExists(database, type, counterName)) {
-                counts.createTable(database, type, counterName,
-                        schemaDefinition);
-            }
-        }
-
-        database.withHandle(new HandleCallback<Void>() {
+        return availability.doProtected(new ProtectedCommand<Response>() {
             @Override
-            public Void withHandle(Handle handle) throws Exception {
-                try {
-                    rebuildIndexesAndCounters(handle, type, schemaDefinition,
-                            store.iterator(type, schemaDefinition));
-                    return null;
-                } catch (WebApplicationException e) {
-                    e.printStackTrace();
+            public Response execute(final Releasable resource) throws Exception {
+                final Integer typeId = getTypeIdPossiblyNull(type, false);
 
-                    return null;
+                if (typeId == null) {
+                    return Response.status(Status.NOT_FOUND)
+                            .entity("type not found").build();
                 }
+
+                Response existing = theStore.retrieve(SCHEMA_PREFIX + ":"
+                        + typeId, false);
+                if (existing.getStatus() != 200) {
+                    return Response.status(Status.NOT_FOUND)
+                            .entity("schema not found").build();
+                }
+
+                final SchemaDefinition original;
+
+                try {
+                    original = mapper.readValue((String) existing.getEntity(),
+                            SchemaDefinition.class);
+                } catch (JsonMappingException e) {
+                    return Response.status(Status.BAD_REQUEST)
+                            .entity("invalid schema definition json").build();
+                }
+
+                for (IndexDefinition indexDefinition : original.getIndexes()) {
+                    String indexName = indexDefinition.getName();
+
+                    if (index.tableExists(database, type, indexName)) {
+                        index.dropTable(database, type, indexName);
+                    }
+                }
+
+                for (CounterDefinition counterDefinition : original
+                        .getCounters()) {
+                    String counterName = counterDefinition.getName();
+
+                    if (counts.tableExists(database, type, counterName)) {
+                        counts.dropTable(database, type, counterName);
+                    }
+                }
+
+                final SchemaDefinition schemaDefinition = mapper.readValue(
+                        value, SchemaDefinition.class);
+
+                SchemaDefinitionValidator validator = new SchemaDefinitionValidator();
+
+                validator.validate(schemaDefinition);
+                validator.validateUpdate(original, schemaDefinition);
+
+                for (IndexDefinition indexDefinition : schemaDefinition
+                        .getIndexes()) {
+                    String indexName = indexDefinition.getName();
+
+                    if (!index.tableExists(database, type, indexName)) {
+                        index.createTable(database, type, indexName,
+                                schemaDefinition);
+                        index.createIndex(database, type, indexName,
+                                schemaDefinition);
+                    }
+                }
+
+                for (CounterDefinition counterDefinition : schemaDefinition
+                        .getCounters()) {
+                    String counterName = counterDefinition.getName();
+
+                    if (!counts.tableExists(database, type, counterName)) {
+                        counts.createTable(database, type, counterName,
+                                schemaDefinition);
+                    }
+                }
+
+                return Response.status(Status.OK).entity(new StreamingOutput() {
+                    @Override
+                    public void write(final OutputStream output)
+                            throws IOException, WebApplicationException {
+                        try {
+                            printOperationEvent(output, "$update_schema",
+                                    "START", type);
+
+                            database.withHandle(new HandleCallback<Void>() {
+                                @Override
+                                public Void withHandle(Handle handle)
+                                        throws Exception {
+                                    try {
+                                        rebuildIndexesAndCounters(handle, type,
+                                                schemaDefinition,
+                                                store.iterator(type,
+                                                        schemaDefinition),
+                                                output);
+                                        return null;
+                                    } catch (WebApplicationException e) {
+                                        e.printStackTrace();
+                                        printError(output, e.getMessage());
+
+                                        return null;
+                                    }
+                                }
+                            });
+
+                            Response r = store.update(SCHEMA_PREFIX + ":"
+                                    + typeId, value);
+
+                            if (r.getStatus() == 200) {
+                                printOperationEvent(output, "$update_schema",
+                                        "END", type);
+                            } else {
+                                printError(output, r.getEntity().toString());
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        } finally {
+                            resource.release();
+                        }
+                    }
+                }).build();
             }
         });
-
-        return store.update(SCHEMA_PREFIX + ":" + typeId, value);
     }
 
     @DELETE
     @Path("{type}")
-    public Response deleteEntity(@PathParam("type") String type)
+    public Response deleteEntity(@PathParam("type") final String type)
             throws Exception {
-        Integer typeId = getTypeIdPossiblyNull(type, true);
+        final KeyValueStorage theStore = this.store;
 
-        if (typeId == null) {
-            return Response.status(Status.NOT_FOUND).entity("type not found")
-                    .build();
-        }
+        return availability.doProtected(new ProtectedCommand<Response>() {
+            @Override
+            public Response execute(final Releasable resource) throws Exception {
+                try {
+                    Integer typeId = getTypeIdPossiblyNull(type, true);
 
-        Response existing = this.store.retrieve(SCHEMA_PREFIX + ":" + typeId,
-                false);
-        if (existing.getStatus() != 200) {
-            return Response.status(Status.NOT_FOUND).entity("schema not found")
-                    .build();
-        }
+                    if (typeId == null) {
+                        return Response.status(Status.NOT_FOUND)
+                                .entity("type not found").build();
+                    }
 
-        final SchemaDefinition original = mapper.readValue(
-                (String) existing.getEntity(), SchemaDefinition.class);
+                    Response existing = theStore.retrieve(SCHEMA_PREFIX + ":"
+                            + typeId, false);
+                    if (existing.getStatus() != 200) {
+                        return Response.status(Status.NOT_FOUND)
+                                .entity("schema not found").build();
+                    }
 
-        for (IndexDefinition indexDefinition : original.getIndexes()) {
-            String indexName = indexDefinition.getName();
+                    final SchemaDefinition original = mapper.readValue(
+                            (String) existing.getEntity(),
+                            SchemaDefinition.class);
 
-            if (index.tableExists(database, type, indexName)) {
-                index.dropTable(database, type, indexName);
+                    for (IndexDefinition indexDefinition : original
+                            .getIndexes()) {
+                        String indexName = indexDefinition.getName();
+
+                        if (index.tableExists(database, type, indexName)) {
+                            index.dropTable(database, type, indexName);
+                        }
+                    }
+
+                    for (CounterDefinition counterDefinition : original
+                            .getCounters()) {
+                        String counterName = counterDefinition.getName();
+
+                        if (counts.tableExists(database, type, counterName)) {
+                            counts.dropTable(database, type, counterName);
+                        }
+                    }
+
+                    return store.delete(SCHEMA_PREFIX + ":" + typeId, true);
+                } finally {
+                    resource.release();
+                }
             }
-        }
-
-        for (CounterDefinition counterDefinition : original.getCounters()) {
-            String counterName = counterDefinition.getName();
-
-            if (counts.tableExists(database, type, counterName)) {
-                counts.dropTable(database, type, counterName);
-            }
-        }
-
-        return store.delete(SCHEMA_PREFIX + ":" + typeId, true);
+        });
     }
 
     @POST
     @Path("{type}/rebuild")
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response rebuild(@PathParam("type") final String type)
+    public Response rebuild(@PathParam("type") final String type) {
+        return availability.doProtected(new ProtectedCommand<Response>() {
+            @Override
+            public Response execute(final Releasable resource) throws Exception {
+                return Response.status(Status.OK).entity(new StreamingOutput() {
+                    @Override
+                    public void write(OutputStream output) throws IOException,
+                            WebApplicationException {
+                        Exception error = null;
+                        try {
+                            SchemaResource.this.rebuildSingle(type, output);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            error = e;
+                        } finally {
+                            resource.release();
+                            if (error != null) {
+                                try {
+                                    printError(output, error.getMessage());
+                                } catch (Exception e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                        }
+                    }
+                }).build();
+            }
+        });
+    }
+
+    @POST
+    @Path("rebuild_all")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response rebuildAll() throws Exception {
+        return availability.doProtected(new ProtectedCommand<Response>() {
+            @Override
+            public Response execute(final Releasable resource) throws Exception {
+                return Response.status(Status.OK).entity(new StreamingOutput() {
+                    @Override
+                    public void write(OutputStream output) throws IOException,
+                            WebApplicationException {
+                        Exception error = null;
+                        try {
+                            printOperationEvent(output, "$rebuild_all",
+                                    "START", "all");
+
+                            Iterator<Map<String, Object>> schemas = SchemaResource.this.store
+                                    .iterator(SCHEMA_PREFIX);
+
+                            while (schemas.hasNext()) {
+                                Map<String, Object> schema = schemas.next();
+                                String type = (String) schema.get("$type");
+                                if (type == null || type.startsWith("$")) {
+                                    continue;
+                                }
+
+                                SchemaResource.this.rebuildSingle(type, output);
+                            }
+
+                            printOperationEvent(output, "$rebuild_all", "END",
+                                    "all");
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            error = e;
+                        } finally {
+                            resource.release();
+                            if (error != null) {
+                                try {
+                                    printError(output, error.getMessage());
+                                } catch (Exception e) {
+                                    e.printStackTrace();
+                                }
+                            }
+                        }
+                    }
+                }).build();
+            }
+        });
+    }
+
+    private void rebuildIndexesAndCounters(Handle handle, String type,
+            SchemaDefinition schemaDefinition,
+            Iterator<Map<String, Object>> instances, OutputStream output)
             throws Exception {
+        for (IndexDefinition index : schemaDefinition.getIndexes()) {
+            this.index.truncateTable(handle, type, index.getName());
+        }
+
+        for (CounterDefinition counterDefinition : schemaDefinition
+                .getCounters()) {
+            this.counts
+                    .truncateTable(handle, type, counterDefinition.getName());
+        }
+
+        SchemaValidatorTransformer transformer = new SchemaValidatorTransformer(
+                schemaDefinition);
+
+        long processed = 0;
+        long successCount = 0;
+        long skippedCount = 0;
+        long failedCount = 0;
+
+        while (instances.hasNext()) {
+            Map<String, Object> notTransformed = instances.next();
+
+            Key key = Key.valueOf((String) notTransformed.get("id"));
+            Boolean deleted = (Boolean) notTransformed.get("$deleted");
+
+            if (deleted != null && deleted.booleanValue()) {
+                skippedCount += 1;
+                continue;
+            }
+
+            Map<String, Object> instance = transformer
+                    .validateTransform(notTransformed);
+
+            try {
+                for (IndexDefinition indexDef : schemaDefinition.getIndexes()) {
+                    String indexName = indexDef.getName();
+
+                    this.index.insertEntity(handle, key.getId(), instance,
+                            type, indexName, schemaDefinition);
+                }
+
+                for (CounterDefinition counterDefinition : schemaDefinition
+                        .getCounters()) {
+                    String counterName = counterDefinition.getName();
+
+                    this.counts.insertEntity(handle, key.getId(), instance,
+                            type, counterName, schemaDefinition);
+                }
+
+                successCount += 1;
+            } catch (Exception e) {
+                e.printStackTrace();
+                System.out.println(instance);
+
+                output.write((EncodingHelper.convertToJson(ImmutableMap
+                        .<String, Object> of("$status", "OK", "$record",
+                                "FAILED", "$data", instance)) + "\n")
+                        .getBytes());
+                output.flush();
+
+                failedCount += 1;
+            }
+
+            processed += 1;
+
+            if (processed % 100 == 0) {
+                printStatus(output, type, successCount, skippedCount,
+                        failedCount);
+            }
+        }
+
+        if (processed % 100 != 0) {
+            printStatus(output, type, successCount, skippedCount, failedCount);
+        }
+    }
+
+    private Response rebuildSingle(@PathParam("type") final String type,
+            final OutputStream output) throws Exception {
         Integer typeId = getTypeIdPossiblyNull(type, false);
 
         if (typeId == null) {
@@ -339,12 +557,14 @@ public class SchemaResource {
             }
         }
 
+        printOperationEvent(output, "$rebuild", "START", type);
+
         database.withHandle(new HandleCallback<Void>() {
             @Override
             public Void withHandle(Handle handle) throws Exception {
                 try {
                     rebuildIndexesAndCounters(handle, type, original,
-                            store.iterator(type, original));
+                            store.iterator(type, original), output);
                     return null;
                 } catch (WebApplicationException e) {
                     e.printStackTrace();
@@ -354,111 +574,9 @@ public class SchemaResource {
             }
         });
 
-        return Response.status(Status.OK).entity("rebuild complete").build();
-    }
+        printOperationEvent(output, "$rebuild", "END", type);
 
-    @POST
-    @Path("rebuild_all")
-    @Consumes(MediaType.APPLICATION_JSON)
-    public Response rebuildAll() throws Exception {
-        return Response.status(Status.OK).entity(new StreamingOutput() {
-            @Override
-            public void write(OutputStream output) throws IOException,
-                    WebApplicationException {
-                try {
-                    output.write((EncodingHelper.convertToJson(ImmutableMap
-                            .<String, Object> of("$rebuild_all", "START",
-                                    "$date", ISODateTimeFormat.basicDateTime()
-                                            .print(new DateTime()))) + "\n")
-                            .getBytes());
-                    output.flush();
-
-                    Iterator<Map<String, Object>> schemas = SchemaResource.this.store
-                            .iterator(SCHEMA_PREFIX);
-
-                    while (schemas.hasNext()) {
-                        Map<String, Object> schema = schemas.next();
-                        String type = (String) schema.get("$type");
-                        if (type == null || type.startsWith("$")) {
-                            continue;
-                        }
-
-                        output.write((EncodingHelper.convertToJson(ImmutableMap
-                                .<String, Object> of("$rebuild", "START",
-                                        "$date",
-                                        ISODateTimeFormat.basicDateTime()
-                                                .print(new DateTime()),
-                                        "$type", type)) + "\n").getBytes());
-                        output.flush();
-
-                        SchemaResource.this.rebuild(type);
-
-                        output.write((EncodingHelper.convertToJson(ImmutableMap
-                                .<String, Object> of("$rebuild", "END",
-                                        "$date",
-                                        ISODateTimeFormat.basicDateTime()
-                                                .print(new DateTime()),
-                                        "$type", type)) + "\n").getBytes());
-                        output.flush();
-                    }
-
-                    output.write((EncodingHelper.convertToJson(ImmutableMap
-                            .<String, Object> of("$rebuild_all", "END",
-                                    "$date", ISODateTimeFormat.basicDateTime()
-                                            .print(new DateTime()))) + "\n")
-                            .getBytes());
-                    output.flush();
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        }).build();
-    }
-
-    public void rebuildIndexesAndCounters(Handle handle, String type,
-            SchemaDefinition schemaDefinition,
-            Iterator<Map<String, Object>> instances) throws Exception {
-        for (IndexDefinition index : schemaDefinition.getIndexes()) {
-            this.index.truncateTable(handle, type, index.getName());
-        }
-
-        for (CounterDefinition counterDefinition : schemaDefinition
-                .getCounters()) {
-            this.counts
-                    .truncateTable(handle, type, counterDefinition.getName());
-        }
-
-        SchemaValidatorTransformer transformer = new SchemaValidatorTransformer(
-                schemaDefinition);
-
-        while (instances.hasNext()) {
-            Map<String, Object> notTransformed = instances.next();
-
-            Key key = Key.valueOf((String) notTransformed.get("id"));
-            Boolean deleted = (Boolean) notTransformed.get("$deleted");
-
-            if (deleted != null && deleted.booleanValue()) {
-                continue;
-            }
-
-            Map<String, Object> instance = transformer
-                    .validateTransform(notTransformed);
-
-            for (IndexDefinition indexDef : schemaDefinition.getIndexes()) {
-                String indexName = indexDef.getName();
-
-                this.index.insertEntity(handle, key.getId(), instance, type,
-                        indexName, schemaDefinition);
-            }
-
-            for (CounterDefinition counterDefinition : schemaDefinition
-                    .getCounters()) {
-                String counterName = counterDefinition.getName();
-
-                this.counts.insertEntity(handle, key.getId(), instance, type,
-                        counterName, schemaDefinition);
-            }
-        }
+        return null;
     }
 
     private Integer getTypeIdPossiblyNull(String type, boolean val)
@@ -473,5 +591,43 @@ public class SchemaResource {
 
             throw e;
         }
+    }
+
+    private void printError(final OutputStream output, String error)
+            throws IOException, Exception {
+        output.write((EncodingHelper.convertToJson(ImmutableMap
+                .<String, Object> of("$status", "ERROR", "$reason", error)) + "\n")
+                .getBytes());
+        output.flush();
+    }
+
+    private static void printOperationEvent(OutputStream output,
+            String operation, String event, String type) throws Exception {
+        output.write((EncodingHelper.convertToJson(ImmutableMap
+                .<String, Object> of(
+                        operation,
+                        event,
+                        "$date",
+                        ISODateTimeFormat.basicDateTime().print(new DateTime()),
+                        "$type", type)) + "\n").getBytes());
+        output.flush();
+    }
+
+    private static void printStatus(OutputStream output, String type,
+            Long successCount, Long skippedCount, Long failedCount)
+            throws IOException, Exception {
+        output.write((EncodingHelper
+                .convertToJson(ImmutableMap
+                        .<String, Object> builder()
+                        .put("$status", "OK")
+                        .put("$type", type)
+                        .put("$date",
+                                ISODateTimeFormat.basicDateTime().print(
+                                        new DateTime()))
+                        .put("$successCount", Long.valueOf(successCount))
+                        .put("$skippedCount", Long.valueOf(skippedCount))
+                        .put("$failedCount", Long.valueOf(failedCount)).build()) + "\n")
+                .getBytes());
+        output.flush();
     }
 }

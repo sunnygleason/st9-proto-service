@@ -39,6 +39,16 @@ public class SchemaDefinitionValidator {
         }
     }
 
+    public void validateUpdate(SchemaDefinition oldSchema,
+            SchemaDefinition newSchema) {
+        //
+        // "throw an exception if they're incompatible"
+        //
+        // TODO : validate enums
+        // TODO : validate data types (more/less specific etc)
+        //
+    }
+
     private void validateAttribute(Attribute attribute) {
         String attrName = attribute.getName();
 

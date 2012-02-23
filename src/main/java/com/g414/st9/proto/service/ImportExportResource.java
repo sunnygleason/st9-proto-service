@@ -3,7 +3,6 @@ package com.g414.st9.proto.service;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Scanner;
@@ -22,6 +21,9 @@ import javax.ws.rs.core.StreamingOutput;
 import org.joda.time.DateTime;
 import org.joda.time.format.ISODateTimeFormat;
 
+import com.g414.st9.proto.service.helper.AvailabilityManager;
+import com.g414.st9.proto.service.helper.Releasable;
+import com.g414.st9.proto.service.helper.AvailabilityManager.ProtectedCommand;
 import com.g414.st9.proto.service.helper.EncodingHelper;
 import com.g414.st9.proto.service.store.Key;
 import com.g414.st9.proto.service.store.KeyValueStorage;
@@ -34,6 +36,9 @@ import com.google.inject.Inject;
  */
 @Path("/1.0/x")
 public class ImportExportResource {
+    @Inject
+    private AvailabilityManager availability;
+
     @Inject
     private KeyValueStorage store;
 
@@ -49,8 +54,6 @@ public class ImportExportResource {
     @POST
     @Consumes(MediaType.APPLICATION_JSON)
     @Produces(MediaType.APPLICATION_JSON)
-    // TODO using String for the input value is busted/whack - pending better
-    // automagical jackson configuration
     public Response importAll(final InputStream postBody) throws Exception {
         Response clearResponse = this.store.clearRequested(false);
 
@@ -58,182 +61,219 @@ public class ImportExportResource {
             return clearResponse;
         }
 
-        return Response.status(Status.OK).entity(new StreamingOutput() {
+        return availability.doProtected(new ProtectedCommand<Response>() {
             @Override
-            public void write(OutputStream output) throws IOException,
-                    WebApplicationException {
-                Scanner scan = null;
-                try {
-                    long successCount = 0;
-                    long skippedCount = 0;
-                    long failedCount = 0;
+            public Response execute(final Releasable resource) throws Exception {
+                return Response.status(Status.OK).entity(new StreamingOutput() {
+                    @Override
+                    public void write(OutputStream output) throws IOException,
+                            WebApplicationException {
+                        Scanner scan = null;
+                        try {
+                            long successCount = 0;
+                            long skippedCount = 0;
+                            long failedCount = 0;
 
-                    scan = new Scanner(postBody);
-
-                    try {
-                        output.write((EncodingHelper.convertToJson(ImmutableMap
-                                .<String, Object> of("$export", "START")) + "\n")
-                                .getBytes());
-                        output.flush();
-                    } catch (Exception ignored) {
-                        ignored.printStackTrace();
-                    }
-
-                    long processed = 0;
-
-                    while (scan.hasNextLine()) {
-                        String value = scan.nextLine();
-                        String[] values = value.split("\n");
-
-                        for (String instance : values) {
-                            if (instance.trim().length() == 0) {
-                                continue;
-                            }
+                            scan = new Scanner(postBody);
 
                             try {
-                                Map<String, Object> parsedObject = EncodingHelper
-                                        .parseJsonString(instance);
+                                output.write((EncodingHelper
+                                        .convertToJson(ImmutableMap
+                                                .<String, Object> of("$export",
+                                                        "START")) + "\n")
+                                        .getBytes());
+                                output.flush();
+                            } catch (Exception ignored) {
+                                ignored.printStackTrace();
+                            }
 
-                                if (parsedObject.containsKey("$export")) {
-                                    continue;
-                                }
+                            long processed = 0;
 
-                                Map<String, Object> special = extractSpecialFields(parsedObject);
+                            while (scan.hasNextLine()) {
+                                String value = scan.nextLine();
+                                String[] values = value.split("\n");
 
-                                Boolean deleted = (Boolean) special
-                                        .get("$deleted");
-                                Boolean quarantined = (Boolean) special
-                                        .get("$quarantined");
-
-                                Key key = Key.valueOf((String) parsedObject
-                                        .remove("id"));
-                                Long version = (parsedObject
-                                        .containsKey("version")) ? Long
-                                        .parseLong((String) parsedObject
-                                                .remove("version")) : 1L;
-
-                                String encId = key.getEncryptedIdentifier();
-
-                                Map<String, Object> object = new LinkedHashMap<String, Object>();
-                                object.put("id", encId);
-                                object.put("kind", key.getType());
-                                object.put("version", version.toString());
-                                object.putAll(parsedObject);
-
-                                Response r = null;
-
-                                if (key.getType().equals("$schema")) {
-                                    String type = (String) special.get("$type");
-
-                                    r = schema.createEntity(type,
-                                            EncodingHelper
-                                                    .convertToJson(object));
-                                    successCount += 1;
-                                } else if (!key.getType().startsWith("$")) {
-                                    String jsonValue = EncodingHelper
-                                            .convertToJson(object);
-
-                                    if ((deleted != null) && deleted) {
-                                        r = store.createDeleted(key.getType(),
-                                                key.getId());
-                                        jsonValue = instance;
-                                    } else {
-                                        r = store.create(key.getType(),
-                                                jsonValue, key.getId(),
-                                                version, true);
-
-                                        if ((quarantined != null)
-                                                && quarantined) {
-                                            store.setQuarantined(encId, true);
-                                        }
-                                    }
-
-                                    if (r.getStatus() != Status.OK
-                                            .getStatusCode()) {
-                                        System.out.println(instance);
-
-                                        output.write((EncodingHelper.convertToJson(ImmutableMap.<String, Object> of(
-                                                "$status", "OK", "$record",
-                                                "FAILED", "$id",
-                                                key.getEncryptedIdentifier(),
-                                                "$code", r.getStatus(),
-                                                "$reason", r.getEntity())) + "\n")
-                                                .getBytes());
-
-                                        failedCount += 1;
+                                for (String instance : values) {
+                                    if (instance.trim().length() == 0) {
                                         continue;
                                     }
 
-                                    if (r.getEntity().equals(jsonValue)) {
-                                        successCount += 1;
-                                    } else {
-                                        throw new RuntimeException(
-                                                "mismatched entity : "
-                                                        + key.getEncryptedIdentifier());
+                                    try {
+                                        Map<String, Object> parsedObject = EncodingHelper
+                                                .parseJsonString(instance);
+
+                                        if (parsedObject.containsKey("$export")) {
+                                            continue;
+                                        }
+
+                                        Map<String, Object> special = extractSpecialFields(parsedObject);
+
+                                        Boolean deleted = (Boolean) special
+                                                .get("$deleted");
+                                        Boolean quarantined = (Boolean) special
+                                                .get("$quarantined");
+
+                                        Key key = Key
+                                                .valueOf((String) parsedObject
+                                                        .remove("id"));
+                                        Long version = (parsedObject
+                                                .containsKey("version")) ? Long
+                                                .parseLong((String) parsedObject
+                                                        .remove("version"))
+                                                : 1L;
+
+                                        String encId = key
+                                                .getEncryptedIdentifier();
+
+                                        Map<String, Object> object = new LinkedHashMap<String, Object>();
+                                        object.put("id", encId);
+                                        object.put("kind", key.getType());
+                                        object.put("version",
+                                                version.toString());
+                                        object.putAll(parsedObject);
+
+                                        Response r = null;
+
+                                        if (key.getType().equals("$schema")) {
+                                            String type = (String) special
+                                                    .get("$type");
+
+                                            r = schema
+                                                    .createEntity(
+                                                            type,
+                                                            EncodingHelper
+                                                                    .convertToJson(object));
+                                            successCount += 1;
+                                        } else if (!key.getType().startsWith(
+                                                "$")) {
+                                            String jsonValue = EncodingHelper
+                                                    .convertToJson(object);
+
+                                            if ((deleted != null) && deleted) {
+                                                r = store.createDeleted(
+                                                        key.getType(),
+                                                        key.getId());
+                                                jsonValue = instance;
+                                            } else {
+                                                r = store.create(key.getType(),
+                                                        jsonValue, key.getId(),
+                                                        version, true);
+
+                                                if ((quarantined != null)
+                                                        && quarantined) {
+                                                    store.setQuarantined(encId,
+                                                            true);
+                                                }
+                                            }
+
+                                            if (r.getStatus() != Status.OK
+                                                    .getStatusCode()) {
+                                                System.out.println(instance);
+
+                                                output.write((EncodingHelper
+                                                        .convertToJson(ImmutableMap
+                                                                .<String, Object> of(
+                                                                        "$status",
+                                                                        "OK",
+                                                                        "$record",
+                                                                        "FAILED",
+                                                                        "$id",
+                                                                        key.getEncryptedIdentifier(),
+                                                                        "$code",
+                                                                        r.getStatus(),
+                                                                        "$reason",
+                                                                        r.getEntity())) + "\n")
+                                                        .getBytes());
+
+                                                failedCount += 1;
+                                                continue;
+                                            }
+
+                                            if (r.getEntity().equals(jsonValue)) {
+                                                successCount += 1;
+                                            } else {
+                                                throw new RuntimeException(
+                                                        "mismatched entity : "
+                                                                + key.getEncryptedIdentifier());
+                                            }
+                                        } else {
+                                            output.write((EncodingHelper.convertToJson(ImmutableMap
+                                                    .<String, Object> of(
+                                                            "$status",
+                                                            "OK",
+                                                            "$record",
+                                                            "SKIPPED",
+                                                            "$id",
+                                                            key.getEncryptedIdentifier())) + "\n")
+                                                    .getBytes());
+                                            skippedCount += 1;
+
+                                            continue;
+                                        }
+                                    } catch (Exception e) {
+                                        e.printStackTrace();
+                                        System.out.println(instance);
+
+                                        output.write((EncodingHelper
+                                                .convertToJson(ImmutableMap
+                                                        .<String, Object> of(
+                                                                "$status",
+                                                                "OK",
+                                                                "$record",
+                                                                "FAILED",
+                                                                "$data",
+                                                                instance)) + "\n")
+                                                .getBytes());
+                                        failedCount += 1;
                                     }
-                                } else {
-                                    output.write((EncodingHelper.convertToJson(ImmutableMap.<String, Object> of(
-                                            "$status", "OK", "$record",
-                                            "SKIPPED", "$id",
-                                            key.getEncryptedIdentifier())) + "\n")
-                                            .getBytes());
-                                    skippedCount += 1;
 
-                                    continue;
+                                    processed += 1;
+
+                                    if (processed % 100 == 0) {
+                                        printStatus(output, successCount,
+                                                skippedCount, failedCount);
+                                    }
                                 }
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                                System.out.println(instance);
+                            }
 
+                            printStatus(output, successCount, skippedCount,
+                                    failedCount);
+
+                            try {
+                                output.write((EncodingHelper
+                                        .convertToJson(ImmutableMap
+                                                .<String, Object> of("$export",
+                                                        "END")) + "\n")
+                                        .getBytes());
+                                output.flush();
+                            } catch (Exception ignored) {
+                                ignored.printStackTrace();
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            try {
                                 output.write((EncodingHelper
                                         .convertToJson(ImmutableMap
                                                 .<String, Object> of("$status",
-                                                        "OK", "$record",
-                                                        "FAILED", "$data",
-                                                        instance)) + "\n")
+                                                        "ERROR", "$reason",
+                                                        e.getMessage())) + "\n")
                                         .getBytes());
-                                failedCount += 1;
+                                output.flush();
+                            } catch (Exception ignored) {
+                                ignored.printStackTrace();
                             }
 
-                            processed += 1;
-
-                            if (processed % 100 == 0) {
-                                printStatus(output, successCount, skippedCount,
-                                        failedCount);
+                            return;
+                        } finally {
+                            resource.release();
+                            if (scan != null) {
+                                scan.close();
                             }
                         }
                     }
-
-                    printStatus(output, successCount, skippedCount, failedCount);
-
-                    try {
-                        output.write((EncodingHelper.convertToJson(ImmutableMap
-                                .<String, Object> of("$export", "END")) + "\n")
-                                .getBytes());
-                        output.flush();
-                    } catch (Exception ignored) {
-                        ignored.printStackTrace();
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    try {
-                        output.write((EncodingHelper.convertToJson(ImmutableMap
-                                .<String, Object> of("$status", "ERROR",
-                                        "$reason", e.getMessage())) + "\n")
-                                .getBytes());
-                        output.flush();
-                    } catch (Exception ignored) {
-                        ignored.printStackTrace();
-                    }
-
-                    return;
-                } finally {
-                    if (scan != null) {
-                        scan.close();
-                    }
-                }
+                }).build();
             }
-        }).build();
+        });
     }
 
     private static Map<String, Object> extractSpecialFields(

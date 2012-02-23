@@ -9,8 +9,21 @@ import javax.servlet.http.HttpServletResponse;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
-public class AvailabilityManager {
+public class AvailabilityManager implements Releasable {
     private final AtomicBoolean available = new AtomicBoolean();
+
+    public <T> T doProtected(ProtectedCommand<T> command) {
+        boolean allowed = available.compareAndSet(true, false);
+        try {
+            if (allowed) {
+                return command.execute(AvailabilityManager.this);
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        throw new IllegalStateException("service down for maintenance");
+    }
 
     public void setAvailable(boolean availability) {
         available.set(availability);
@@ -18,6 +31,10 @@ public class AvailabilityManager {
 
     public boolean isAvailable() {
         return available.get();
+    }
+
+    public boolean release() {
+        return available.compareAndSet(false, true);
     }
 
     public Response unavailableResponse() {
@@ -34,11 +51,15 @@ public class AvailabilityManager {
         PrintWriter writer = null;
         try {
             writer = resp.getWriter();
-            writer.println("service undergoing maintenance");
+            writer.println("service down for maintenance");
         } finally {
             if (writer != null) {
                 writer.close();
             }
         }
+    }
+
+    public interface ProtectedCommand<T> {
+        public T execute(Releasable resource) throws Exception;
     }
 }
