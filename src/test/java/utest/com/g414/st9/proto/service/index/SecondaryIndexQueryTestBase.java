@@ -181,20 +181,22 @@ public abstract class SecondaryIndexQueryTestBase {
         Assert.assertEquals("'isAwesome' not in index", r1.getEntity());
 
         Response r2 = this.schemaResource.updateEntity("foo1",
-                schema4_isAwesome);
+                schema4_isAwesome, false);
         Assert.assertEquals(Status.OK.getStatusCode(), r2.getStatus());
 
         Map<String, Object> before = EncodingHelper
                 .parseJsonString(schema4_isAwesome);
         before.remove("version");
 
-        Map<String, Object> after = EncodingHelper.parseJsonString((String) r2
+        Response r3 = this.schemaResource.retrieveEntity("foo1");
+
+        Map<String, Object> after = EncodingHelper.parseJsonString((String) r3
                 .getEntity());
         after.remove("id");
         after.remove("kind");
         after.remove("version");
 
-        Assert.assertEquals(before, after);
+        Assert.assertEquals(after, before);
 
         Map<String, Object> result1 = EncodingHelper
                 .parseJsonString(this.indexResource
@@ -362,7 +364,6 @@ public abstract class SecondaryIndexQueryTestBase {
                             + " even? " + (i % 2 == 0) + "\"}").getEntity();
         }
 
-        // Thread.sleep(100000);
         Response r = this.indexResource.retrieveEntity(type, "uniq",
                 "small eq \"" + prefix + "1\"", null, 25L, false);
         Assert.assertEquals(r.getEntity().toString(), "{\"kind\":\"" + type

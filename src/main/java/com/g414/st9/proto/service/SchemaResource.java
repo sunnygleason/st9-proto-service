@@ -7,12 +7,14 @@ import java.util.Map;
 
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
+import javax.ws.rs.DefaultValue;
 import javax.ws.rs.GET;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
+import javax.ws.rs.QueryParam;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -32,6 +34,7 @@ import com.g414.st9.proto.service.helper.AvailabilityManager;
 import com.g414.st9.proto.service.helper.AvailabilityManager.ProtectedCommand;
 import com.g414.st9.proto.service.helper.EncodingHelper;
 import com.g414.st9.proto.service.helper.Releasable;
+import com.g414.st9.proto.service.helper.RunnableWithOutput;
 import com.g414.st9.proto.service.index.JDBISecondaryIndex;
 import com.g414.st9.proto.service.schema.CounterDefinition;
 import com.g414.st9.proto.service.schema.IndexDefinition;
@@ -157,7 +160,9 @@ public class SchemaResource {
     // TODO using String for the input value is busted/whack - pending better
     // automagical jackson configuration
     public Response updateEntity(@PathParam("type") final String type,
-            final String value) throws Exception {
+            final String value,
+            @QueryParam("doOutput") @DefaultValue("true") final boolean doOutput)
+            throws Exception {
         final KeyValueStorage theStore = this.store;
 
         return availability.doProtected(new ProtectedCommand<Response>() {
@@ -234,50 +239,73 @@ public class SchemaResource {
                     }
                 }
 
-                return Response.status(Status.OK).entity(new StreamingOutput() {
+                Response r = store.update(SCHEMA_PREFIX + ":" + typeId, value);
+                if (r.getStatus() != 200) {
+                    resource.release();
+
+                    return r;
+                }
+
+                final RunnableWithOutput runnable = new RunnableWithOutput() {
                     @Override
-                    public void write(final OutputStream output)
-                            throws IOException, WebApplicationException {
-                        try {
-                            printOperationEvent(output, "$update_schema",
-                                    "START", type);
+                    public void run(final OutputStream output) {
+                        database.withHandle(new HandleCallback<Void>() {
+                            @Override
+                            public Void withHandle(Handle handle)
+                                    throws Exception {
+                                try {
+                                    rebuildIndexesAndCounters(handle, type,
+                                            schemaDefinition, store.iterator(
+                                                    type, schemaDefinition),
+                                            output, doOutput);
+                                    return null;
+                                } catch (WebApplicationException e) {
+                                    e.printStackTrace();
+                                    printError(output, e.getMessage(), doOutput);
 
-                            database.withHandle(new HandleCallback<Void>() {
+                                    return null;
+                                }
+                            }
+                        });
+                    }
+                };
+
+                if (doOutput) {
+                    return Response.status(Status.OK)
+                            .entity(new StreamingOutput() {
                                 @Override
-                                public Void withHandle(Handle handle)
-                                        throws Exception {
+                                public void write(final OutputStream output)
+                                        throws IOException,
+                                        WebApplicationException {
                                     try {
-                                        rebuildIndexesAndCounters(handle, type,
-                                                schemaDefinition,
-                                                store.iterator(type,
-                                                        schemaDefinition),
-                                                output);
-                                        return null;
-                                    } catch (WebApplicationException e) {
-                                        e.printStackTrace();
-                                        printError(output, e.getMessage());
+                                        printOperationEvent(output,
+                                                "$update_schema", "START",
+                                                type, doOutput);
 
-                                        return null;
+                                        runnable.run(output);
+
+                                        printOperationEvent(output,
+                                                "$update_schema", "END", type,
+                                                doOutput);
+                                    } catch (Exception e) {
+                                        e.printStackTrace();
+                                        try {
+                                            printError(output, e.getMessage(),
+                                                    doOutput);
+                                        } catch (Exception err) {
+                                            err.printStackTrace();
+                                        }
+                                    } finally {
+                                        resource.release();
                                     }
                                 }
-                            });
+                            }).build();
+                } else {
+                    runnable.run(null);
 
-                            Response r = store.update(SCHEMA_PREFIX + ":"
-                                    + typeId, value);
-
-                            if (r.getStatus() == 200) {
-                                printOperationEvent(output, "$update_schema",
-                                        "END", type);
-                            } else {
-                                printError(output, r.getEntity().toString());
-                            }
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        } finally {
-                            resource.release();
-                        }
-                    }
-                }).build();
+                    return Response.status(Status.OK).entity("finished")
+                            .build();
+                }
             }
         });
     }
@@ -339,7 +367,8 @@ public class SchemaResource {
     @POST
     @Path("{type}/rebuild")
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response rebuild(@PathParam("type") final String type) {
+    public Response rebuild(@PathParam("type") final String type,
+            @QueryParam("doOutput") @DefaultValue("true") final boolean doOutput) {
         return availability.doProtected(new ProtectedCommand<Response>() {
             @Override
             public Response execute(final Releasable resource) throws Exception {
@@ -349,7 +378,8 @@ public class SchemaResource {
                             WebApplicationException {
                         Exception error = null;
                         try {
-                            SchemaResource.this.rebuildSingle(type, output);
+                            SchemaResource.this.rebuildSingle(type, output,
+                                    doOutput);
                         } catch (Exception e) {
                             e.printStackTrace();
                             error = e;
@@ -357,7 +387,8 @@ public class SchemaResource {
                             resource.release();
                             if (error != null) {
                                 try {
-                                    printError(output, error.getMessage());
+                                    printError(output, error.getMessage(),
+                                            doOutput);
                                 } catch (Exception e) {
                                     e.printStackTrace();
                                 }
@@ -372,7 +403,9 @@ public class SchemaResource {
     @POST
     @Path("rebuild_all")
     @Consumes(MediaType.APPLICATION_JSON)
-    public Response rebuildAll() throws Exception {
+    public Response rebuildAll(
+            @QueryParam("doOutput") @DefaultValue("true") final boolean doOutput)
+            throws Exception {
         return availability.doProtected(new ProtectedCommand<Response>() {
             @Override
             public Response execute(final Releasable resource) throws Exception {
@@ -383,7 +416,7 @@ public class SchemaResource {
                         Exception error = null;
                         try {
                             printOperationEvent(output, "$rebuild_all",
-                                    "START", "all");
+                                    "START", "all", doOutput);
 
                             Iterator<Map<String, Object>> schemas = SchemaResource.this.store
                                     .iterator(SCHEMA_PREFIX);
@@ -395,11 +428,12 @@ public class SchemaResource {
                                     continue;
                                 }
 
-                                SchemaResource.this.rebuildSingle(type, output);
+                                SchemaResource.this.rebuildSingle(type, output,
+                                        doOutput);
                             }
 
                             printOperationEvent(output, "$rebuild_all", "END",
-                                    "all");
+                                    "all", doOutput);
                         } catch (Exception e) {
                             e.printStackTrace();
                             error = e;
@@ -407,7 +441,8 @@ public class SchemaResource {
                             resource.release();
                             if (error != null) {
                                 try {
-                                    printError(output, error.getMessage());
+                                    printError(output, error.getMessage(),
+                                            doOutput);
                                 } catch (Exception e) {
                                     e.printStackTrace();
                                 }
@@ -421,8 +456,8 @@ public class SchemaResource {
 
     private void rebuildIndexesAndCounters(Handle handle, String type,
             SchemaDefinition schemaDefinition,
-            Iterator<Map<String, Object>> instances, OutputStream output)
-            throws Exception {
+            Iterator<Map<String, Object>> instances, OutputStream output,
+            boolean doOutput) throws Exception {
         for (IndexDefinition index : schemaDefinition.getIndexes()) {
             this.index.truncateTable(handle, type, index.getName());
         }
@@ -489,17 +524,18 @@ public class SchemaResource {
 
             if (processed % 100 == 0) {
                 printStatus(output, type, successCount, skippedCount,
-                        failedCount);
+                        failedCount, doOutput);
             }
         }
 
         if (processed % 100 != 0) {
-            printStatus(output, type, successCount, skippedCount, failedCount);
+            printStatus(output, type, successCount, skippedCount, failedCount,
+                    doOutput);
         }
     }
 
     private Response rebuildSingle(@PathParam("type") final String type,
-            final OutputStream output) throws Exception {
+            final OutputStream output, final boolean doOutput) throws Exception {
         Integer typeId = getTypeIdPossiblyNull(type, false);
 
         if (typeId == null) {
@@ -557,14 +593,14 @@ public class SchemaResource {
             }
         }
 
-        printOperationEvent(output, "$rebuild", "START", type);
+        printOperationEvent(output, "$rebuild", "START", type, doOutput);
 
         database.withHandle(new HandleCallback<Void>() {
             @Override
             public Void withHandle(Handle handle) throws Exception {
                 try {
                     rebuildIndexesAndCounters(handle, type, original,
-                            store.iterator(type, original), output);
+                            store.iterator(type, original), output, doOutput);
                     return null;
                 } catch (WebApplicationException e) {
                     e.printStackTrace();
@@ -574,7 +610,7 @@ public class SchemaResource {
             }
         });
 
-        printOperationEvent(output, "$rebuild", "END", type);
+        printOperationEvent(output, "$rebuild", "END", type, doOutput);
 
         return null;
     }
@@ -593,8 +629,12 @@ public class SchemaResource {
         }
     }
 
-    private void printError(final OutputStream output, String error)
-            throws IOException, Exception {
+    private void printError(final OutputStream output, String error,
+            boolean doOutput) throws IOException, Exception {
+        if (!doOutput) {
+            return;
+        }
+
         output.write((EncodingHelper.convertToJson(ImmutableMap
                 .<String, Object> of("$status", "ERROR", "$reason", error)) + "\n")
                 .getBytes());
@@ -602,7 +642,12 @@ public class SchemaResource {
     }
 
     private static void printOperationEvent(OutputStream output,
-            String operation, String event, String type) throws Exception {
+            String operation, String event, String type, boolean doOutput)
+            throws Exception {
+        if (!doOutput) {
+            return;
+        }
+
         output.write((EncodingHelper.convertToJson(ImmutableMap
                 .<String, Object> of(
                         operation,
@@ -614,8 +659,12 @@ public class SchemaResource {
     }
 
     private static void printStatus(OutputStream output, String type,
-            Long successCount, Long skippedCount, Long failedCount)
-            throws IOException, Exception {
+            Long successCount, Long skippedCount, Long failedCount,
+            boolean doOutput) throws IOException, Exception {
+        if (!doOutput) {
+            return;
+        }
+
         output.write((EncodingHelper
                 .convertToJson(ImmutableMap
                         .<String, Object> builder()
