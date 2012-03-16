@@ -6,7 +6,6 @@ import com.g414.st9.proto.service.helper.AvailabilityManagementFilter;
 import com.g414.st9.proto.service.helper.AvailabilityManager;
 import com.g414.st9.proto.service.helper.ConnectionCloseFilter;
 import com.g414.st9.proto.service.helper.ExtendedRequestFilter;
-import com.g414.st9.proto.service.helper.HttpMethodOverrideFilter;
 import com.google.common.collect.ImmutableMap;
 import com.google.inject.servlet.ServletModule;
 import com.sun.jersey.guice.spi.container.servlet.GuiceContainer;
