@@ -5,8 +5,7 @@ import java.math.BigInteger;
 /**
  * Validates / transforms integer values.
  */
-public class IntegerValidator implements
-        ValidatorTransformer<Object, BigInteger> {
+public class IntegerValidator implements ValidatorTransformer<Object, Number> {
     private final String attribute;
     private final BigInteger min;
     private final BigInteger max;
@@ -44,16 +43,20 @@ public class IntegerValidator implements
     }
 
     @Override
-    public Object untransform(BigInteger instance) throws ValidationException {
+    public Object untransform(Number instance) throws ValidationException {
         if (instance == null) {
             throw new ValidationException("'" + attribute
                     + "' must not be null");
         }
 
+        BigInteger bigInstance = (instance instanceof BigInteger) ? (BigInteger) instance
+                : new BigInteger(instance.toString());
         Object result = instance;
 
-        int compareMin = instance.compareTo(BigInteger.valueOf(Long.MIN_VALUE));
-        int compareMax = instance.compareTo(BigInteger.valueOf(Long.MAX_VALUE));
+        int compareMin = bigInstance.compareTo(BigInteger
+                .valueOf(Long.MIN_VALUE));
+        int compareMax = bigInstance.compareTo(BigInteger
+                .valueOf(Long.MAX_VALUE));
         if (compareMin >= 0 && compareMax <= 0) {
             result = instance.longValue();
         }
