@@ -11,7 +11,7 @@ import net.spy.memcached.MemcachedClient;
  */
 public class MemcachedKeyValueCache implements KeyValueCache {
     private final MemcachedClient memcachedClient;
-    private final int timeoutSecs = 15 * 60;
+    private final int timeoutSecs = 60 * 60;
 
     public MemcachedKeyValueCache() throws Exception {
         this.memcachedClient = new MemcachedClient(AddrUtil.getAddresses(System

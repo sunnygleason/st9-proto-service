@@ -1,5 +1,7 @@
 package com.g414.st9.proto.service.cache;
 
+import static com.g414.st9.proto.service.helper.RedisTemplates.withJedisCallback;
+
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -9,12 +11,14 @@ import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
 
+import com.g414.st9.proto.service.helper.RedisTemplates.JedisCallback;
+
 /**
  * Redis implementation of Ye Trusty Key Value Cache.
  */
 public class RedisKeyValueCache implements KeyValueCache {
     private final JedisPool jedisPool;
-    private final int timeoutSecs = 15 * 60;
+    private final int timeoutSecs = 60 * 60;
 
     public RedisKeyValueCache() {
         JedisPoolConfig config = new JedisPoolConfig();
@@ -27,7 +31,7 @@ public class RedisKeyValueCache implements KeyValueCache {
 
     @Override
     public byte[] get(final String key) throws Exception {
-        return withJedisCallback(new JedisCallback<byte[]>() {
+        return withJedisCallback(jedisPool, new JedisCallback<byte[]>() {
             @Override
             public byte[] withJedis(Jedis jedis) {
                 return jedis.get(key.getBytes());
@@ -38,31 +42,32 @@ public class RedisKeyValueCache implements KeyValueCache {
     @Override
     public Map<String, byte[]> multiget(final Collection<String> keys)
             throws Exception {
-        return withJedisCallback(new JedisCallback<Map<String, byte[]>>() {
-            @Override
-            public Map<String, byte[]> withJedis(Jedis jedis) {
-                byte[][] keyBytes = new byte[keys.size()][];
-                int i = 0;
-                for (String key : keys) {
-                    keyBytes[i++] = key.getBytes();
-                }
+        return withJedisCallback(jedisPool,
+                new JedisCallback<Map<String, byte[]>>() {
+                    @Override
+                    public Map<String, byte[]> withJedis(Jedis jedis) {
+                        byte[][] keyBytes = new byte[keys.size()][];
+                        int i = 0;
+                        for (String key : keys) {
+                            keyBytes[i++] = key.getBytes();
+                        }
 
-                Map<String, byte[]> result = new LinkedHashMap<String, byte[]>();
+                        Map<String, byte[]> result = new LinkedHashMap<String, byte[]>();
 
-                List<byte[]> resultBytes = jedis.mget(keyBytes);
-                int j = 0;
-                for (String key : keys) {
-                    result.put(key, resultBytes.get(j++));
-                }
+                        List<byte[]> resultBytes = jedis.mget(keyBytes);
+                        int j = 0;
+                        for (String key : keys) {
+                            result.put(key, resultBytes.get(j++));
+                        }
 
-                return result;
-            }
-        });
+                        return result;
+                    }
+                });
     }
 
     @Override
     public void put(final String key, final byte[] value) throws Exception {
-        withJedisCallback(new JedisCallback<Void>() {
+        withJedisCallback(jedisPool, new JedisCallback<Void>() {
             @Override
             public Void withJedis(Jedis jedis) {
                 jedis.setex(key.getBytes(), timeoutSecs, value);
@@ -74,7 +79,7 @@ public class RedisKeyValueCache implements KeyValueCache {
 
     @Override
     public void delete(final String key) throws Exception {
-        withJedisCallback(new JedisCallback<Void>() {
+        withJedisCallback(jedisPool, new JedisCallback<Void>() {
             @Override
             public Void withJedis(Jedis jedis) {
                 jedis.del(key);
@@ -86,7 +91,7 @@ public class RedisKeyValueCache implements KeyValueCache {
 
     @Override
     public void clear() {
-        withJedisCallback(new JedisCallback<Void>() {
+        withJedisCallback(jedisPool, new JedisCallback<Void>() {
             @Override
             public Void withJedis(Jedis jedis) {
                 jedis.flushDB();
@@ -99,21 +104,5 @@ public class RedisKeyValueCache implements KeyValueCache {
     @Override
     public boolean isPersistent() {
         return true;
-    }
-
-    private <T> T withJedisCallback(JedisCallback<T> jedisCallback) {
-        Jedis jedis = null;
-        try {
-            jedis = jedisPool.getResource();
-            return jedisCallback.withJedis(jedis);
-        } finally {
-            if (jedis != null) {
-                jedisPool.returnResource(jedis);
-            }
-        }
-    }
-
-    private interface JedisCallback<T> {
-        public T withJedis(Jedis jedis);
     }
 }
