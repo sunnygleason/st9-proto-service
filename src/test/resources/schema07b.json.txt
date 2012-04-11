@@ -1,1 +1,1 @@
-{"version":"1","attributes":[{"name":"x","type":"I32"},{"name":"y","type":"I32"},{"name":"isAwesome","type":"BOOLEAN"}],"indexes":[{"name":"xy","cols":[{"name":"isAwesome","sort":"ASC"},{"name":"x","sort":"ASC"},{"name":"y","sort":"ASC"},{"name":"id","sort":"ASC"}]}],"counters":[]}
+{"version":"1","attributes":[{"name":"x","type":"I32"},{"name":"y","type":"I32"},{"name":"isAwesome","type":"BOOLEAN"}],"indexes":[{"name":"xy","cols":[{"name":"isAwesome","sort":"ASC"},{"name":"x","sort":"ASC"},{"name":"y","sort":"ASC"},{"name":"id","sort":"ASC"}]}],"counters":[],"fulltexts":[]}

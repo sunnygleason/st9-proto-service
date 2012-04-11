@@ -2,11 +2,7 @@ package com.g414.st9.proto.service.helper;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 import javax.ws.rs.WebApplicationException;
@@ -31,7 +27,6 @@ public class EncodingHelper {
     private static final LongHash hash = new MurmurHash();
 
     private static final String KV_CACHE_PREFIX = "kv:";
-    private static final String UNIQUE_IDX_CACHE_PREFIX = "idx:";
 
     public static String convertToJson(Map<String, Object> value)
             throws Exception {

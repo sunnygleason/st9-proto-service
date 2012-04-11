@@ -1,1 +1,1 @@
-{"attributes":[{"name":"list","type":"ARRAY","nullable":true},{"name":"map","type":"MAP","nullable":true}],"indexes":[],"counters":[]}
+{"attributes":[{"name":"list","type":"ARRAY","nullable":true},{"name":"map","type":"MAP","nullable":true}],"indexes":[],"counters":[],"fulltexts":[]}

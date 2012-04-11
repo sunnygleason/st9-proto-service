@@ -12,6 +12,8 @@ import com.g414.st9.proto.service.KeyValueResource;
 import com.g414.st9.proto.service.ServiceModule;
 import com.g414.st9.proto.service.cache.EmptyKeyValueCache;
 import com.g414.st9.proto.service.cache.KeyValueCache;
+import com.g414.st9.proto.service.pubsub.NoOpPublisher;
+import com.g414.st9.proto.service.pubsub.Publisher;
 import com.g414.st9.proto.service.sequence.SequenceServiceDatabaseImpl;
 import com.g414.st9.proto.service.store.Key;
 import com.google.inject.AbstractModule;
@@ -33,6 +35,7 @@ public abstract class CounterServiceTestBase {
                     protected void configure() {
                         bind(KeyValueCache.class).toInstance(
                                 new EmptyKeyValueCache());
+                        bind(Publisher.class).toInstance(new NoOpPublisher());
                     }
                 }, new ServiceModule());
 

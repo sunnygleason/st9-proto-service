@@ -1,1 +1,1 @@
-{"attributes":[{"name":"isAwesome","type":"BOOLEAN"},{"name":"hotness","type":"ENUM","values":["FREEZING","COLD","COOL","WARM","TEH_HOTNESS"]}],"indexes":[],"counters":[]}
+{"attributes":[{"name":"isAwesome","type":"BOOLEAN"},{"name":"hotness","type":"ENUM","values":["FREEZING","COLD","COOL","WARM","TEH_HOTNESS"]}],"indexes":[],"counters":[],"fulltexts":[]}

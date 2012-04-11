@@ -25,6 +25,8 @@ import com.g414.st9.proto.service.cache.EmptyKeyValueCache;
 import com.g414.st9.proto.service.cache.KeyValueCache;
 import com.g414.st9.proto.service.helper.EncodingHelper;
 import com.g414.st9.proto.service.index.JDBISecondaryIndex;
+import com.g414.st9.proto.service.pubsub.NoOpPublisher;
+import com.g414.st9.proto.service.pubsub.Publisher;
 import com.g414.st9.proto.service.store.Key;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
@@ -59,6 +61,7 @@ public abstract class SecondaryIndexQueryTestBase {
                     protected void configure() {
                         bind(KeyValueCache.class).toInstance(
                                 new EmptyKeyValueCache());
+                        bind(Publisher.class).toInstance(new NoOpPublisher());
                     }
                 }, new ServiceModule());
 

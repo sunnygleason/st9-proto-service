@@ -1,1 +1,1 @@
-{"attributes":[{"name":"x","type":"I32"},{"name":"ref","type":"REFERENCE"}],"indexes":[{"name":"xref","cols":[{"name":"x","sort":"ASC"},{"name":"ref","sort":"ASC"},{"name":"id","sort":"ASC"}]}],"counters":[]}
+{"attributes":[{"name":"x","type":"I32"},{"name":"ref","type":"REFERENCE"}],"indexes":[{"name":"xref","cols":[{"name":"x","sort":"ASC"},{"name":"ref","sort":"ASC"},{"name":"id","sort":"ASC"}]}],"counters":[],"fulltexts":[]}

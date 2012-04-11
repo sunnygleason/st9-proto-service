@@ -41,8 +41,11 @@ import com.g414.st9.proto.service.cache.KeyValueCache;
 import com.g414.st9.proto.service.count.JDBICountService;
 import com.g414.st9.proto.service.helper.AvailabilityManager;
 import com.g414.st9.proto.service.helper.EncodingHelper;
+import com.g414.st9.proto.service.helper.EntityDiffHelper;
 import com.g414.st9.proto.service.index.JDBISecondaryIndex;
+import com.g414.st9.proto.service.pubsub.Publisher;
 import com.g414.st9.proto.service.schema.CounterDefinition;
+import com.g414.st9.proto.service.schema.FulltextDefinition;
 import com.g414.st9.proto.service.schema.IndexDefinition;
 import com.g414.st9.proto.service.schema.SchemaDefinition;
 import com.g414.st9.proto.service.schema.SchemaHelper;
@@ -79,6 +82,9 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
     @Inject
     protected SequenceServiceDatabaseImpl sequences;
+
+    @Inject
+    protected Publisher topicPublisher;
 
     @Inject
     @Named("nuke.allowed")
@@ -166,6 +172,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
         final Long realVersion = (version != null) ? version : 1L;
         final String valueJson = getDisplayJson(newKey, realVersion, readValue);
+        final Publisher publisher = this.topicPublisher;
 
         return database.inTransaction(new TransactionCallback<Response>() {
             @Override
@@ -202,6 +209,31 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                             counts.insertEntity(handle, newKey.getId(),
                                     toInsert, type, counterDef.getName(),
                                     definition);
+                        }
+
+                        if (!definition.getFulltexts().isEmpty()) {
+                            Map<String, Object> prevValue = Collections
+                                    .<String, Object> emptyMap();
+                            for (FulltextDefinition fulltextDef : definition
+                                    .getFulltexts()) {
+                                Map<String, Object> valueDiff = EntityDiffHelper
+                                        .diffValues(fulltextDef, prevValue,
+                                                readValue);
+
+                                if (!valueDiff.isEmpty()) {
+                                    Map<String, Object> publishMessage = new LinkedHashMap<String, Object>();
+                                    publishMessage.put("action", "create");
+                                    publishMessage.put("id",
+                                            newKey.getEncryptedIdentifier());
+                                    publishMessage.put("kind", newKey.getType());
+                                    publishMessage.putAll(valueDiff);
+
+                                    publisher.publish(
+                                            "/1.0/f/" + newKey.getType() + "."
+                                                    + fulltextDef.getName(),
+                                            publishMessage);
+                                }
+                            }
                         }
                     }
 
@@ -479,6 +511,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
         final SchemaDefinition definition = loadOrCreateEmptySchemaOutsideTxn(sequences
                 .getTypeId(realKey.getType(), false));
+        final Publisher publisher = this.topicPublisher;
 
         return database.inTransaction(new TransactionCallback<Response>() {
             @Override
@@ -493,7 +526,8 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                     Map<String, Object> original = null;
 
                     if (!definition.getCounters().isEmpty()
-                            || !definition.getIndexes().isEmpty()) {
+                            || !definition.getIndexes().isEmpty()
+                            || !definition.getFulltexts().isEmpty()) {
                         original = (Map<String, Object>) EncodingHelper
                                 .parseSmileLzf(getObjectBytes(realKey, false));
 
@@ -554,6 +588,32 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                                     toUpdate, realKey.getType(),
                                     counterDef.getName(), definition);
                         }
+
+                        if (!definition.getFulltexts().isEmpty()) {
+                            Map<String, Object> prevValue = schemaUntransform(
+                                    definition, original);
+                            for (FulltextDefinition fulltextDef : definition
+                                    .getFulltexts()) {
+                                Map<String, Object> valueDiff = EntityDiffHelper
+                                        .diffValues(fulltextDef, prevValue,
+                                                readValue);
+
+                                if (!valueDiff.isEmpty()) {
+                                    Map<String, Object> publishMessage = new LinkedHashMap<String, Object>();
+                                    publishMessage.put("action", "update");
+                                    publishMessage.put("id",
+                                            realKey.getEncryptedIdentifier());
+                                    publishMessage.put("kind",
+                                            realKey.getType());
+                                    publishMessage.putAll(valueDiff);
+
+                                    publisher.publish(
+                                            "/1.0/f/" + realKey.getType() + "."
+                                                    + fulltextDef.getName(),
+                                            publishMessage);
+                                }
+                            }
+                        }
                     }
 
                     return (updated == 0) ? Response.status(Status.NOT_FOUND)
@@ -599,6 +659,8 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
             return getErrorResponse(e);
         }
 
+        final Publisher publisher = this.topicPublisher;
+
         return database.inTransaction(new TransactionCallback<Response>() {
             @Override
             public Response inTransaction(Handle handle,
@@ -614,7 +676,8 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                     Map<String, Object> original = null;
 
                     if (!definition.getIndexes().isEmpty()
-                            || !definition.getCounters().isEmpty()) {
+                            || !definition.getCounters().isEmpty()
+                            || !definition.getFulltexts().isEmpty()) {
                         byte[] originalBytes = getObjectBytes(realKey, false,
                                 true);
 
@@ -653,6 +716,34 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                                 counts.deleteEntity(handle, keyId,
                                         realKey.getType(), original,
                                         counterDef.getName(), definition);
+                            }
+                        }
+
+                        if (!definition.getFulltexts().isEmpty()) {
+                            Map<String, Object> prevValue = schemaUntransform(
+                                    definition, original);
+                            Map<String, Object> currValue = Collections
+                                    .<String, Object> emptyMap();
+                            for (FulltextDefinition fulltextDef : definition
+                                    .getFulltexts()) {
+                                Map<String, Object> valueDiff = EntityDiffHelper
+                                        .diffValues(fulltextDef, prevValue,
+                                                currValue);
+
+                                if (!valueDiff.isEmpty()) {
+                                    Map<String, Object> publishMessage = new LinkedHashMap<String, Object>();
+                                    publishMessage.put("action", "delete");
+                                    publishMessage.put("id",
+                                            realKey.getEncryptedIdentifier());
+                                    publishMessage.put("kind",
+                                            realKey.getType());
+                                    publishMessage.putAll(valueDiff);
+
+                                    publisher.publish(
+                                            "/1.0/f/" + realKey.getType() + "."
+                                                    + fulltextDef.getName(),
+                                            publishMessage);
+                                }
                             }
                         }
                     }

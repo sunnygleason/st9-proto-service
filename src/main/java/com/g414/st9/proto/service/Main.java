@@ -3,7 +3,6 @@ package com.g414.st9.proto.service;
 import java.net.InetAddress;
 
 import org.eclipse.jetty.server.Handler;
-import org.eclipse.jetty.server.NCSARequestLog;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.HandlerCollection;
 import org.eclipse.jetty.server.handler.RequestLogHandler;
@@ -15,7 +14,8 @@ import com.g414.st9.proto.service.cache.EmptyKeyValueCache;
 import com.g414.st9.proto.service.cache.KeyValueCache;
 import com.g414.st9.proto.service.helper.EmptyServlet;
 import com.g414.st9.proto.service.helper.ExtendedHttpRequestLogV20110917;
-import com.g414.st9.proto.service.helper.ExtendedNCSARequestLog;
+import com.g414.st9.proto.service.pubsub.NoOpPublisher;
+import com.g414.st9.proto.service.pubsub.Publisher;
 import com.g414.st9.proto.service.store.SqliteKeyValueStorage.SqliteKeyValueStorageModule;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
@@ -40,9 +40,11 @@ public class Main {
 
         Module storageModule = getStorageModule();
         Module cacheModule = getCacheModule();
+        Module publisherModule = getPublisherModule();
 
         Injector parentInjector = Guice.createInjector(new LifecycleModule(),
-                storageModule, cacheModule, new ServiceModule());
+                storageModule, cacheModule, publisherModule,
+                new ServiceModule());
 
         root.addFilter(GuiceFilter.class, "/*", 0);
         root.addServlet(EmptyServlet.class, "/*");
@@ -101,6 +103,25 @@ public class Main {
                     bind(KeyValueCache.class).toInstance(
                             (KeyValueCache) Class.forName(moduleName)
                                     .newInstance());
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+    }
+
+    private static Module getPublisherModule() throws Exception {
+        final String moduleName = System.getProperty("st9.publisherClass",
+                NoOpPublisher.class.getName());
+
+        return new AbstractModule() {
+            @Override
+            protected void configure() {
+                try {
+                    bind(Publisher.class)
+                            .toInstance(
+                                    (Publisher) Class.forName(moduleName)
+                                            .newInstance());
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }

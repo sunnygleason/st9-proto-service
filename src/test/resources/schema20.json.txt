@@ -11,4 +11,4 @@
     {"name":"target","sort":"ASC"},
     {"name":"hotness","sort":"ASC"},
     {"name":"year","sort":"ASC"}]}
-]}
+],"fulltexts":[]}

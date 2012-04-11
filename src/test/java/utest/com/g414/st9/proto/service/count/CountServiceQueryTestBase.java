@@ -24,6 +24,8 @@ import com.g414.st9.proto.service.cache.EmptyKeyValueCache;
 import com.g414.st9.proto.service.cache.KeyValueCache;
 import com.g414.st9.proto.service.count.JDBICountService;
 import com.g414.st9.proto.service.helper.EncodingHelper;
+import com.g414.st9.proto.service.pubsub.NoOpPublisher;
+import com.g414.st9.proto.service.pubsub.Publisher;
 import com.g414.st9.proto.service.query.QueryOperator;
 import com.g414.st9.proto.service.query.QueryTerm;
 import com.g414.st9.proto.service.query.QueryValue;
@@ -58,6 +60,7 @@ public abstract class CountServiceQueryTestBase {
                     protected void configure() {
                         bind(KeyValueCache.class).toInstance(
                                 new EmptyKeyValueCache());
+                        bind(Publisher.class).toInstance(new NoOpPublisher());
                     }
                 }, new ServiceModule());
 

@@ -1,1 +1,1 @@
-{"attributes":[{"name":"isAwesome","type":"BOOLEAN","nullable":false}],"indexes":[],"counters":[{"name":"ia","cols":[{"name":"isAwesome","sort":"ASC"}]}]}
+{"attributes":[{"name":"isAwesome","type":"BOOLEAN","nullable":false}],"indexes":[],"counters":[{"name":"ia","cols":[{"name":"isAwesome","sort":"ASC"}]}],"fulltexts":[]}

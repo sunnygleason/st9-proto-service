@@ -1,1 +1,1 @@
-{"attributes":[{"name":"x","type":"UTF8_TEXT"},{"name":"z","type":"UTF8_SMALLSTRING"}],"indexes":[],"counters":[]}
+{"attributes":[{"name":"x","type":"UTF8_TEXT"},{"name":"z","type":"UTF8_SMALLSTRING"}],"indexes":[],"counters":[],"fulltexts":[]}

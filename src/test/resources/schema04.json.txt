@@ -1,1 +1,1 @@
-{"attributes":[{"name":"ref","type":"REFERENCE"},{"name":"age","type":"U8"}],"indexes":[],"counters":[]}
+{"attributes":[{"name":"ref","type":"REFERENCE"},{"name":"age","type":"U8"}],"indexes":[],"counters":[],"fulltexts":[]}

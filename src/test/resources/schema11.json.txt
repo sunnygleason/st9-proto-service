@@ -1,1 +1,1 @@
-{"attributes":[{"name":"small","type":"UTF8_SMALLSTRING","nullable":false},{"name":"text","type":"UTF8_TEXT"}],"indexes":[{"name":"uniq","unique":true,"cols":[{"name":"small","sort":"ASC"}]}],"counters":[]}
+{"attributes":[{"name":"small","type":"UTF8_SMALLSTRING","nullable":false},{"name":"text","type":"UTF8_TEXT"}],"indexes":[{"name":"uniq","unique":true,"cols":[{"name":"small","sort":"ASC"}]}],"counters":[],"fulltexts":[]}

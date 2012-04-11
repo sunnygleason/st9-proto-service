@@ -11,14 +11,14 @@ import org.codehaus.jackson.annotate.JsonProperty;
 /**
  * Object class for a counter definition, including name and column definitions.
  */
-public class CounterDefinition {
+public class FulltextDefinition {
     private final String name;
-    private final List<CounterAttribute> counterAttributes;
+    private final List<FulltextAttribute> counterAttributes;
     private final List<String> attributeNames;
 
     @JsonCreator
-    public CounterDefinition(@JsonProperty("name") String name,
-            @JsonProperty("cols") List<CounterAttribute> cols) {
+    public FulltextDefinition(@JsonProperty("name") String name,
+            @JsonProperty("cols") List<FulltextAttribute> cols) {
         if (name == null) {
             throw new IllegalArgumentException("'name' must not be null");
         }
@@ -27,7 +27,7 @@ public class CounterDefinition {
             throw new IllegalArgumentException("'cols' must not be empty");
         }
 
-        for (CounterAttribute col : cols) {
+        for (FulltextAttribute col : cols) {
             if ("id".equals(col.getName()) || "type".equals(col.getName())) {
                 throw new IllegalArgumentException(
                         "'cols' must not contain 'id' or 'type' fields");
@@ -37,7 +37,7 @@ public class CounterDefinition {
         this.name = name;
 
         List<String> newAttributeNames = new ArrayList<String>();
-        for (CounterAttribute attr : cols) {
+        for (FulltextAttribute attr : cols) {
             newAttributeNames.add(attr.getName());
         }
 
@@ -50,7 +50,7 @@ public class CounterDefinition {
     }
 
     @JsonProperty("cols")
-    public List<CounterAttribute> getCounterAttributes() {
+    public List<FulltextAttribute> getFullTextAttributes() {
         return counterAttributes;
     }
 

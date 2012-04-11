@@ -23,6 +23,8 @@ import com.g414.st9.proto.service.SchemaResource;
 import com.g414.st9.proto.service.ServiceModule;
 import com.g414.st9.proto.service.cache.KeyValueCache;
 import com.g414.st9.proto.service.helper.EncodingHelper;
+import com.g414.st9.proto.service.pubsub.NoOpPublisher;
+import com.g414.st9.proto.service.pubsub.Publisher;
 import com.g414.st9.proto.service.schema.SchemaHelper;
 import com.g414.st9.proto.service.store.Key;
 import com.g414.st9.proto.service.store.KeyValueStorage;
@@ -49,6 +51,7 @@ public abstract class KeyValueResourceTestBase {
                     protected void configure() {
                         bind(KeyValueCache.class).toInstance(
                                 new EmptyWriteThroughKeyValueCache());
+                        bind(Publisher.class).toInstance(new NoOpPublisher());
                     }
                 }, new ServiceModule());
 

@@ -7,7 +7,8 @@ public class SchemaHelper {
         SchemaDefinition newDefinition = new SchemaDefinition(
                 Collections.<Attribute> emptyList(),
                 Collections.<IndexDefinition> emptyList(),
-                Collections.<CounterDefinition> emptyList());
+                Collections.<CounterDefinition> emptyList(),
+                Collections.<FulltextDefinition> emptyList());
 
         return newDefinition;
     }

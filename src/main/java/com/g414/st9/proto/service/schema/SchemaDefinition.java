@@ -18,15 +18,18 @@ public class SchemaDefinition {
     private final List<Attribute> attributes;
     private final List<IndexDefinition> indexes;
     private final List<CounterDefinition> counters;
+    private final List<FulltextDefinition> fulltexts;
     private final Map<String, Attribute> attributeMap;
     private final Map<String, IndexDefinition> indexMap;
     private final Map<String, CounterDefinition> counterMap;
+    private final Map<String, FulltextDefinition> fulltextMap;
 
     @JsonCreator
     public SchemaDefinition(
             @JsonProperty("attributes") List<Attribute> attributes,
             @JsonProperty("indexes") List<IndexDefinition> indexes,
-            @JsonProperty("counters") List<CounterDefinition> counters) {
+            @JsonProperty("counters") List<CounterDefinition> counters,
+            @JsonProperty("fulltexts") List<FulltextDefinition> fulltexts) {
         if (attributes == null) {
             throw new IllegalArgumentException("'attributes' must be present");
         }
@@ -37,6 +40,10 @@ public class SchemaDefinition {
 
         if (counters == null) {
             throw new IllegalArgumentException("'counters' must be present");
+        }
+
+        if (fulltexts == null) {
+            throw new IllegalArgumentException("'fulltexts' must be present");
         }
 
         boolean isFirst = true;
@@ -54,6 +61,7 @@ public class SchemaDefinition {
         this.attributes = Collections.unmodifiableList(attributes);
         this.indexes = Collections.unmodifiableList(indexes);
         this.counters = Collections.unmodifiableList(counters);
+        this.fulltexts = Collections.unmodifiableList(fulltexts);
 
         Map<String, Attribute> newAttributes = new LinkedHashMap<String, Attribute>();
         for (Attribute attr : attributes) {
@@ -75,6 +83,13 @@ public class SchemaDefinition {
         }
 
         this.counterMap = Collections.unmodifiableMap(newCounters);
+
+        Map<String, FulltextDefinition> newFulltexts = new LinkedHashMap<String, FulltextDefinition>();
+        for (FulltextDefinition fulltext : fulltexts) {
+            newFulltexts.put(fulltext.getName(), fulltext);
+        }
+
+        this.fulltextMap = Collections.unmodifiableMap(newFulltexts);
     }
 
     public List<Attribute> getAttributes() {
@@ -87,6 +102,10 @@ public class SchemaDefinition {
 
     public List<CounterDefinition> getCounters() {
         return counters;
+    }
+
+    public List<FulltextDefinition> getFulltexts() {
+        return fulltexts;
     }
 
     @JsonIgnore
@@ -102,5 +121,10 @@ public class SchemaDefinition {
     @JsonIgnore
     public Map<String, CounterDefinition> getCounterMap() {
         return counterMap;
+    }
+
+    @JsonIgnore
+    public Map<String, FulltextDefinition> getFulltextMap() {
+        return fulltextMap;
     }
 }
