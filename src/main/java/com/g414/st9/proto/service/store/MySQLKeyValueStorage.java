@@ -12,7 +12,6 @@ import com.g414.st9.proto.service.UniqueIndexResource;
 import com.g414.st9.proto.service.helper.JDBIHelper;
 import com.g414.st9.proto.service.helper.MySQLTypeHelper;
 import com.g414.st9.proto.service.helper.SqlTypeHelper;
-import com.g414.st9.proto.service.helper.SqliteTypeHelper;
 import com.g414.st9.proto.service.index.JDBISecondaryIndex;
 import com.g414.st9.proto.service.index.SecondaryIndexTableHelper;
 import com.g414.st9.proto.service.sequence.SequenceHelper;

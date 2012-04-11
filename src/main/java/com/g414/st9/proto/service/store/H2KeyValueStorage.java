@@ -11,7 +11,6 @@ import com.g414.st9.proto.service.SecondaryIndexResource;
 import com.g414.st9.proto.service.UniqueIndexResource;
 import com.g414.st9.proto.service.helper.H2TypeHelper;
 import com.g414.st9.proto.service.helper.JDBIHelper;
-import com.g414.st9.proto.service.helper.MySQLTypeHelper;
 import com.g414.st9.proto.service.helper.SqlTypeHelper;
 import com.g414.st9.proto.service.index.JDBISecondaryIndex;
 import com.g414.st9.proto.service.index.SecondaryIndexTableHelper;
