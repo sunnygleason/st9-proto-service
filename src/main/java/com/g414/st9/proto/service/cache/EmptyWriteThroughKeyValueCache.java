@@ -1,11 +1,10 @@
-package utest.com.g414.st9.proto.service.store;
+package com.g414.st9.proto.service.cache;
 
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import com.g414.st9.proto.service.cache.KeyValueCache;
 import com.g414.st9.proto.service.helper.EncodingHelper;
 
 /**

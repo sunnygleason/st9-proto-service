@@ -25,7 +25,7 @@ import com.g414.st9.proto.service.cache.EmptyKeyValueCache;
 import com.g414.st9.proto.service.cache.KeyValueCache;
 import com.g414.st9.proto.service.helper.EncodingHelper;
 import com.g414.st9.proto.service.index.JDBISecondaryIndex;
-import com.g414.st9.proto.service.pubsub.NoOpPublisher;
+import com.g414.st9.proto.service.pubsub.NoOpRecordingPublisher;
 import com.g414.st9.proto.service.pubsub.Publisher;
 import com.g414.st9.proto.service.store.Key;
 import com.google.inject.AbstractModule;
@@ -50,6 +50,7 @@ public abstract class SecondaryIndexQueryTestBase {
     protected SecondaryIndexResource indexResource;
     protected JDBISecondaryIndex index;
     protected SchemaResource schemaResource;
+    protected NoOpRecordingPublisher publisher;
     protected IDBI database;
 
     public abstract Module getKeyValueStorageModule();
@@ -61,7 +62,8 @@ public abstract class SecondaryIndexQueryTestBase {
                     protected void configure() {
                         bind(KeyValueCache.class).toInstance(
                                 new EmptyKeyValueCache());
-                        bind(Publisher.class).toInstance(new NoOpPublisher());
+                        bind(Publisher.class).toInstance(
+                                new NoOpRecordingPublisher());
                     }
                 }, new ServiceModule());
 
@@ -70,6 +72,8 @@ public abstract class SecondaryIndexQueryTestBase {
         this.indexResource = injector.getInstance(SecondaryIndexResource.class);
         this.index = injector.getInstance(JDBISecondaryIndex.class);
         this.schemaResource = injector.getInstance(SchemaResource.class);
+        this.publisher = (NoOpRecordingPublisher) injector
+                .getInstance(Publisher.class);
 
         injector.getInstance(Lifecycle.class).init();
         injector.getInstance(Lifecycle.class).start();
@@ -78,11 +82,13 @@ public abstract class SecondaryIndexQueryTestBase {
     @BeforeMethod(alwaysRun = true)
     public void setUp() {
         this.kvResource.clear();
+        this.publisher.clear();
     }
 
     @AfterMethod(alwaysRun = true)
     public void tearDown() {
         this.kvResource.clear();
+        this.publisher.clear();
     }
 
     public void testQueryAsc() throws Exception {
@@ -143,10 +149,12 @@ public abstract class SecondaryIndexQueryTestBase {
         Assert.assertTrue(this.index.tableExists(database, type, "xref"));
 
         for (int i = 0; i < 74; i++) {
-            this.kvResource.createEntity(
-                    type,
-                    "{\"small\":\"" + i + "\",\"text\":\"" + -i + " even? "
-                            + (i % 2 == 0) + "\"}").getEntity();
+            String id = (new Key(type, (long) i + 1)).getEncryptedIdentifier();
+            this.kvResource.createEntity(type, "{\"small\":\"" + i
+                    + "\",\"text\":\"" + -i + " even? " + (i % 2 == 0) + "\"}");
+
+            verifyFullTextMessage(i, id, type, null, Integer.toString(i),
+                    "create");
         }
 
         Response r = this.indexResource.retrieveEntity(type, "xref",
@@ -154,6 +162,25 @@ public abstract class SecondaryIndexQueryTestBase {
         Assert.assertEquals(
                 r.getEntity().toString(),
                 "{\"kind\":\"foo7\",\"index\":\"xref\",\"query\":\"small eq \\\"1\\\"\",\"results\":[{\"id\":\"@foo7:d53307ca898701db\"}],\"pageSize\":25,\"next\":null,\"prev\":null}");
+
+        this.publisher.clear();
+        for (int i = 0; i < 74; i++) {
+            String id = (new Key(type, (long) i + 1)).getEncryptedIdentifier();
+            this.kvResource.updateEntity(id, "{\"version\":\"1\",\"small\":\""
+                    + (i + 1) + "\",\"text\":\"" + (-i - 1) + " even? "
+                    + (i % 2 == 0) + "\"}");
+            verifyFullTextMessage(i, id, type, Integer.toString(i),
+                    Integer.toString(i + 1), "update");
+        }
+
+        this.publisher.clear();
+        for (int i = 0; i < 74; i++) {
+            String id = (new Key(type, (long) i + 1)).getEncryptedIdentifier();
+            this.kvResource.deleteEntity(id).getEntity();
+
+            verifyFullTextMessage(i, id, type, Integer.toString(i + 1), null,
+                    "delete");
+        }
     }
 
     public void testUniqueIntegerIndexes() throws Exception {
@@ -447,5 +474,21 @@ public abstract class SecondaryIndexQueryTestBase {
             throw new IllegalStateException("schema didn't work:\n" + schema
                     + "\n" + sr.getEntity());
         }
+    }
+
+    private void verifyFullTextMessage(int i, String id, String type,
+            String prevValue, String currValue, String action) {
+        Map<String, Object> message = this.publisher.getValues().get(i);
+        Assert.assertEquals(message.get("index"), "/1.0/f/" + type
+                + ".fulltext");
+        Assert.assertEquals(message.get("id"), id);
+        Assert.assertEquals(message.get("kind"), type);
+        Assert.assertEquals(message.get("action"), action);
+        Assert.assertEquals(
+                ((Map<String, Object>) message.get("prev")).get("small"),
+                prevValue);
+        Assert.assertEquals(
+                ((Map<String, Object>) message.get("curr")).get("small"),
+                currValue);
     }
 }
