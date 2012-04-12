@@ -143,6 +143,13 @@ h2_key_ids_of_type() ::=<<
    where "_key_type" = :key_type
 >>
 
+h2_key_updates_from_to() ::=<<
+  select "_key_type", "_key_id"
+    from "_key_values"
+   where "_updated_dt" \>= :updates_from
+     and "_updated_dt" \<= :updates_to
+>>
+
 h2_insert_ignore_seq() ::=<< 
   insert
     into "_sequences" ("_key_type", "_next_id")

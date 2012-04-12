@@ -127,6 +127,13 @@ sqlite_key_ids_of_type() ::=<<
    where `_key_type` = :key_type
 >>
 
+sqlite_key_updates_from_to() ::=<< 
+  select `_key_type`, `_key_id`
+    from `_key_values`
+   where `_updated_dt` \>= :updates_from
+     and `_updated_dt` \<= :updates_to
+>>
+
 sqlite_get_next_id() ::=<< 
   select `_next_id`
     from `_sequences`

@@ -6,6 +6,8 @@ import java.util.Map;
 
 import javax.ws.rs.core.Response;
 
+import org.joda.time.DateTime;
+
 import com.g414.st9.proto.service.schema.SchemaDefinition;
 
 public interface KeyValueStorage {
@@ -40,6 +42,9 @@ public interface KeyValueStorage {
 
     public abstract Iterator<Map<String, Object>> iterator(String type,
             SchemaDefinition schemaDefinition) throws Exception;
+
+    public abstract Response replayUpdates(DateTime from, DateTime to)
+            throws Exception;
 
     public abstract Response exportAll() throws Exception;
 }

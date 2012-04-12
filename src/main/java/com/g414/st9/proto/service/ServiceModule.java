@@ -18,6 +18,7 @@ public class ServiceModule extends ServletModule {
     protected void configureServlets() {
         bind(AvailabilityResource.class).asEagerSingleton();
         bind(KeyValueResource.class).asEagerSingleton();
+        bind(FulltextResource.class).asEagerSingleton();
         bind(QuarantineResource.class).asEagerSingleton();
         bind(NukeResource.class).asEagerSingleton();
         bind(AvailabilityManager.class).asEagerSingleton();

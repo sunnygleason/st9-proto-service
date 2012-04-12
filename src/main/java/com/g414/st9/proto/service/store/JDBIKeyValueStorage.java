@@ -959,45 +959,8 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
             @Override
             public Map<String, Object> next() {
                 try {
-                    Key realKey = null;
-                    byte[] objectBytes = null;
-
-                    KeyHelper.validateKey(nextKey);
-                    realKey = Key.valueOf(nextKey);
-                    objectBytes = getObjectBytes(realKey, false, true);
-
-                    Map<String, Object> object = null;
-
-                    if (objectBytes != null) {
-                        try {
-                            object = (Map<String, Object>) EncodingHelper
-                                    .parseSmileLzf(objectBytes);
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                            object = new LinkedHashMap<String, Object>();
-                            object.put("$error", true);
-                        }
-                        object.remove("id");
-                        object.remove("kind");
-                        object = schemaUntransform(definition, object);
-                    } else {
-                        object = new LinkedHashMap<String, Object>();
-                        object.put("$deleted", true);
-                    }
-
-                    Map<String, Object> result = new LinkedHashMap<String, Object>();
-                    result.put("id", realKey.getEncryptedIdentifier());
-                    result.put("kind", realKey.getType());
-
-                    if (type.equals("$schema")) {
-                        String typeName = sequences.getTypeName(realKey.getId()
-                                .intValue());
-                        if (typeName != null) {
-                            result.put("$type", typeName);
-                        }
-                    }
-
-                    result.putAll(object);
+                    Map<String, Object> result = loadFriendlyEntity(
+                            Key.valueOf(nextKey), definition);
 
                     nextKey = advance();
 
@@ -1016,6 +979,85 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                 throw new UnsupportedOperationException();
             }
         };
+    }
+
+    @Override
+    public Response replayUpdates(final DateTime from, final DateTime to)
+            throws Exception {
+        final Publisher publisher = this.topicPublisher;
+
+        return Response.status(Status.OK).entity(new StreamingOutput() {
+            @Override
+            public void write(OutputStream out) throws IOException,
+                    WebApplicationException {
+                PrintWriter output = new PrintWriter(new OutputStreamWriter(
+                        out, "UTF-8"));
+                output.println("{\"$replay\":\"BEGIN\"}");
+
+                Map<String, SchemaDefinition> schemaCache = new HashMap<String, SchemaDefinition>();
+
+                try {
+                    Iterator<String> entities = JDBIKeyValueStorage.this
+                            .updatesIterator(from, to);
+
+                    while (entities.hasNext()) {
+                        String id = entities.next();
+                        Key realKey = Key.valueOf(id);
+                        String type = realKey.getType();
+
+                        if (type.startsWith("$")) {
+                            continue;
+                        }
+
+                        SchemaDefinition schema = schemaCache.containsKey(type) ? schemaCache
+                                .get(type)
+                                : loadOrCreateEmptySchemaOutsideTxn(sequences
+                                        .getTypeId(type, false));
+
+                        if (!schemaCache.containsKey(type)) {
+                            schemaCache.put(type, schema);
+                        }
+
+                        Map<String, Object> entity = loadFriendlyEntity(
+                                realKey, schema);
+
+                        for (FulltextDefinition fulltextDef : schema
+                                .getFulltexts()) {
+                            String indexName = getFulltextIndexName(realKey,
+                                    fulltextDef);
+
+                            String action = (entity.containsKey("$deleted") && entity
+                                    .get("$deleted").equals(Boolean.TRUE)) ? "delete"
+                                    : (entity.containsKey("version") && entity
+                                            .get("version").equals("1")) ? "create"
+                                            : "update";
+
+                            String version = entity.containsKey("version") ? (String) entity
+                                    .get("version") : "-1";
+
+                            Map<String, Object> valueDiff = EntityDiffHelper
+                                    .diffValues(fulltextDef, Collections
+                                            .<String, Object> emptyMap(),
+                                            entity);
+
+                            Map<String, Object> message = getFulltextUpdateMessage(
+                                    indexName, action, realKey, version,
+                                    valueDiff);
+                            publisher.publish(indexName, message);
+                            output.println(EncodingHelper
+                                    .convertToJson(message));
+                        }
+                    }
+
+                    output.println("{\"$replay\":\"OK\"}");
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    output.println("{\"$replay\":\"ERROR\"}");
+                } finally {
+                    output.close();
+                }
+            }
+        }).build();
     }
 
     @Override
@@ -1148,6 +1190,36 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                 }
 
                 return valueBytesLzf;
+            }
+        });
+    }
+
+    private Iterator<String> updatesIterator(final DateTime from,
+            final DateTime to) {
+        return database.withHandle(new HandleCallback<Iterator<String>>() {
+            @Override
+            public Iterator<String> withHandle(Handle handle) throws Exception {
+                Query<Map<String, Object>> select = handle
+                        .createQuery(getPrefix() + "key_updates_from_to");
+                select.bind("updates_from", from.withZone(DateTimeZone.UTC)
+                        .getMillis() / 1000);
+                select.bind("updates_to", to.withZone(DateTimeZone.UTC)
+                        .getMillis() / 1000);
+
+                List<String> inefficentButExpedient = new ArrayList<String>();
+
+                Iterator<Map<String, Object>> iter = select.iterator();
+                while (iter.hasNext()) {
+                    Map<String, Object> next = iter.next();
+                    inefficentButExpedient.add(Key.valueOf(
+                            sequences.getTypeName(((Number) next
+                                    .get("_key_type")).intValue())
+                                    + ":"
+                                    + next.get("_key_id"))
+                            .getEncryptedIdentifier());
+                }
+
+                return inefficentButExpedient.iterator();
             }
         });
     }
@@ -1439,6 +1511,46 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
         return valueJson;
     }
 
+    private Map<String, Object> loadFriendlyEntity(final Key realKey,
+            final SchemaDefinition definition) throws Exception {
+        byte[] objectBytes = null;
+
+        objectBytes = getObjectBytes(realKey, false, true);
+
+        Map<String, Object> object = null;
+
+        if (objectBytes != null) {
+            try {
+                object = (Map<String, Object>) EncodingHelper
+                        .parseSmileLzf(objectBytes);
+            } catch (Exception e) {
+                e.printStackTrace();
+                object = new LinkedHashMap<String, Object>();
+                object.put("$error", true);
+            }
+            object.remove("id");
+            object.remove("kind");
+            object = schemaUntransform(definition, object);
+        } else {
+            object = new LinkedHashMap<String, Object>();
+            object.put("$deleted", true);
+        }
+
+        Map<String, Object> result = new LinkedHashMap<String, Object>();
+        result.put("id", realKey.getEncryptedIdentifier());
+        result.put("kind", realKey.getType());
+
+        if (realKey.getType().equals("$schema")) {
+            String typeName = sequences.getTypeName(realKey.getId().intValue());
+            if (typeName != null) {
+                result.put("$type", typeName);
+            }
+        }
+
+        result.putAll(object);
+        return result;
+    }
+
     private static Response getErrorResponse(Exception e) {
         if (e instanceof WebApplicationException) {
             return ((WebApplicationException) e).getResponse();
@@ -1481,9 +1593,8 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
         return publishMessage;
     }
 
-    private String getFulltextIndexName(final Key realKey,
+    private static String getFulltextIndexName(final Key realKey,
             FulltextDefinition fulltextDef) {
         return "/1.0/f/" + realKey.getType() + "." + fulltextDef.getName();
     }
-
 }
