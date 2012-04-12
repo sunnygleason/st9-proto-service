@@ -221,17 +221,16 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                                                 readValue);
 
                                 if (!valueDiff.isEmpty()) {
-                                    Map<String, Object> publishMessage = new LinkedHashMap<String, Object>();
-                                    publishMessage.put("action", "create");
-                                    publishMessage.put("id",
-                                            newKey.getEncryptedIdentifier());
-                                    publishMessage.put("kind", newKey.getType());
-                                    publishMessage.putAll(valueDiff);
+                                    String indexName = getFulltextIndexName(
+                                            newKey, fulltextDef);
 
-                                    publisher.publish(
-                                            "/1.0/f/" + newKey.getType() + "."
-                                                    + fulltextDef.getName(),
-                                            publishMessage);
+                                    publisher
+                                            .publish(
+                                                    indexName,
+                                                    getFulltextUpdateMessage(
+                                                            indexName,
+                                                            "create", newKey,
+                                                            valueDiff));
                                 }
                             }
                         }
@@ -599,18 +598,14 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                                                 readValue);
 
                                 if (!valueDiff.isEmpty()) {
-                                    Map<String, Object> publishMessage = new LinkedHashMap<String, Object>();
-                                    publishMessage.put("action", "update");
-                                    publishMessage.put("id",
-                                            realKey.getEncryptedIdentifier());
-                                    publishMessage.put("kind",
-                                            realKey.getType());
-                                    publishMessage.putAll(valueDiff);
+                                    String indexName = getFulltextIndexName(
+                                            realKey, fulltextDef);
 
                                     publisher.publish(
-                                            "/1.0/f/" + realKey.getType() + "."
-                                                    + fulltextDef.getName(),
-                                            publishMessage);
+                                            indexName,
+                                            getFulltextUpdateMessage(indexName,
+                                                    "update", realKey,
+                                                    valueDiff));
                                 }
                             }
                         }
@@ -731,18 +726,14 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                                                 currValue);
 
                                 if (!valueDiff.isEmpty()) {
-                                    Map<String, Object> publishMessage = new LinkedHashMap<String, Object>();
-                                    publishMessage.put("action", "delete");
-                                    publishMessage.put("id",
-                                            realKey.getEncryptedIdentifier());
-                                    publishMessage.put("kind",
-                                            realKey.getType());
-                                    publishMessage.putAll(valueDiff);
+                                    String indexName = getFulltextIndexName(
+                                            realKey, fulltextDef);
 
                                     publisher.publish(
-                                            "/1.0/f/" + realKey.getType() + "."
-                                                    + fulltextDef.getName(),
-                                            publishMessage);
+                                            indexName,
+                                            getFulltextUpdateMessage(indexName,
+                                                    "delete", realKey,
+                                                    valueDiff));
                                 }
                             }
                         }
@@ -1471,4 +1462,22 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
             }
         }
     }
+
+    private static Map<String, Object> getFulltextUpdateMessage(
+            String indexName, String action, Key newKey,
+            Map<String, Object> valueDiff) {
+        Map<String, Object> publishMessage = new LinkedHashMap<String, Object>();
+        publishMessage.put("index", indexName);
+        publishMessage.put("action", action);
+        publishMessage.put("id", newKey.getEncryptedIdentifier());
+        publishMessage.put("kind", newKey.getType());
+        publishMessage.putAll(valueDiff);
+        return publishMessage;
+    }
+
+    private String getFulltextIndexName(final Key realKey,
+            FulltextDefinition fulltextDef) {
+        return "/1.0/f/" + realKey.getType() + "." + fulltextDef.getName();
+    }
+
 }
