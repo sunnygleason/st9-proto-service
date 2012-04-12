@@ -224,13 +224,11 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                                     String indexName = getFulltextIndexName(
                                             newKey, fulltextDef);
 
-                                    publisher
-                                            .publish(
-                                                    indexName,
-                                                    getFulltextUpdateMessage(
-                                                            indexName,
-                                                            "create", newKey,
-                                                            valueDiff));
+                                    publisher.publish(
+                                            indexName,
+                                            getFulltextUpdateMessage(indexName,
+                                                    "create", newKey, "1",
+                                                    valueDiff));
                                 }
                             }
                         }
@@ -591,6 +589,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                         if (!definition.getFulltexts().isEmpty()) {
                             Map<String, Object> prevValue = schemaUntransform(
                                     definition, original);
+                            Long version = oldVersion + 1;
                             for (FulltextDefinition fulltextDef : definition
                                     .getFulltexts()) {
                                 Map<String, Object> valueDiff = EntityDiffHelper
@@ -605,6 +604,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                                             indexName,
                                             getFulltextUpdateMessage(indexName,
                                                     "update", realKey,
+                                                    version.toString(),
                                                     valueDiff));
                                 }
                             }
@@ -719,6 +719,9 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                                     definition, original);
                             Map<String, Object> currValue = Collections
                                     .<String, Object> emptyMap();
+                            Long version = Long.parseLong((String) prevValue
+                                    .get("version")) + 1;
+
                             for (FulltextDefinition fulltextDef : definition
                                     .getFulltexts()) {
                                 Map<String, Object> valueDiff = EntityDiffHelper
@@ -733,6 +736,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                                             indexName,
                                             getFulltextUpdateMessage(indexName,
                                                     "delete", realKey,
+                                                    version.toString(),
                                                     valueDiff));
                                 }
                             }
@@ -1464,14 +1468,16 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
     }
 
     private static Map<String, Object> getFulltextUpdateMessage(
-            String indexName, String action, Key newKey,
+            String indexName, String action, Key newKey, String version,
             Map<String, Object> valueDiff) {
         Map<String, Object> publishMessage = new LinkedHashMap<String, Object>();
         publishMessage.put("index", indexName);
         publishMessage.put("action", action);
         publishMessage.put("id", newKey.getEncryptedIdentifier());
         publishMessage.put("kind", newKey.getType());
+        publishMessage.put("version", version);
         publishMessage.putAll(valueDiff);
+
         return publishMessage;
     }
 

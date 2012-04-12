@@ -154,7 +154,7 @@ public abstract class SecondaryIndexQueryTestBase {
                     + "\",\"text\":\"" + -i + " even? " + (i % 2 == 0) + "\"}");
 
             verifyFullTextMessage(i, id, type, null, Integer.toString(i),
-                    "create");
+                    "create", "1");
         }
 
         Response r = this.indexResource.retrieveEntity(type, "xref",
@@ -170,7 +170,7 @@ public abstract class SecondaryIndexQueryTestBase {
                     + (i + 1) + "\",\"text\":\"" + (-i - 1) + " even? "
                     + (i % 2 == 0) + "\"}");
             verifyFullTextMessage(i, id, type, Integer.toString(i),
-                    Integer.toString(i + 1), "update");
+                    Integer.toString(i + 1), "update", "2");
         }
 
         this.publisher.clear();
@@ -179,7 +179,7 @@ public abstract class SecondaryIndexQueryTestBase {
             this.kvResource.deleteEntity(id).getEntity();
 
             verifyFullTextMessage(i, id, type, Integer.toString(i + 1), null,
-                    "delete");
+                    "delete", "3");
         }
     }
 
@@ -477,7 +477,7 @@ public abstract class SecondaryIndexQueryTestBase {
     }
 
     private void verifyFullTextMessage(int i, String id, String type,
-            String prevValue, String currValue, String action) {
+            String prevValue, String currValue, String action, String version) {
         Map<String, Object> message = this.publisher.getValues().get(i);
         Assert.assertEquals(message.get("index"), "/1.0/f/" + type
                 + ".fulltext");

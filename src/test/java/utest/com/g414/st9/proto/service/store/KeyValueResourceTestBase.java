@@ -21,6 +21,7 @@ import com.g414.guice.lifecycle.LifecycleModule;
 import com.g414.st9.proto.service.KeyValueResource;
 import com.g414.st9.proto.service.SchemaResource;
 import com.g414.st9.proto.service.ServiceModule;
+import com.g414.st9.proto.service.cache.EmptyWriteThroughKeyValueCache;
 import com.g414.st9.proto.service.cache.KeyValueCache;
 import com.g414.st9.proto.service.helper.EncodingHelper;
 import com.g414.st9.proto.service.pubsub.NoOpPublisher;
