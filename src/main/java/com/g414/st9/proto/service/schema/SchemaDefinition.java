@@ -58,6 +58,11 @@ public class SchemaDefinition {
             }
         }
 
+        if (fulltexts.size() > 1) {
+            throw new IllegalArgumentException(
+                    "at most one fulltext 'index' may be present per schema");
+        }
+
         this.attributes = Collections.unmodifiableList(attributes);
         this.indexes = Collections.unmodifiableList(indexes);
         this.counters = Collections.unmodifiableList(counters);

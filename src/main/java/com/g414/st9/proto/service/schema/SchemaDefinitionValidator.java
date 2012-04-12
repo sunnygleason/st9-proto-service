@@ -21,6 +21,14 @@ public class SchemaDefinitionValidator {
                     AttributeType.REFERENCE, AttributeType.UTC_DATE_SECS,
                     AttributeType.UTF8_SMALLSTRING);
 
+    private static final Set<AttributeType> FULLTEXT_SUPPORTED_ATTRIBUTE_TYPES = ImmutableSet
+            .<AttributeType> of(AttributeType.BOOLEAN, AttributeType.ENUM,
+                    AttributeType.I8, AttributeType.I16, AttributeType.I32,
+                    AttributeType.I64, AttributeType.U8, AttributeType.U16,
+                    AttributeType.U32, AttributeType.U64,
+                    AttributeType.REFERENCE, AttributeType.UTC_DATE_SECS,
+                    AttributeType.UTF8_SMALLSTRING, AttributeType.UTF8_TEXT);
+
     public void validate(SchemaDefinition schemaDefinition)
             throws ValidationException {
         Map<String, Attribute> theAtts = new LinkedHashMap<String, Attribute>();
@@ -36,6 +44,10 @@ public class SchemaDefinitionValidator {
 
         for (CounterDefinition counter : schemaDefinition.getCounters()) {
             validateCounter(theAtts, counter);
+        }
+
+        for (FulltextDefinition fulltext : schemaDefinition.getFulltexts()) {
+            validateFulltext(theAtts, fulltext);
         }
     }
 
@@ -176,6 +188,55 @@ public class SchemaDefinitionValidator {
             if (included.contains(colName)) {
                 throw new ValidationException(
                         "Attribute appears more than once in counter: "
+                                + colName);
+            }
+
+            included.add(colName);
+        }
+    }
+
+    private void validateFulltext(Map<String, Attribute> theAtts,
+            FulltextDefinition fulltext) {
+        String fulltextName = fulltext.getName();
+
+        if ("id".equalsIgnoreCase(fulltextName)
+                || "kind".equalsIgnoreCase(fulltextName)) {
+            throw new ValidationException(
+                    "Fulltext may not be named 'id' or 'kind'");
+        }
+
+        if (!VALID_NAME_PATTERN.matcher(fulltextName).matches()) {
+            throw new ValidationException("Invalid fulltext name : "
+                    + fulltextName);
+        }
+
+        Set<String> included = new HashSet<String>();
+
+        for (FulltextAttribute column : fulltext.getFullTextAttributes()) {
+            String colName = column.getName();
+
+            if ("id".equals(colName) || "type".equals(colName)
+                    || "kind".equals(colName)) {
+                throw new ValidationException("Attribute '" + colName
+                        + "' not allowed in fulltext");
+            }
+
+            if (!theAtts.containsKey(colName)) {
+                throw new ValidationException("Unknown attribute name: "
+                        + colName);
+            }
+
+            Attribute att = theAtts.get(colName);
+
+            if (!FULLTEXT_SUPPORTED_ATTRIBUTE_TYPES.contains(att.getType())) {
+                throw new ValidationException(
+                        "Attribute type not supported in fulltext: "
+                                + att.getType());
+            }
+
+            if (included.contains(colName)) {
+                throw new ValidationException(
+                        "Attribute appears more than once in fulltext: "
                                 + colName);
             }
 
