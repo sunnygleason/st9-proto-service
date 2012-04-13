@@ -210,6 +210,17 @@ public class SchemaDefinitionValidator {
                     + fulltextName);
         }
 
+        String parent = fulltext.getParent();
+        if (parent != null) {
+            if (!theAtts.containsKey(parent)
+                    || !theAtts.get(parent).getType()
+                            .equals(AttributeType.REFERENCE)) {
+                throw new ValidationException(
+                        "Invalid fulltext parent (attribute must be REFERENCE type) : "
+                                + fulltextName);
+            }
+        }
+
         Set<String> included = new HashSet<String>();
 
         for (FulltextAttribute column : fulltext.getFullTextAttributes()) {

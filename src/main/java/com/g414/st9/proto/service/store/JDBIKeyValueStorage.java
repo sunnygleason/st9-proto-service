@@ -219,6 +219,8 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                                 Map<String, Object> valueDiff = EntityDiffHelper
                                         .diffValues(fulltextDef, prevValue,
                                                 readValue);
+                                String parent = fulltextDef.getParent() != null ? (String) readValue
+                                        .get(fulltextDef.getParent()) : null;
 
                                 if (!valueDiff.isEmpty()) {
                                     String indexName = getFulltextIndexName(
@@ -228,7 +230,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                                             indexName,
                                             getFulltextUpdateMessage(indexName,
                                                     "create", newKey, "1",
-                                                    valueDiff));
+                                                    valueDiff, parent));
                                 }
                             }
                         }
@@ -592,6 +594,9 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                             Long version = oldVersion + 1;
                             for (FulltextDefinition fulltextDef : definition
                                     .getFulltexts()) {
+                                String parent = fulltextDef.getParent() != null ? (String) readValue
+                                        .get(fulltextDef.getParent()) : null;
+
                                 Map<String, Object> valueDiff = EntityDiffHelper
                                         .diffValues(fulltextDef, prevValue,
                                                 readValue);
@@ -605,7 +610,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                                             getFulltextUpdateMessage(indexName,
                                                     "update", realKey,
                                                     version.toString(),
-                                                    valueDiff));
+                                                    valueDiff, parent));
                                 }
                             }
                         }
@@ -728,6 +733,9 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                                         .diffValues(fulltextDef, prevValue,
                                                 currValue);
 
+                                String parent = fulltextDef.getParent() != null ? (String) currValue
+                                        .get(fulltextDef.getParent()) : null;
+
                                 if (!valueDiff.isEmpty()) {
                                     String indexName = getFulltextIndexName(
                                             realKey, fulltextDef);
@@ -737,7 +745,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                                             getFulltextUpdateMessage(indexName,
                                                     "delete", realKey,
                                                     version.toString(),
-                                                    valueDiff));
+                                                    valueDiff, parent));
                                 }
                             }
                         }
@@ -1035,6 +1043,9 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                             String version = entity.containsKey("version") ? (String) entity
                                     .get("version") : "-1";
 
+                            String parent = fulltextDef.getParent() != null ? (String) entity
+                                    .get(fulltextDef.getParent()) : null;
+
                             Map<String, Object> valueDiff = EntityDiffHelper
                                     .diffValues(fulltextDef, Collections
                                             .<String, Object> emptyMap(),
@@ -1042,7 +1053,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
                             Map<String, Object> message = getFulltextUpdateMessage(
                                     indexName, action, realKey, version,
-                                    valueDiff, true);
+                                    valueDiff, parent, true);
 
                             publisher.publish(indexName, message);
                             output.println(EncodingHelper
@@ -1582,20 +1593,23 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
     private static Map<String, Object> getFulltextUpdateMessage(
             String indexName, String action, Key newKey, String version,
-            Map<String, Object> valueDiff) {
+            Map<String, Object> valueDiff, String parent) {
         return getFulltextUpdateMessage(indexName, action, newKey, version,
-                valueDiff, false);
+                valueDiff, parent, false);
     }
 
     private static Map<String, Object> getFulltextUpdateMessage(
             String indexName, String action, Key newKey, String version,
-            Map<String, Object> valueDiff, boolean isReplay) {
+            Map<String, Object> valueDiff, String parent, boolean isReplay) {
         Map<String, Object> publishMessage = new LinkedHashMap<String, Object>();
         publishMessage.put("index", indexName);
         publishMessage.put("action", action);
         publishMessage.put("id", newKey.getEncryptedIdentifier());
         publishMessage.put("kind", newKey.getType());
         publishMessage.put("version", version);
+        if (parent != null) {
+            publishMessage.put("parent", parent);
+        }
         publishMessage.put("replay", isReplay);
 
         publishMessage.putAll(valueDiff);
