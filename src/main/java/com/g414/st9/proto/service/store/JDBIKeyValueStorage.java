@@ -1042,7 +1042,8 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
                             Map<String, Object> message = getFulltextUpdateMessage(
                                     indexName, action, realKey, version,
-                                    valueDiff);
+                                    valueDiff, true);
+
                             publisher.publish(indexName, message);
                             output.println(EncodingHelper
                                     .convertToJson(message));
@@ -1582,12 +1583,21 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
     private static Map<String, Object> getFulltextUpdateMessage(
             String indexName, String action, Key newKey, String version,
             Map<String, Object> valueDiff) {
+        return getFulltextUpdateMessage(indexName, action, newKey, version,
+                valueDiff, false);
+    }
+
+    private static Map<String, Object> getFulltextUpdateMessage(
+            String indexName, String action, Key newKey, String version,
+            Map<String, Object> valueDiff, boolean isReplay) {
         Map<String, Object> publishMessage = new LinkedHashMap<String, Object>();
         publishMessage.put("index", indexName);
         publishMessage.put("action", action);
         publishMessage.put("id", newKey.getEncryptedIdentifier());
         publishMessage.put("kind", newKey.getType());
         publishMessage.put("version", version);
+        publishMessage.put("replay", isReplay);
+
         publishMessage.putAll(valueDiff);
 
         return publishMessage;
