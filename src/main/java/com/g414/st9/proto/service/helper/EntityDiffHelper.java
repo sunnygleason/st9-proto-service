@@ -14,25 +14,33 @@ public class EntityDiffHelper {
     public static Map<String, Object> diffValues(
             IndexDefinition indexDefinition, Map<String, Object> prev,
             Map<String, Object> curr) {
-        return getDiff(prev, curr, indexDefinition.getAttributeNames());
+        return getDiff(null, prev, curr, indexDefinition.getAttributeNames());
     }
 
     public static Map<String, Object> diffValues(
             CounterDefinition counterDefinition, Map<String, Object> prev,
             Map<String, Object> curr) {
-        return getDiff(prev, curr, counterDefinition.getAttributeNames());
+        return getDiff(null, prev, curr, counterDefinition.getAttributeNames());
     }
 
     public static Map<String, Object> diffValues(
             FulltextDefinition fullTextDefinition, Map<String, Object> prev,
             Map<String, Object> curr) {
-        return getDiff(prev, curr, fullTextDefinition.getAttributeNames());
+        return getDiff(fullTextDefinition.getParentIdentifierAttribute(), prev,
+                curr, fullTextDefinition.getAttributeNames());
     }
 
-    private static Map<String, Object> getDiff(Map<String, Object> prev,
+    private static Map<String, Object> getDiff(
+            String parentIdentifierAttribute, Map<String, Object> prev,
             Map<String, Object> curr, List<String> attributeNames) {
         Map<String, Object> prevDiffChanged = new LinkedHashMap<String, Object>();
         Map<String, Object> currDiffChanged = new LinkedHashMap<String, Object>();
+
+        String parentIdentifier = (parentIdentifierAttribute != null) ? (String) curr
+                .get(parentIdentifierAttribute) : null;
+        if (parentIdentifier != null) {
+            currDiffChanged.put("_parent", parentIdentifier);
+        }
 
         boolean hasDiff = false;
 

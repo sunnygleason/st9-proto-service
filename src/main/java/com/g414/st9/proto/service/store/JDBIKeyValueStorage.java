@@ -219,8 +219,10 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                                 Map<String, Object> valueDiff = EntityDiffHelper
                                         .diffValues(fulltextDef, prevValue,
                                                 readValue);
-                                String parent = fulltextDef.getParent() != null ? (String) readValue
-                                        .get(fulltextDef.getParent()) : null;
+                                String parent = fulltextDef
+                                        .getParentIdentifierAttribute() != null ? (String) readValue.get(fulltextDef
+                                        .getParentIdentifierAttribute())
+                                        : null;
 
                                 if (!valueDiff.isEmpty()) {
                                     String indexName = getFulltextIndexName(
@@ -594,8 +596,10 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                             Long version = oldVersion + 1;
                             for (FulltextDefinition fulltextDef : definition
                                     .getFulltexts()) {
-                                String parent = fulltextDef.getParent() != null ? (String) readValue
-                                        .get(fulltextDef.getParent()) : null;
+                                String parent = fulltextDef
+                                        .getParentIdentifierAttribute() != null ? (String) readValue.get(fulltextDef
+                                        .getParentIdentifierAttribute())
+                                        : null;
 
                                 Map<String, Object> valueDiff = EntityDiffHelper
                                         .diffValues(fulltextDef, prevValue,
@@ -733,8 +737,10 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                                         .diffValues(fulltextDef, prevValue,
                                                 currValue);
 
-                                String parent = fulltextDef.getParent() != null ? (String) currValue
-                                        .get(fulltextDef.getParent()) : null;
+                                String parent = fulltextDef
+                                        .getParentIdentifierAttribute() != null ? (String) currValue.get(fulltextDef
+                                        .getParentIdentifierAttribute())
+                                        : null;
 
                                 if (!valueDiff.isEmpty()) {
                                     String indexName = getFulltextIndexName(
@@ -1043,8 +1049,11 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                             String version = entity.containsKey("version") ? (String) entity
                                     .get("version") : "-1";
 
-                            String parent = fulltextDef.getParent() != null ? (String) entity
-                                    .get(fulltextDef.getParent()) : null;
+                            String parent = fulltextDef
+                                    .getParentIdentifierAttribute() != null ? (String) entity
+                                    .get(fulltextDef
+                                            .getParentIdentifierAttribute())
+                                    : null;
 
                             Map<String, Object> valueDiff = EntityDiffHelper
                                     .diffValues(fulltextDef, Collections
@@ -1600,15 +1609,16 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
     private static Map<String, Object> getFulltextUpdateMessage(
             String indexName, String action, Key newKey, String version,
-            Map<String, Object> valueDiff, String parent, boolean isReplay) {
+            Map<String, Object> valueDiff, String parentIdentifier,
+            boolean isReplay) {
         Map<String, Object> publishMessage = new LinkedHashMap<String, Object>();
         publishMessage.put("index", indexName);
         publishMessage.put("action", action);
         publishMessage.put("id", newKey.getEncryptedIdentifier());
         publishMessage.put("kind", newKey.getType());
         publishMessage.put("version", version);
-        if (parent != null) {
-            publishMessage.put("parent", parent);
+        if (parentIdentifier != null) {
+            publishMessage.put("parent", parentIdentifier);
         }
         publishMessage.put("replay", isReplay);
 

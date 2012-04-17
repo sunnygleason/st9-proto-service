@@ -13,13 +13,16 @@ import org.codehaus.jackson.annotate.JsonProperty;
  */
 public class FulltextDefinition {
     private final String name;
-    private final String parent;
+    private final String parentType;
+    private final String parentIdentifierAttribute;
     private final List<FulltextAttribute> counterAttributes;
     private final List<String> attributeNames;
 
     @JsonCreator
-    public FulltextDefinition(@JsonProperty("name") String name,
-            @JsonProperty("parent") String parent,
+    public FulltextDefinition(
+            @JsonProperty("name") String name,
+            @JsonProperty("parentType") String parentType,
+            @JsonProperty("parentIdentifierAttribute") String parentIdentifierAttribute,
             @JsonProperty("cols") List<FulltextAttribute> cols) {
         if (name == null) {
             throw new IllegalArgumentException("'name' must not be null");
@@ -37,7 +40,8 @@ public class FulltextDefinition {
         }
 
         this.name = name;
-        this.parent = parent;
+        this.parentType = parentType;
+        this.parentIdentifierAttribute = parentIdentifierAttribute;
 
         List<String> newAttributeNames = new ArrayList<String>();
         for (FulltextAttribute attr : cols) {
@@ -52,8 +56,12 @@ public class FulltextDefinition {
         return name;
     }
 
-    public String getParent() {
-        return parent;
+    public String getParentType() {
+        return parentType;
+    }
+
+    public String getParentIdentifierAttribute() {
+        return parentIdentifierAttribute;
     }
 
     @JsonProperty("cols")
