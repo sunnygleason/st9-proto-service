@@ -46,6 +46,15 @@ public class SchemaDefinitionValidator {
             validateCounter(theAtts, counter);
         }
 
+        if (schemaDefinition.getFulltexts().size() > 0) {
+            if (schemaDefinition.getFulltexts().size() > 1
+                    || !schemaDefinition.getFulltexts().get(0).getName()
+                            .equals("fulltext")) {
+                throw new ValidationException(
+                        "Schema definition only supports one fulltext index named 'fulltext' at this time");
+            }
+        }
+
         for (FulltextDefinition fulltext : schemaDefinition.getFulltexts()) {
             validateFulltext(theAtts, fulltext);
         }
