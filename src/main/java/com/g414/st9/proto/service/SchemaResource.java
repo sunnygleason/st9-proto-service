@@ -192,6 +192,19 @@ public class SchemaResource {
                             .entity("invalid schema definition json").build();
                 }
 
+                final SchemaDefinition schemaDefinition = mapper.readValue(
+                        value, SchemaDefinition.class);
+
+                SchemaDefinitionValidator validator = new SchemaDefinitionValidator();
+
+                try {
+                    validator.validate(schemaDefinition);
+                    validator.validateUpgrade(original, schemaDefinition);
+                } catch (ValidationException e) {
+                    return Response.status(Status.BAD_REQUEST)
+                            .entity(e.getMessage()).build();
+                }
+
                 for (IndexDefinition indexDefinition : original.getIndexes()) {
                     String indexName = indexDefinition.getName();
 
@@ -208,14 +221,6 @@ public class SchemaResource {
                         counts.dropTable(database, type, counterName);
                     }
                 }
-
-                final SchemaDefinition schemaDefinition = mapper.readValue(
-                        value, SchemaDefinition.class);
-
-                SchemaDefinitionValidator validator = new SchemaDefinitionValidator();
-
-                validator.validate(schemaDefinition);
-                validator.validateUpdate(original, schemaDefinition);
 
                 for (IndexDefinition indexDefinition : schemaDefinition
                         .getIndexes()) {
