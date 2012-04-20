@@ -1082,7 +1082,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
     }
 
     @Override
-    public Response exportAll() throws Exception {
+    public Response exportAll(final boolean schemaOnly) throws Exception {
         return Response.status(Status.OK).entity(new StreamingOutput() {
             @Override
             public void write(OutputStream out) throws IOException,
@@ -1093,8 +1093,17 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
                 try {
                     for (String type : JDBIKeyValueStorage.this.getTypes()) {
-                        SchemaDefinition schema = loadOrCreateEmptySchemaOutsideTxn(sequences
+                        if (schemaOnly && !type.equals("$schema")) {
+                            continue;
+                        }
+
+                        SchemaDefinition schema = type.equals("$schema") ? SchemaHelper
+                                .getEmptySchema() : doLoadSchema(sequences
                                 .getTypeId(type, false));
+
+                        if (schema == null) {
+                            continue;
+                        }
 
                         Iterator<Map<String, Object>> entities = JDBIKeyValueStorage.this
                                 .iterator(type, schema);

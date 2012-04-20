@@ -46,5 +46,5 @@ public interface KeyValueStorage {
     public abstract Response replayUpdates(DateTime from, DateTime to)
             throws Exception;
 
-    public abstract Response exportAll() throws Exception;
+    public abstract Response exportAll(boolean schemaOnly) throws Exception;
 }
