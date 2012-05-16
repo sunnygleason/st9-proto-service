@@ -2,11 +2,14 @@ package com.g414.st9.proto.service;
 
 import java.net.InetAddress;
 
+import org.eclipse.jetty.server.Connector;
 import org.eclipse.jetty.server.Handler;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.HandlerCollection;
 import org.eclipse.jetty.server.handler.RequestLogHandler;
+import org.eclipse.jetty.server.nio.SelectChannelConnector;
 import org.eclipse.jetty.servlet.ServletContextHandler;
+import org.eclipse.jetty.util.thread.QueuedThreadPool;
 
 import com.g414.guice.lifecycle.Lifecycle;
 import com.g414.guice.lifecycle.LifecycleModule;
@@ -34,7 +37,18 @@ public class Main {
 
         int port = Integer.parseInt(System.getProperty("http.port", "8080"));
 
-        Server server = new Server(port);
+        Server server = new Server();
+
+        SelectChannelConnector connector = new SelectChannelConnector();
+        connector.setPort(port);
+        connector.setThreadPool(new QueuedThreadPool(200));
+        connector.setAcceptors(4);
+        connector.setMaxIdleTime(300000);
+        connector.setAcceptQueueSize(12000);
+        connector.setLowResourcesConnections(25000);
+
+        server.setConnectors(new Connector[] { connector });
+
         ServletContextHandler root = new ServletContextHandler(server, "/",
                 ServletContextHandler.NO_SESSIONS);
 
@@ -60,6 +74,7 @@ public class Main {
 
         addShutdownHook(lifecycle);
 
+        server.getThreadPool();
         server.start();
     }
 
