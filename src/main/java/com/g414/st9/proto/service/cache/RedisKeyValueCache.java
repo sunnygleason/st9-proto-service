@@ -18,7 +18,7 @@ import com.g414.st9.proto.service.helper.RedisTemplates.JedisCallback;
  */
 public class RedisKeyValueCache implements KeyValueCache {
     private final JedisPool jedisPool;
-    private final int timeoutSecs = 60 * 60;
+    private final int timeoutSecs = 24 * 60 * 60; // 24h
 
     public RedisKeyValueCache() {
         JedisPoolConfig config = new JedisPoolConfig();
