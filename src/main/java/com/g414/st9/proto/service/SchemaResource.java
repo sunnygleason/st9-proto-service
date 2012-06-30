@@ -492,10 +492,10 @@ public class SchemaResource {
                 continue;
             }
 
-            Map<String, Object> instance = transformer
-                    .validateTransform(notTransformed);
-
             try {
+                Map<String, Object> instance = transformer
+                        .validateTransform(notTransformed);
+
                 for (IndexDefinition indexDef : schemaDefinition.getIndexes()) {
                     String indexName = indexDef.getName();
 
@@ -514,11 +514,11 @@ public class SchemaResource {
                 successCount += 1;
             } catch (Exception e) {
                 e.printStackTrace();
-                System.out.println(instance);
+                System.out.println(notTransformed);
 
                 output.write((EncodingHelper.convertToJson(ImmutableMap
                         .<String, Object> of("$status", "OK", "$record",
-                                "FAILED", "$data", instance)) + "\n")
+                                "FAILED", "$data", notTransformed)) + "\n")
                         .getBytes());
                 output.flush();
 
