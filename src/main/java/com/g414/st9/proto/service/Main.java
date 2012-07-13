@@ -17,6 +17,7 @@ import com.g414.st9.proto.service.cache.EmptyKeyValueCache;
 import com.g414.st9.proto.service.cache.KeyValueCache;
 import com.g414.st9.proto.service.helper.EmptyServlet;
 import com.g414.st9.proto.service.helper.ExtendedHttpRequestLogV20110917;
+import com.g414.st9.proto.service.pubsub.CubePublisher;
 import com.g414.st9.proto.service.pubsub.NoOpPublisher;
 import com.g414.st9.proto.service.pubsub.Publisher;
 import com.g414.st9.proto.service.store.SqliteKeyValueStorage.SqliteKeyValueStorageModule;

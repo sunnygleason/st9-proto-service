@@ -6,6 +6,7 @@ import com.g414.st9.proto.service.helper.AvailabilityManagementFilter;
 import com.g414.st9.proto.service.helper.AvailabilityManager;
 import com.g414.st9.proto.service.helper.ConnectionCloseFilter;
 import com.g414.st9.proto.service.helper.ExtendedRequestFilter;
+import com.g414.st9.proto.service.pubsub.CubePublisher;
 import com.google.common.collect.ImmutableMap;
 import com.google.inject.servlet.ServletModule;
 import com.sun.jersey.guice.spi.container.servlet.GuiceContainer;
@@ -25,6 +26,7 @@ public class ServiceModule extends ServletModule {
         bind(AvailabilityManagementFilter.class).asEagerSingleton();
         bind(ConnectionCloseFilter.class).asEagerSingleton();
         bind(ExtendedRequestFilter.class).asEagerSingleton();
+        bind(CubePublisher.class).asEagerSingleton();
 
         Map<String, String> params = ImmutableMap.<String, String> of(
                 "com.sun.jersey.spi.container.ContainerRequestFilters",

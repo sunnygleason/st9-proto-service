@@ -43,6 +43,7 @@ import com.g414.st9.proto.service.helper.AvailabilityManager;
 import com.g414.st9.proto.service.helper.EncodingHelper;
 import com.g414.st9.proto.service.helper.EntityDiffHelper;
 import com.g414.st9.proto.service.index.JDBISecondaryIndex;
+import com.g414.st9.proto.service.pubsub.CubePublisher;
 import com.g414.st9.proto.service.pubsub.Publisher;
 import com.g414.st9.proto.service.schema.CounterDefinition;
 import com.g414.st9.proto.service.schema.FulltextDefinition;
@@ -62,8 +63,11 @@ import com.google.inject.name.Named;
 public abstract class JDBIKeyValueStorage implements KeyValueStorage,
         LifecycleRegistration {
     public static int MULTIGET_MAX_KEYS = 100;
+
     private final DateTimeFormatter DATETIME_FORMAT = ISODateTimeFormat
             .basicDateTime().withZone(DateTimeZone.UTC);
+    private final DateTimeFormatter CUBE_DATETIME_FORMAT = ISODateTimeFormat
+            .dateTimeNoMillis().withZone(DateTimeZone.UTC);
 
     @Inject
     protected AvailabilityManager availability;
@@ -85,6 +89,9 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
     @Inject
     protected Publisher topicPublisher;
+
+    @Inject
+    protected CubePublisher cubePublisher;
 
     @Inject
     @Named("nuke.allowed")
@@ -196,9 +203,11 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                     byte[] cacheValueBytes = EncodingHelper
                             .convertToSmileLzf(cacheInsert);
 
+                    DateTime createdDate = new DateTime();
                     int inserted = doInsert(handle,
                             sequences.getTypeId(type, false), newKey.getId(),
-                            realVersion.longValue(), storeValueBytes);
+                            realVersion.longValue(), storeValueBytes,
+                            createdDate);
 
                     if (inserted > 0) {
                         cache.put(EncodingHelper.toKVCacheKey(newKey
@@ -236,6 +245,13 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                                 }
                             }
                         }
+
+                        cubePublisher.publish(
+                                "create:" + type,
+                                getCubePublishMessage(type, "create", newKey,
+                                        EncodingHelper
+                                                .parseJsonString(valueJson),
+                                        createdDate));
                     }
 
                     return (inserted == 1) ? Response.status(Status.OK)
@@ -283,7 +299,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                                 sequences.getTypeId(type, false).intValue(),
                                 id, 1L, EncodingHelper
                                         .convertToSmileLzf(Collections
-                                                .emptyMap()));
+                                                .emptyMap()), new DateTime());
 
                         if (result == 1) {
                             return null;
@@ -1375,7 +1391,7 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
 
             int inserted = doInsert(handle, 1, typeId, 1L,
                     EncodingHelper.convertToSmileLzf(SchemaHelper
-                            .getEmptySchema()));
+                            .getEmptySchema()), new DateTime());
 
             if (inserted != 1) {
                 throw new WebApplicationException(Response
@@ -1423,7 +1439,8 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
                                         typeId,
                                         1L,
                                         EncodingHelper
-                                                .convertToSmileLzf(newDefinition));
+                                                .convertToSmileLzf(newDefinition),
+                                        new DateTime());
                             }
                         });
 
@@ -1490,11 +1507,12 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
     }
 
     private int doInsert(Handle handle, final int typeId, final long nextId,
-            final long version, byte[] valueBytes) {
+            final long version, byte[] valueBytes, DateTime date) {
         Update update = handle.createStatement(getPrefix() + "create");
         update.bind("key_type", typeId);
         update.bind("key_id", nextId);
-        update.bind("created_dt", getEpochSecondsNow());
+        update.bind("created_dt",
+                date.withZone(DateTimeZone.UTC).getMillis() / 1000);
         update.bind("version", version);
         update.bind("value", valueBytes);
         int inserted = update.execute();
@@ -1632,6 +1650,18 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
         publishMessage.put("replay", isReplay);
 
         publishMessage.putAll(valueDiff);
+
+        return publishMessage;
+    }
+
+    private Map<String, Object> getCubePublishMessage(String type,
+            String action, Key newKey, Map<String, Object> valueDiff,
+            DateTime ts) {
+        Map<String, Object> publishMessage = new LinkedHashMap<String, Object>();
+        publishMessage.put("type", "speckel_st9_" + action + newKey.getType());
+        publishMessage.put("id", newKey.getEncryptedIdentifier());
+        publishMessage.put("time", CUBE_DATETIME_FORMAT.print(ts));
+        publishMessage.put("data", valueDiff);
 
         return publishMessage;
     }
