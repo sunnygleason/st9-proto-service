@@ -1658,8 +1658,8 @@ public abstract class JDBIKeyValueStorage implements KeyValueStorage,
             String action, Key newKey, Map<String, Object> valueDiff,
             DateTime ts) {
         Map<String, Object> publishMessage = new LinkedHashMap<String, Object>();
-        publishMessage.put("type",
-                "speckel_st9_" + action + "_" + newKey.getType());
+        publishMessage.put("type", "speckel_st9_" + newKey.getType() + "_"
+                + action);
         publishMessage.put("id", newKey.getEncryptedIdentifier());
         publishMessage.put("time", CUBE_DATETIME_FORMAT.print(ts));
         publishMessage.put("data", valueDiff);
