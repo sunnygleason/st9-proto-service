@@ -62,7 +62,7 @@ import com.google.inject.name.Named;
  */
 public abstract class JDBIKeyValueStorage implements KeyValueStorage,
         LifecycleRegistration {
-    public static int MULTIGET_MAX_KEYS = 100;
+    public static int MULTIGET_MAX_KEYS = 3000;
 
     private final DateTimeFormatter DATETIME_FORMAT = ISODateTimeFormat
             .basicDateTime().withZone(DateTimeZone.UTC);
