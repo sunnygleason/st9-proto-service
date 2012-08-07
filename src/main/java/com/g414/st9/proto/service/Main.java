@@ -42,6 +42,7 @@ public class Main {
 
         SelectChannelConnector connector = new SelectChannelConnector();
         connector.setPort(port);
+        connector.setRequestHeaderSize(4 * 1024 * 1024);
         connector.setThreadPool(new QueuedThreadPool(200));
         connector.setAcceptors(4);
         connector.setMaxIdleTime(300000);
